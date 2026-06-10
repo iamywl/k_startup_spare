@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>연봉 맞춤 차량 추천 · Car Advisor</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            // 브랜드: 확신감 있는 블루 (자동차 도메인) — #2F6BF0 후보를 WCAG 조정해 살짝 더 깊고 풍부하게
+            brand: { DEFAULT: '#2560DE', hover: '#1B4AB5', light: '#EAF1FE' },
+            blue:   { DEFAULT: '#2560DE', 50: '#EAF1FE', 100: '#D6E3FC', 200: '#B3CBF9', 300: '#85A9F4', 400: '#5081EC', 500: '#2560DE', 600: '#1B4AB5', 700: '#173E97', 800: '#16357E', 900: '#142C66' },
+            indigo: { DEFAULT: '#2560DE', 50: '#EAF1FE', 100: '#D6E3FC', 200: '#B3CBF9', 300: '#85A9F4', 400: '#5081EC', 500: '#2560DE', 600: '#1B4AB5', 700: '#173E97', 800: '#16357E', 900: '#142C66' },
+            sky:    { DEFAULT: '#2560DE', 50: '#EAF1FE', 100: '#D6E3FC', 200: '#B3CBF9', 300: '#85A9F4', 400: '#5081EC', 500: '#2560DE', 600: '#1B4AB5', 700: '#173E97', 800: '#16357E', 900: '#142C66' },
+            // 잉크 그레이: 순흑 금지, 브랜드 블루 hue 미세 혼합한 부드러운 다크
+            ink: {
+              50: '#F7F8FA', 100: '#EFF1F5', 200: '#E1E5EC', 300: '#CBD2DD',
+              400: '#8A93A3', 500: '#6B7587', 600: '#4A5567', 700: '#2D3748',
+              800: '#161D2B', 900: '#161D2B'
+            },
+            slate: {
+              50: '#F7F8FA', 100: '#EFF1F5', 200: '#E1E5EC', 300: '#CBD2DD',
+              400: '#8A93A3', 500: '#6B7587', 600: '#4A5567', 700: '#2D3748',
+              800: '#161D2B', 900: '#161D2B'
+            },
+            gray: {
+              50: '#F7F8FA', 100: '#EFF1F5', 200: '#E1E5EC', 300: '#CBD2DD',
+              400: '#8A93A3', 500: '#6B7587', 600: '#4A5567', 700: '#2D3748',
+              800: '#161D2B', 900: '#161D2B'
+            },
+            emerald: { DEFAULT: '#14AE5C', 500: '#14AE5C', 600: '#14AE5C' },
+            green: { DEFAULT: '#14AE5C', 500: '#14AE5C', 600: '#14AE5C' },
+            amber: { DEFAULT: '#FFB331', 500: '#FFB331', 600: '#FFB331' },
+            yellow: { DEFAULT: '#FFB331', 500: '#FFB331', 600: '#FFB331' },
+            rose: { DEFAULT: '#F04452', 500: '#F04452', 600: '#F04452' },
+            red: { DEFAULT: '#F04452', 500: '#F04452', 600: '#F04452' }
+          },
+          fontFamily: {
+            sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'Roboto', 'sans-serif']
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* design-tone-components */
+    html, body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
+    body { background: #F7F8FA; color: #161D2B; }
+    button { transition: transform .08s ease, background-color .15s ease, opacity .15s ease; }
+    button:active { transform: scale(.97); }
+    button:disabled { opacity: .35; cursor: not-allowed; }
+    input:focus-visible, select:focus-visible, button:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 1.5px #2560DE;
+    }
+    button.w-full { min-height: 52px; border-radius: 12px; }
+    .surface { background: #FFFFFF; }
+    .surface-sub { background: #EFF1F5; }
+    .modal-shadow { box-shadow: 0 8px 40px rgba(22,29,43,.18); }
+    .sheet-shadow { box-shadow: 0 -8px 40px rgba(22,29,43,.18); }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-thumb { background: #CBD2DD; border-radius: 8px; }
+    input[type=range] { -webkit-appearance: none; height: 6px; border-radius: 999px; background: #E1E5EC; }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 22px; height: 22px; border-radius: 999px;
+      background: #2560DE; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(22,29,43,.25); cursor: pointer;
+    }
+    .chip { transition: all .12s ease; }
+    .fade-in { animation: fadeIn .2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px);} to { opacity:1; transform:none;} }
+  
+  /* ===== glass-material (design-guide §5) — 떠 있는 레이어 전용 ===== */
+  .sheet-shadow, .modal-shadow {
+    background-color: rgba(255,255,255,0.58) !important;
+    -webkit-backdrop-filter: saturate(200%) blur(26px);
+            backdrop-filter: saturate(200%) blur(26px);
+    box-shadow: inset 0 1.5px 0 rgba(255,255,255,0.75), 0 12px 40px rgba(22,29,43,0.20) !important;
+  }
+  .sheet-shadow .sticky:not(thead), .modal-shadow .sticky:not(thead) {
+    background-color: rgba(255,255,255,0.55) !important;
+    -webkit-backdrop-filter: saturate(200%) blur(26px);
+            backdrop-filter: saturate(200%) blur(26px);
+  }
+  header.sticky {
+    background-color: rgba(255,255,255,0.55) !important;
+    -webkit-backdrop-filter: saturate(200%) blur(26px);
+            backdrop-filter: saturate(200%) blur(26px);
+  }
+  .bg-ink-900\/40 {
+    background-color: rgba(22,29,43,0.18) !important;
+    -webkit-backdrop-filter: blur(2px);
+            backdrop-filter: blur(2px);
+  }
+  #toastHost > * {
+    -webkit-backdrop-filter: saturate(160%) blur(12px);
+            backdrop-filter: saturate(160%) blur(12px);
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .sheet-shadow, .modal-shadow, .sheet-shadow .sticky:not(thead),
+    .modal-shadow .sticky:not(thead), header.sticky { background-color: #FFFFFF !important; }
+    .bg-ink-900\/40 { background-color: rgba(22,29,43,0.40) !important; }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .sheet-shadow, .modal-shadow, .sheet-shadow .sticky:not(thead),
+    .modal-shadow .sticky:not(thead), header.sticky {
+      background-color: #FFFFFF !important;
+      -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+    }
+    .bg-ink-900\/40 { background-color: rgba(22,29,43,0.40) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  }
+  
+  /* glass-bg-gradient — 은은한 컬러 배경(글래스가 색을 머금게) */
+  body { background: #EEF2F9 !important; }
+  body::before {
+    content:''; position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background:
+      radial-gradient(72% 56% at 8% -2%, rgba(37,96,222,0.22), transparent 60%),
+      radial-gradient(64% 52% at 98% 10%, rgba(20,174,92,0.16), transparent 60%),
+      radial-gradient(80% 62% at 50% 104%, rgba(80,129,236,0.20), transparent 60%);
+  }
+  </style>
+
+  <!-- 데이터: 다른 에이전트가 작성. 앱 스크립트보다 먼저 로드 -->
+  <script src="data.js"></script>
+</head>
+
+<body class="text-ink-900">
+  <div id="app"></div>
+
+  <script>
+  "use strict";
+
+  // ===== 전역 데이터 안전 참조 (계약 §전역 데이터) =====
+  const CARS        = Array.isArray(window.CARS) ? window.CARS : [];
+  const OPTION_META = Array.isArray(window.OPTION_META) ? window.OPTION_META : [];
+  const GROUP_META  = window.GROUP_META || {};
+  const PERSONAS    = Array.isArray(window.PERSONAS) ? window.PERSONAS : [];
+  const SYNONYMS    = window.SYNONYMS || {};
+  const COST        = window.COST || {};
+
+  // 옵션 키 → 메타 빠른 조회
+  const OPTION_BY_KEY = {};
+  OPTION_META.forEach(o => { OPTION_BY_KEY[o.key] = o; });
+  // 그룹 순서 (계약의 5그룹)
+  const GROUP_ORDER = ['climate', 'parking', 'digital', 'longdrive', 'cargo'];
+
+  // ===== 상태 (localStorage 영속, 키 carAdvisor) =====
+  const LS_KEY = 'carAdvisor';
+  const defaultState = {
+    salary: 5000,            // 연봉(만원)
+    km: 13000,               // 연간 주행거리
+    risk: 0.5,               // 예산 성향 0.4/0.5/0.7
+    preset: 'balanced',      // 우선순위 프리셋
+    fuelPref: [],            // 연료 선호 멀티 (입력화면)
+    submitted: false,        // 내 차 찾기 눌렀는지
+    // 결과화면 필터
+    facetFuel: [],           // 유종 패싯 멀티
+    facetSegment: [],        // 세그먼트 패싯 멀티
+    requiredOptions: [],     // 체감 옵션 칩 + 페르소나 + 검색 → 하드 필터 (AND)
+    activePersonas: [],      // 켜진 페르소나 태그
+    sort: 'score',           // 정렬
+    compare: [],             // 비교함 차량 id (2~3대)
+    detailId: null           // 상세 열린 차량 id
+  };
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return { ...defaultState };
+      const parsed = JSON.parse(raw);
+      return { ...defaultState, ...parsed };
+    } catch (e) {
+      return { ...defaultState };
+    }
+  }
+  function saveState() {
+    try {
+      const persist = {
+        salary: state.salary, km: state.km, risk: state.risk, preset: state.preset,
+        fuelPref: state.fuelPref, submitted: state.submitted,
+        facetFuel: state.facetFuel, facetSegment: state.facetSegment,
+        requiredOptions: state.requiredOptions, activePersonas: state.activePersonas,
+        sort: state.sort, compare: state.compare
+      };
+      localStorage.setItem(LS_KEY, JSON.stringify(persist));
+    } catch (e) { /* 저장 실패 무시 */ }
+  }
+
+  let state = loadState();
+
+  // ===== 유지비 계산 (계약 §유지비 계산) =====
+  function fuelPrice(fuel) {
+    const m = COST.fuelPriceWon || {};
+    return m[fuel] != null ? m[fuel] : 1650;
+  }
+  function autoTaxWon(car) {
+    if (car.fuel === 'EV') return COST.autoTaxEvFlatWon || 130000;
+    const tiers = COST.autoTaxPerCc || [];
+    let perCc = 200;
+    for (const t of tiers) {
+      if (car.displacementCc <= t.max) { perCc = t.won; break; }
+    }
+    return Math.round((car.displacementCc || 0) * perCc * 1.3);
+  }
+  function insuranceWon(car) {
+    const base = COST.insuranceBaseWon != null ? COST.insuranceBaseWon : 400000;
+    const rate = COST.insurancePriceRate != null ? COST.insurancePriceRate : 0.012;
+    return Math.round(base + (car.price * 10000) * rate);
+  }
+  function maintWon(car) {
+    const m = COST.maintByFuelWon || {};
+    return m[car.fuel] != null ? m[car.fuel] : 600000;
+  }
+  function fuelCostWon(car, km) {
+    const eff = car.efficiency || 1;       // EV면 km/kWh, 그 외 km/L
+    const liters = km / eff;
+    return Math.round(liters * fuelPrice(car.fuel === 'EV' ? 'EV' : car.fuel));
+  }
+  // 전체 비용 분해 반환
+  function costBreakdown(car, km) {
+    const fuel = fuelCostWon(car, km);
+    const tax = autoTaxWon(car);
+    const ins = insuranceWon(car);
+    const maint = maintWon(car);
+    const total = fuel + tax + ins + maint;
+    return { fuel, tax, ins, maint, total, monthly: Math.round(total / 12) };
+  }
+
+  // ===== 포맷 헬퍼 =====
+  const fmtMan = n => n.toLocaleString('ko-KR');                 // 만원 단위 숫자
+  const fmtWon = n => n.toLocaleString('ko-KR');                 // 원
+  const won2man = won => Math.round(won / 10000);               // 원 → 만원 근사
+  const pct = (a, b) => (b > 0 ? Math.round((a / b) * 1000) / 10 : 0);
+
+  // ===== 추천 점수 (계약 §5) =====
+  // (옵션 충족 가점) + 가성비(세그먼트 내 정규화) + 유지비 역수 + 부담률 역수, 프리셋 가중치 합산
+  const PRESET_WEIGHTS = {
+    options:  { opt: 0.55, value: 0.15, cost: 0.15, burden: 0.15 }, // 옵션중시
+    cost:     { opt: 0.20, value: 0.20, cost: 0.45, burden: 0.15 }, // 유지비중시
+    price:    { opt: 0.15, value: 0.45, cost: 0.15, burden: 0.25 }, // 가격중시
+    balanced: { opt: 0.30, value: 0.25, cost: 0.25, burden: 0.20 }  // 표준
+  };
+  // UI 노출용 프리셋(계약: 옵션중시/유지비중시/가격중시) + 표준
+  const PRESETS = [
+    { key: 'options', label: '옵션 중시' },
+    { key: 'cost', label: '유지비 중시' },
+    { key: 'price', label: '가격 중시' },
+    { key: 'balanced', label: '표준' }
+  ];
+
+  // 옵션 valueWeight → 가중
+  function optWeight(key) {
+    const m = OPTION_BY_KEY[key];
+    if (!m) return 1;
+    if (m.valueWeight === 'high') return 1.6;
+    if (m.valueWeight === 'low') return 0.6;
+    return 1;
+  }
+
+  function carOptionCount(car) {
+    let c = 0;
+    OPTION_META.forEach(o => { if (car.options && car.options[o.key]) c++; });
+    return c;
+  }
+
+  // 세그먼트 내 가성비 정규화용 통계 캐시
+  function buildSegmentStats(cars) {
+    const stats = {};
+    cars.forEach(c => {
+      const s = c.segment || '기타';
+      if (!stats[s]) stats[s] = { minPrice: Infinity, maxPrice: -Infinity, minOpt: Infinity, maxOpt: -Infinity };
+      const oc = carOptionCount(c);
+      stats[s].minPrice = Math.min(stats[s].minPrice, c.price);
+      stats[s].maxPrice = Math.max(stats[s].maxPrice, c.price);
+      stats[s].minOpt = Math.min(stats[s].minOpt, oc);
+      stats[s].maxOpt = Math.max(stats[s].maxOpt, oc);
+    });
+    return stats;
+  }
+
+  // 전체 유지비/부담률 범위 (역수 정규화 위해)
+  function buildGlobalStats(cars) {
+    let minM = Infinity, maxM = -Infinity, minB = Infinity, maxB = -Infinity;
+    const salaryWon = state.salary * 10000;
+    cars.forEach(c => {
+      const cb = costBreakdown(c, state.km);
+      minM = Math.min(minM, cb.monthly); maxM = Math.max(maxM, cb.monthly);
+      const burden = salaryWon > 0 ? (c.price * 10000) / salaryWon : 0;
+      minB = Math.min(minB, burden); maxB = Math.max(maxB, burden);
+    });
+    return { minM, maxM, minB, maxB };
+  }
+
+  function norm(v, lo, hi) {
+    if (!isFinite(lo) || !isFinite(hi) || hi <= lo) return 0.5;
+    return (v - lo) / (hi - lo);
+  }
+
+  // 추천 점수 계산 (0~100)
+  function scoreCar(car, ctx) {
+    const w = PRESET_WEIGHTS[state.preset] || PRESET_WEIGHTS.balanced;
+    const required = state.requiredOptions;
+
+    // 옵션 충족 가점: 필수옵션 충족비율 + 전체 옵션 풍부도(valueWeight 가중)
+    let reqScore = 1;
+    if (required.length) {
+      let hit = 0;
+      required.forEach(k => { if (car.options && car.options[k]) hit++; });
+      reqScore = hit / required.length;
+    }
+    // 풍부도(가중 옵션 합 / 최대)
+    let wsum = 0;
+    OPTION_META.forEach(o => { if (car.options && car.options[o.key]) wsum += optWeight(o.key); });
+    const richness = norm(wsum, ctx.minWsum, ctx.maxWsum);
+    const optScore = 0.6 * reqScore + 0.4 * richness;
+
+    // 가성비: 세그먼트 내 (옵션수 정규화) - (가격 정규화)
+    const seg = ctx.segStats[car.segment] || {};
+    const oc = carOptionCount(car);
+    const optN = norm(oc, seg.minOpt, seg.maxOpt);
+    const priceN = norm(car.price, seg.minPrice, seg.maxPrice);
+    const valueScore = Math.max(0, Math.min(1, 0.5 + (optN - priceN) / 2));
+
+    // 유지비 역수: 낮을수록 고점
+    const cb = costBreakdown(car, state.km);
+    const costScore = 1 - norm(cb.monthly, ctx.g.minM, ctx.g.maxM);
+
+    // 부담률 역수: 차량가/연봉 낮을수록 고점
+    const salaryWon = state.salary * 10000;
+    const burden = salaryWon > 0 ? (car.price * 10000) / salaryWon : 1;
+    const burdenScore = 1 - norm(burden, ctx.g.minB, ctx.g.maxB);
+
+    const raw = w.opt * optScore + w.value * valueScore + w.cost * costScore + w.burden * burdenScore;
+    return Math.round(raw * 1000) / 10; // 0~100
+  }
+
+  // ===== 필터링 파이프라인 =====
+  // 패싯 내 OR, 패싯 간 AND / 옵션 AND(하드) / 검색·페르소나는 requiredOptions로 합류
+  function passFacets(car) {
+    if (state.facetFuel.length && !state.facetFuel.includes(car.fuel)) return false;
+    if (state.facetSegment.length && !state.facetSegment.includes(car.segment)) return false;
+    return true;
+  }
+  function passRequiredOptions(car) {
+    return state.requiredOptions.every(k => car.options && car.options[k]);
+  }
+  // 입력화면 연료선호 → 결과 facetFuel 초기값으로 반영하되, 별도 prefilter도 적용
+  function passFuelPref(car) {
+    if (!state.fuelPref.length) return true;
+    return state.fuelPref.includes(car.fuel);
+  }
+
+  function getResults() {
+    // 점수 컨텍스트
+    const segStats = buildSegmentStats(CARS);
+    const g = buildGlobalStats(CARS);
+    let minWsum = Infinity, maxWsum = -Infinity;
+    CARS.forEach(c => {
+      let ws = 0;
+      OPTION_META.forEach(o => { if (c.options && c.options[o.key]) ws += optWeight(o.key); });
+      minWsum = Math.min(minWsum, ws); maxWsum = Math.max(maxWsum, ws);
+    });
+    const ctx = { segStats, g, minWsum, maxWsum };
+
+    let list = CARS.filter(c => passFuelPref(c) && passFacets(c) && passRequiredOptions(c));
+    list = list.map(c => ({ car: c, score: scoreCar(c, ctx), cost: costBreakdown(c, state.km) }));
+
+    list.sort((a, b) => {
+      switch (state.sort) {
+        case 'cost': return a.cost.monthly - b.cost.monthly;
+        case 'price': return a.car.price - b.car.price;
+        case 'eff': return (b.car.efficiency || 0) - (a.car.efficiency || 0);
+        case 'score':
+        default: return b.score - a.score;
+      }
+    });
+    return list;
+  }
+
+  // 패싯 값별 매칭 대수 (해당 패싯만 제외하고 카운트 → 패싯 간 AND 보존)
+  function facetCounts(dimension) {
+    const counts = {};
+    CARS.forEach(c => {
+      if (!passFuelPref(c)) return;
+      if (!passRequiredOptions(c)) return;
+      if (dimension !== 'fuel') {
+        if (state.facetFuel.length && !state.facetFuel.includes(c.fuel)) return;
+      }
+      if (dimension !== 'segment') {
+        if (state.facetSegment.length && !state.facetSegment.includes(c.segment)) return;
+      }
+      const key = dimension === 'fuel' ? c.fuel : c.segment;
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    return counts;
+  }
+
+  function allFuels() { return [...new Set(CARS.map(c => c.fuel))]; }
+  function allSegments() { return [...new Set(CARS.map(c => c.segment))]; }
+
+  // ===== 예산 신호등 (차량가 vs 연봉×성향) =====
+  function budgetSignal(car) {
+    const cap = state.salary * state.risk; // 만원
+    if (cap <= 0) return { color: 'ink', label: '연봉 입력', cls: 'bg-ink-100 text-ink-500' };
+    const ratio = car.price / cap;
+    if (ratio <= 1.0) return { color: 'green', label: '여유', cls: 'bg-[#E7F7EF] text-emerald-600' };
+    if (ratio <= 1.35) return { color: 'amber', label: '적정', cls: 'bg-[#FFF6E5] text-amber-600' };
+    return { color: 'red', label: '부담', cls: 'bg-[#FDECEE] text-rose-600' };
+  }
+
+  // ===== 검색 (SYNONYMS 경유, 부분일치) =====
+  function searchToOptionKeys(query) {
+    const q = (query || '').toLowerCase().replace(/\s+/g, '');
+    if (!q) return [];
+    const keys = new Set();
+    // 1) 동의어 부분일치
+    Object.keys(SYNONYMS).forEach(syn => {
+      const s = syn.toLowerCase().replace(/\s+/g, '');
+      if (s.includes(q) || q.includes(s)) {
+        SYNONYMS[syn].forEach(k => keys.add(k));
+      }
+    });
+    // 2) 옵션 라벨/구어/키 부분일치
+    OPTION_META.forEach(o => {
+      const hay = [(o.label || ''), (o.consumer || ''), (o.key || '')].join('').toLowerCase().replace(/\s+/g, '');
+      if (hay.includes(q)) keys.add(o.key);
+    });
+    return [...keys];
+  }
+
+  // ===== 라우팅 / 뷰 =====
+  let route = state.submitted ? 'results' : 'input';
+  let searchQuery = '';
+  let detailKm = state.km; // 상세화면 슬라이더 별도 추적
+
+  const root = document.getElementById('app');
+
+  function render() {
+    if (route === 'input') root.innerHTML = viewInput();
+    else root.innerHTML = viewResults();
+    bindEvents();
+    if (state.detailId) renderDetail();
+    if (route === 'compare') renderCompare();
+  }
+
+  // ---------- 입력 화면 ----------
+  function viewInput() {
+    return `
+    <div class="min-h-screen flex flex-col">
+      <header class="surface border-b border-ink-100">
+        <div class="max-w-xl mx-auto px-5 py-5">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl bg-brand flex items-center justify-center text-white text-lg">🚗</div>
+            <h1 class="text-xl font-bold text-ink-900">연봉 맞춤 차량 추천</h1>
+          </div>
+          <p class="mt-1 text-sm text-ink-500">연봉과 라이프스타일을 알려주시면 딱 맞는 차를 골라드려요.</p>
+        </div>
+      </header>
+
+      <main class="flex-1 max-w-xl w-full mx-auto px-5 py-6 space-y-7">
+        <!-- 연봉 -->
+        <section>
+          <label class="block text-sm font-semibold text-ink-700 mb-2">연봉 (세전, 만원)</label>
+          <div class="relative">
+            <input id="salaryInput" type="number" inputmode="numeric" min="0" step="100"
+              value="${state.salary}"
+              class="w-full surface border border-ink-200 rounded-xl px-4 py-3 text-2xl font-bold text-ink-900 tabular-nums" />
+            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-ink-400 text-sm">만원</span>
+          </div>
+          <p class="mt-1.5 text-xs text-ink-400">연 ${fmtMan(state.salary)}만원 · 월 약 ${fmtMan(Math.round(state.salary/12))}만원</p>
+        </section>
+
+        <!-- 주행거리 -->
+        <section>
+          <div class="flex items-baseline justify-between mb-2">
+            <label class="text-sm font-semibold text-ink-700">연간 주행거리</label>
+            <span class="text-brand font-bold tabular-nums">${fmtMan(state.km)} km</span>
+          </div>
+          <input id="kmRange" type="range" min="0" max="40000" step="500" value="${state.km}" class="w-full" />
+          <div class="flex justify-between text-xs text-ink-400 mt-1"><span>0</span><span>40,000 km</span></div>
+        </section>
+
+        <!-- 예산 성향 -->
+        <section>
+          <label class="block text-sm font-semibold text-ink-700 mb-2">예산 성향</label>
+          <div class="grid grid-cols-3 gap-2">
+            ${[
+              { v: 0.4, t: '보수', d: '안정적으로' },
+              { v: 0.5, t: '표준', d: '적당하게' },
+              { v: 0.7, t: '공격', d: '좋은 차로' }
+            ].map(o => `
+              <button data-risk="${o.v}" class="risk-btn rounded-xl border px-3 py-3 text-center ${state.risk===o.v ? 'border-brand bg-brand-light' : 'border-ink-200 surface'}">
+                <div class="font-bold ${state.risk===o.v ? 'text-brand' : 'text-ink-700'}">${o.t}</div>
+                <div class="text-xs text-ink-400 mt-0.5">${o.d}</div>
+              </button>`).join('')}
+          </div>
+        </section>
+
+        <!-- 우선순위 프리셋 -->
+        <section>
+          <label class="block text-sm font-semibold text-ink-700 mb-2">무엇을 가장 중요하게 볼까요?</label>
+          <div class="grid grid-cols-2 gap-2">
+            ${PRESETS.map(p => `
+              <button data-preset="${p.key}" class="preset-btn rounded-xl border px-3 py-3 text-sm font-semibold ${state.preset===p.key ? 'border-brand bg-brand-light text-brand' : 'border-ink-200 surface text-ink-700'}">
+                ${p.label}
+              </button>`).join('')}
+          </div>
+        </section>
+
+        <!-- 연료 선호 -->
+        <section>
+          <label class="block text-sm font-semibold text-ink-700 mb-2">선호 연료 <span class="text-ink-400 font-normal">(선택 안 하면 전체)</span></label>
+          <div class="flex flex-wrap gap-2">
+            ${allFuels().map(f => `
+              <button data-fuel="${f}" class="fuel-btn chip rounded-full border px-4 py-2 text-sm font-semibold ${state.fuelPref.includes(f) ? 'border-brand bg-brand-light text-brand' : 'border-ink-200 surface text-ink-600'}">
+                ${f}
+              </button>`).join('')}
+          </div>
+        </section>
+      </main>
+
+      <footer class="sticky bottom-0 surface border-t border-ink-100">
+        <div class="max-w-xl mx-auto px-5 py-4">
+          <button id="findBtn" class="w-full bg-brand hover:bg-brand-hover text-white font-bold text-base">내 차 찾기</button>
+        </div>
+      </footer>
+    </div>`;
+  }
+
+  // ---------- 결과 화면 ----------
+  function viewResults() {
+    const results = getResults();
+    const fuelCounts = facetCounts('fuel');
+    const segCounts = facetCounts('segment');
+
+    const sortOptions = [
+      { v: 'score', t: '추천순' }, { v: 'cost', t: '유지비순' },
+      { v: 'price', t: '가격순' }, { v: 'eff', t: '연비순' }
+    ];
+
+    const personaBar = PERSONAS.map(p => {
+      const on = state.activePersonas.includes(p.tag);
+      return `<button data-persona="${p.tag}" class="persona-btn chip whitespace-nowrap rounded-full border px-3.5 py-1.5 text-sm font-semibold ${on ? 'border-brand bg-brand text-white' : 'border-ink-200 surface text-ink-600'}">#${p.tag}</button>`;
+    }).join('');
+
+    const facetChips = (dim, values, counts) => values.map(v => {
+      const sel = dim === 'fuel' ? state.facetFuel.includes(v) : state.facetSegment.includes(v);
+      const n = counts[v] || 0;
+      return `<button data-facet="${dim}" data-val="${v}" class="facet-btn chip rounded-full border px-3 py-1.5 text-sm ${sel ? 'border-brand bg-brand-light text-brand font-semibold' : 'border-ink-200 surface text-ink-600'}">
+        ${v} <span class="tabular-nums ${sel ? 'text-brand' : 'text-ink-400'}">${n}</span>
+      </button>`;
+    }).join('');
+
+    // 체감 옵션 칩 5그룹
+    const optionGroups = GROUP_ORDER.map(g => {
+      const meta = GROUP_META[g] || { label: g, icon: '•' };
+      const keys = OPTION_META.filter(o => o.group === g).map(o => o.key);
+      const chips = keys.map(k => {
+        const o = OPTION_BY_KEY[k];
+        const on = state.requiredOptions.includes(k);
+        const lbl = o.consumer ? `${o.label}<span class="text-xs ${on?'text-brand-light':'text-ink-400'}"> ${o.consumer}</span>` : o.label;
+        return `<button data-opt="${k}" class="opt-btn chip rounded-full border px-3 py-1.5 text-xs ${on ? 'border-brand bg-brand text-white font-semibold' : 'border-ink-200 surface text-ink-600'}">${o.label}</button>`;
+      }).join('');
+      return `
+        <div class="mb-3">
+          <div class="text-xs font-bold text-ink-500 mb-1.5">${meta.icon} ${meta.label}</div>
+          <div class="flex flex-wrap gap-1.5">${chips}</div>
+        </div>`;
+    }).join('');
+
+    const cards = results.length
+      ? results.map(r => cardHtml(r)).join('')
+      : `<div class="surface rounded-2xl py-16 text-center">
+           <div class="text-4xl mb-3">🔎</div>
+           <p class="font-bold text-ink-700">아직 조건에 맞는 차가 없어요</p>
+           <p class="text-sm text-ink-400 mt-1">옵션을 줄여보세요.</p>
+         </div>`;
+
+    return `
+    <div class="min-h-screen flex flex-col">
+      <header class="sticky top-0 z-20 surface border-b border-ink-100">
+        <div class="max-w-3xl mx-auto px-5 py-3 flex items-center gap-3">
+          <button id="backBtn" class="text-ink-500 text-sm font-semibold">‹ 조건수정</button>
+          <h1 class="text-base font-bold text-ink-900 flex-1">추천 결과 <span class="text-brand">${results.length}</span>대</h1>
+          <button id="compareOpenBtn" class="relative text-sm font-semibold text-ink-700 px-3 py-1.5 rounded-lg surface-sub">
+            비교함 ${state.compare.length ? `<span class="ml-0.5 text-brand">${state.compare.length}</span>` : ''}
+          </button>
+        </div>
+
+        <!-- 검색 -->
+        <div class="max-w-3xl mx-auto px-5 pb-2">
+          <div class="relative">
+            <input id="searchInput" type="text" placeholder="엉따, 360, 차박, 크루즈… 원하는 기능 검색"
+              value="${searchQuery.replace(/"/g,'&quot;')}"
+              class="w-full surface-sub rounded-xl pl-9 pr-3 py-2.5 text-sm text-ink-800 placeholder:text-ink-400 border border-transparent" />
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400">🔍</span>
+          </div>
+          <div id="searchHint" class="mt-1 text-xs text-ink-400"></div>
+        </div>
+
+        <!-- 페르소나 바 -->
+        <div class="max-w-3xl mx-auto px-5 pb-2 overflow-x-auto">
+          <div class="flex gap-2">${personaBar}</div>
+        </div>
+      </header>
+
+      <main class="flex-1 max-w-3xl w-full mx-auto px-5 py-4 space-y-4">
+        <!-- 패싯 + 옵션 필터 -->
+        <section class="surface rounded-2xl p-4 space-y-3">
+          <div>
+            <div class="text-xs font-bold text-ink-500 mb-1.5">유종</div>
+            <div class="flex flex-wrap gap-1.5">${facetChips('fuel', allFuels(), fuelCounts)}</div>
+          </div>
+          <div>
+            <div class="text-xs font-bold text-ink-500 mb-1.5">세그먼트</div>
+            <div class="flex flex-wrap gap-1.5">${facetChips('segment', allSegments(), segCounts)}</div>
+          </div>
+          <details class="pt-1">
+            <summary class="text-xs font-bold text-ink-500 cursor-pointer select-none">체감 옵션으로 좁히기 ${state.requiredOptions.length ? `<span class="text-brand">(${state.requiredOptions.length})</span>` : ''}</summary>
+            <div class="mt-3">${optionGroups}</div>
+            ${state.requiredOptions.length ? `<button id="clearOptsBtn" class="mt-1 text-xs text-rose-500 font-semibold">옵션 조건 비우기</button>` : ''}
+          </details>
+        </section>
+
+        <!-- 정렬 -->
+        <div class="flex items-center justify-between">
+          <div class="text-sm text-ink-500">${results.length}대 · 주행 ${fmtMan(state.km)}km 기준</div>
+          <select id="sortSelect" class="surface border border-ink-200 rounded-lg px-3 py-2 text-sm font-semibold text-ink-700">
+            ${sortOptions.map(o => `<option value="${o.v}" ${state.sort===o.v?'selected':''}>${o.t}</option>`).join('')}
+          </select>
+        </div>
+
+        <!-- 카드 -->
+        <div class="space-y-3">${cards}</div>
+      </main>
+
+      <footer class="surface border-t border-ink-100 mt-4">
+        <div class="max-w-3xl mx-auto px-5 py-4 text-xs text-ink-400 text-center">
+          가격·옵션·연비는 근사치예요. 실제 구매 전 제조사·딜러 확인이 필요해요.
+        </div>
+      </footer>
+    </div>`;
+  }
+
+  // 차량 카드
+  function cardHtml(r) {
+    const c = r.car;
+    const sig = budgetSignal(c);
+    // 보유 옵션 상위 배지 (high 우선)
+    const owned = OPTION_META.filter(o => c.options && c.options[o.key]);
+    owned.sort((a, b) => optWeight(b.key) - optWeight(a.key));
+    const topBadges = owned.slice(0, 3).map(o =>
+      `<span class="text-xs px-2 py-0.5 rounded-md surface-sub text-ink-600">${o.consumer || o.label}</span>`).join('');
+    const moreCount = owned.length - 3;
+    const effUnit = c.fuel === 'EV' ? 'km/kWh' : 'km/L';
+
+    return `
+    <button data-car="${c.id}" class="car-card w-full text-left surface rounded-2xl p-4 border border-transparent hover:border-ink-200 transition">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="text-xs text-ink-400">${c.brand}</span>
+            <span class="text-xs px-1.5 py-0.5 rounded surface-sub text-ink-500">${c.segment}</span>
+            <span class="text-xs px-1.5 py-0.5 rounded surface-sub text-ink-500">${c.fuel}</span>
+          </div>
+          <div class="font-bold text-lg text-ink-900 mt-0.5">${c.model} <span class="text-ink-500 font-medium text-sm">${c.trim}</span></div>
+        </div>
+        <div class="text-right shrink-0">
+          <div class="font-bold text-lg text-ink-900 tabular-nums">${fmtMan(c.price)}<span class="text-sm text-ink-400">만</span></div>
+          <span class="inline-block mt-1 text-xs font-semibold px-2 py-0.5 rounded-full ${sig.cls}">● ${sig.label}</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2 mt-3 text-center">
+        <div class="surface-sub rounded-lg py-2">
+          <div class="text-[11px] text-ink-400">연비</div>
+          <div class="font-bold text-sm text-ink-800 tabular-nums">${c.efficiency} <span class="text-[10px] text-ink-400">${effUnit}</span></div>
+        </div>
+        <div class="surface-sub rounded-lg py-2">
+          <div class="text-[11px] text-ink-400">월 유지비</div>
+          <div class="font-bold text-sm text-brand tabular-nums">${fmtMan(won2man(r.cost.monthly))}만</div>
+        </div>
+        <div class="surface-sub rounded-lg py-2">
+          <div class="text-[11px] text-ink-400">추천점수</div>
+          <div class="font-bold text-sm text-ink-800 tabular-nums">${r.score.toFixed(0)}</div>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-1.5 mt-3">
+        ${topBadges}
+        ${moreCount > 0 ? `<span class="text-xs text-ink-400">외 ${moreCount}개</span>` : ''}
+      </div>
+    </button>`;
+  }
+
+  // ---------- 상세 (바텀시트) ----------
+  function renderDetail() {
+    const c = CARS.find(x => x.id === state.detailId);
+    if (!c) return;
+    detailKm = state.km;
+
+    let overlay = document.getElementById('detailOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'detailOverlay';
+      document.body.appendChild(overlay);
+    }
+    overlay.className = 'fixed inset-0 z-40 flex items-end sm:items-center justify-center';
+    overlay.innerHTML = `
+      <div id="detailBackdrop" class="absolute inset-0 bg-ink-900/40"></div>
+      <div class="relative w-full sm:max-w-lg surface rounded-t-3xl sm:rounded-3xl sheet-shadow sm:modal-shadow max-h-[92vh] overflow-y-auto fade-in">
+        <div id="detailBody"></div>
+      </div>`;
+    document.getElementById('detailBackdrop').onclick = closeDetail;
+    paintDetailBody(c);
+  }
+
+  function paintDetailBody(c) {
+    const body = document.getElementById('detailBody');
+    if (!body) return;
+    const cb = costBreakdown(c, detailKm);
+    const sig = budgetSignal(c);
+    const salaryWon = state.salary * 10000;
+    const priceBurden = pct(c.price * 10000, salaryWon);          // 차량가/연봉 %
+    const monthlyBurden = pct(cb.monthly, salaryWon / 12);        // 월유지비/월소득 %
+    const effUnit = c.fuel === 'EV' ? 'km/kWh' : 'km/L';
+
+    const items = [
+      { t: '연료비', v: cb.fuel, color: '#2560DE' },
+      { t: '자동차세', v: cb.tax, color: '#14AE5C' },
+      { t: '보험(추정)', v: cb.ins, color: '#FFB331' },
+      { t: '정비(추정)', v: cb.maint, color: '#8A93A3' }
+    ];
+    const maxV = Math.max(...items.map(i => i.v), 1);
+    const bars = items.map(i => `
+      <div class="flex items-center gap-2 text-sm">
+        <div class="w-16 text-ink-500 shrink-0">${i.t}</div>
+        <div class="flex-1 h-5 surface-sub rounded-md overflow-hidden">
+          <div class="h-full rounded-md" style="width:${Math.max(4,(i.v/maxV)*100)}%;background:${i.color}"></div>
+        </div>
+        <div class="w-20 text-right tabular-nums text-ink-700 font-semibold shrink-0">${fmtWon(i.v)}원</div>
+      </div>`).join('');
+
+    // 옵션 매트릭스 (그룹별)
+    const matrix = GROUP_ORDER.map(g => {
+      const meta = GROUP_META[g] || { label: g, icon: '•' };
+      const keys = OPTION_META.filter(o => o.group === g);
+      const rows = keys.map(o => {
+        const has = !!(c.options && c.options[o.key]);
+        return `
+          <div class="flex items-center gap-2 py-1">
+            <span class="w-5 h-5 rounded-md flex items-center justify-center text-xs ${has ? 'bg-brand text-white' : 'surface-sub text-ink-300'}">${has ? '✓' : '·'}</span>
+            <span class="text-sm ${has ? 'text-ink-800' : 'text-ink-300 line-through'}">${o.label}</span>
+            ${o.consumer ? `<span class="text-xs ${has?'text-ink-400':'text-ink-300'}">${o.consumer}</span>` : ''}
+          </div>`;
+      }).join('');
+      return `
+        <div class="mb-3">
+          <div class="text-xs font-bold text-ink-500 mb-1">${meta.icon} ${meta.label}</div>
+          <div class="grid grid-cols-2 gap-x-3">${rows}</div>
+        </div>`;
+    }).join('');
+
+    const inCompare = state.compare.includes(c.id);
+
+    body.innerHTML = `
+      <div class="sticky top-0 surface px-5 pt-4 pb-3 border-b border-ink-100 z-10">
+        <div class="w-10 h-1 bg-ink-200 rounded-full mx-auto mb-3 sm:hidden"></div>
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="text-xs text-ink-400">${c.brand} · ${c.segment} · ${c.fuel}</div>
+            <div class="font-bold text-xl text-ink-900">${c.model} <span class="text-ink-500 text-sm font-medium">${c.trim}</span></div>
+          </div>
+          <button id="detailClose" class="text-ink-400 text-2xl leading-none px-1">×</button>
+        </div>
+      </div>
+
+      <div class="px-5 py-4 space-y-5">
+        <!-- 가격/신호등 -->
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-xs text-ink-400">차량 가격</div>
+            <div class="font-bold text-2xl text-ink-900 tabular-nums">${fmtMan(c.price)}<span class="text-base text-ink-400">만원</span></div>
+          </div>
+          <span class="text-sm font-semibold px-3 py-1 rounded-full ${sig.cls}">● ${sig.label}</span>
+        </div>
+
+        <!-- 유지비 -->
+        <section class="surface-sub rounded-2xl p-4">
+          <div class="flex items-baseline justify-between mb-1">
+            <div class="font-bold text-ink-800">예상 유지비</div>
+            <div class="text-brand font-bold tabular-nums">월 ${fmtMan(won2man(cb.monthly))}만원</div>
+          </div>
+          <div class="text-xs text-ink-400 mb-3">연 ${fmtWon(cb.total)}원 · 주행 ${fmtMan(detailKm)}km 기준</div>
+
+          <div class="flex items-baseline justify-between mb-2">
+            <span class="text-xs font-semibold text-ink-500">주행거리 조정</span>
+            <span class="text-xs text-brand font-bold tabular-nums">${fmtMan(detailKm)} km</span>
+          </div>
+          <input id="detailKmRange" type="range" min="0" max="40000" step="500" value="${detailKm}" class="w-full mb-4" />
+
+          <div class="space-y-2">${bars}</div>
+        </section>
+
+        <!-- 부담률 -->
+        <section class="grid grid-cols-2 gap-3">
+          <div class="surface-sub rounded-2xl p-4">
+            <div class="text-xs text-ink-400">연봉 대비 차량가</div>
+            <div class="font-bold text-xl text-ink-800 tabular-nums">${priceBurden}<span class="text-sm">%</span></div>
+            <div class="h-1.5 surface rounded-full mt-2 overflow-hidden"><div class="h-full bg-brand" style="width:${Math.min(100,priceBurden)}%"></div></div>
+          </div>
+          <div class="surface-sub rounded-2xl p-4">
+            <div class="text-xs text-ink-400">월소득 대비 유지비</div>
+            <div class="font-bold text-xl text-ink-800 tabular-nums">${monthlyBurden}<span class="text-sm">%</span></div>
+            <div class="h-1.5 surface rounded-full mt-2 overflow-hidden"><div class="h-full ${monthlyBurden>15?'bg-rose-500':'bg-emerald-500'}" style="width:${Math.min(100,monthlyBurden*3)}%"></div></div>
+          </div>
+        </section>
+
+        <!-- 옵션 매트릭스 -->
+        <section>
+          <div class="font-bold text-ink-800 mb-2">옵션 매트릭스 <span class="text-xs text-ink-400 font-normal">(보유 ${carOptionCount(c)}/${OPTION_META.length})</span></div>
+          ${matrix}
+        </section>
+      </div>
+
+      <div class="sticky bottom-0 surface border-t border-ink-100 px-5 py-3">
+        <button id="toggleCompareBtn" class="w-full font-bold ${inCompare ? 'surface-sub text-ink-700' : 'bg-brand hover:bg-brand-hover text-white'}">
+          ${inCompare ? '비교함에서 빼기' : '비교함에 담기'}
+        </button>
+      </div>`;
+
+    // 상세 바인딩
+    document.getElementById('detailClose').onclick = closeDetail;
+    document.getElementById('detailKmRange').oninput = (e) => {
+      detailKm = parseInt(e.target.value, 10);
+      paintDetailBody(c); // 즉시 재계산
+    };
+    document.getElementById('toggleCompareBtn').onclick = () => {
+      toggleCompare(c.id);
+      paintDetailBody(c);
+    };
+  }
+
+  function closeDetail() {
+    state.detailId = null;
+    const o = document.getElementById('detailOverlay');
+    if (o) o.remove();
+  }
+
+  function toggleCompare(id) {
+    const i = state.compare.indexOf(id);
+    if (i >= 0) state.compare.splice(i, 1);
+    else {
+      if (state.compare.length >= 3) state.compare.shift(); // 최대 3대
+      state.compare.push(id);
+    }
+    saveState();
+    // 결과 헤더 카운트 갱신
+    const btn = document.getElementById('compareOpenBtn');
+    if (btn) btn.innerHTML = `비교함 ${state.compare.length ? `<span class="ml-0.5 text-brand">${state.compare.length}</span>` : ''}`;
+  }
+
+  // ---------- 비교함 ----------
+  function renderCompare() {
+    const cars = state.compare.map(id => CARS.find(c => c.id === id)).filter(Boolean);
+    let overlay = document.getElementById('compareOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'compareOverlay';
+      document.body.appendChild(overlay);
+    }
+    overlay.className = 'fixed inset-0 z-40 flex items-end sm:items-center justify-center';
+
+    const body = !cars.length
+      ? `<div class="py-20 text-center">
+           <div class="text-4xl mb-3">⚖️</div>
+           <p class="font-bold text-ink-700">비교함이 비어 있어요</p>
+           <p class="text-sm text-ink-400 mt-1">차량 상세에서 "비교함에 담기"를 눌러 2~3대를 모아보세요.</p>
+         </div>`
+      : compareTable(cars);
+
+    overlay.innerHTML = `
+      <div id="compareBackdrop" class="absolute inset-0 bg-ink-900/40"></div>
+      <div class="relative w-full sm:max-w-2xl surface rounded-t-3xl sm:rounded-3xl sheet-shadow sm:modal-shadow max-h-[92vh] overflow-y-auto fade-in">
+        <div class="sticky top-0 surface px-5 pt-4 pb-3 border-b border-ink-100 flex items-center justify-between z-10">
+          <div class="font-bold text-lg text-ink-900">비교함 <span class="text-brand">${cars.length}</span></div>
+          <button id="compareClose" class="text-ink-400 text-2xl leading-none px-1">×</button>
+        </div>
+        <div class="px-4 py-4">${body}</div>
+      </div>`;
+    document.getElementById('compareBackdrop').onclick = closeCompare;
+    document.getElementById('compareClose').onclick = closeCompare;
+    overlay.querySelectorAll('[data-rm]').forEach(b => {
+      b.onclick = () => { toggleCompare(b.getAttribute('data-rm')); renderCompare(); };
+    });
+  }
+
+  function compareTable(cars) {
+    const rows = [];
+    const header = `<th class="p-2 text-left text-xs text-ink-400 font-semibold sticky left-0 surface">항목</th>` +
+      cars.map(c => `<th class="p-2 text-left align-top min-w-[120px]">
+        <div class="font-bold text-ink-900 text-sm">${c.model}</div>
+        <div class="text-xs text-ink-400">${c.trim}</div>
+        <button data-rm="${c.id}" class="mt-1 text-xs text-rose-500 font-semibold">빼기</button>
+      </th>`).join('');
+
+    const specRow = (label, fn) => `
+      <tr class="border-t border-ink-100">
+        <td class="p-2 text-xs text-ink-500 sticky left-0 surface font-semibold">${label}</td>
+        ${cars.map(c => `<td class="p-2 text-sm text-ink-800 tabular-nums">${fn(c)}</td>`).join('')}
+      </tr>`;
+
+    rows.push(specRow('가격', c => `${fmtMan(c.price)}만`));
+    rows.push(specRow('유종', c => c.fuel));
+    rows.push(specRow('세그먼트', c => c.segment));
+    rows.push(specRow('연비', c => `${c.efficiency} ${c.fuel==='EV'?'km/kWh':'km/L'}`));
+    rows.push(specRow('월 유지비', c => `<span class="text-brand font-bold">${fmtMan(won2man(costBreakdown(c, state.km).monthly))}만</span>`));
+    rows.push(specRow('연 유지비', c => `${fmtWon(costBreakdown(c, state.km).total)}원`));
+    rows.push(specRow('승차정원', c => `${c.seats}인`));
+    rows.push(specRow('전장', c => c.lengthMm ? `${fmtMan(c.lengthMm)}mm` : '-'));
+    rows.push(specRow('트렁크', c => c.trunkL != null ? `${c.trunkL}L` : '-'));
+    rows.push(specRow('보유 옵션수', c => `${carOptionCount(c)}/${OPTION_META.length}`));
+
+    // 옵션 그룹별 보유 수
+    GROUP_ORDER.forEach(g => {
+      const meta = GROUP_META[g] || { label: g, icon: '' };
+      const keys = OPTION_META.filter(o => o.group === g).map(o => o.key);
+      rows.push(specRow(`${meta.icon} ${meta.label}`, c => {
+        const n = keys.filter(k => c.options && c.options[k]).length;
+        return `${n}/${keys.length}`;
+      }));
+    });
+
+    return `<div class="overflow-x-auto"><table class="w-full border-collapse">
+      <thead><tr>${header}</tr></thead>
+      <tbody>${rows.join('')}</tbody>
+    </table></div>`;
+  }
+
+  function closeCompare() {
+    route = 'results';
+    const o = document.getElementById('compareOverlay');
+    if (o) o.remove();
+  }
+
+  // ===== 이벤트 바인딩 =====
+  function bindEvents() {
+    if (route === 'input') bindInput();
+    else bindResults();
+  }
+
+  function bindInput() {
+    const salary = document.getElementById('salaryInput');
+    if (salary) salary.oninput = (e) => {
+      state.salary = Math.max(0, parseInt(e.target.value || '0', 10) || 0);
+      saveState();
+      // 보조 텍스트만 갱신 (전체 리렌더 없이)
+    };
+    const km = document.getElementById('kmRange');
+    if (km) km.oninput = (e) => { state.km = parseInt(e.target.value, 10); saveState(); render(); };
+
+    document.querySelectorAll('.risk-btn').forEach(b => b.onclick = () => {
+      state.risk = parseFloat(b.getAttribute('data-risk')); saveState(); render();
+    });
+    document.querySelectorAll('.preset-btn').forEach(b => b.onclick = () => {
+      state.preset = b.getAttribute('data-preset'); saveState(); render();
+    });
+    document.querySelectorAll('.fuel-btn').forEach(b => b.onclick = () => {
+      const f = b.getAttribute('data-fuel');
+      const i = state.fuelPref.indexOf(f);
+      if (i >= 0) state.fuelPref.splice(i, 1); else state.fuelPref.push(f);
+      saveState(); render();
+    });
+
+    const find = document.getElementById('findBtn');
+    if (find) find.onclick = () => {
+      // 입력 화면 salary가 input 이벤트 못 잡았을 경우 대비 동기화
+      if (salary) state.salary = Math.max(0, parseInt(salary.value || '0', 10) || 0);
+      state.submitted = true;
+      route = 'results';
+      saveState();
+      render();
+      window.scrollTo(0, 0);
+    };
+  }
+
+  function bindResults() {
+    const back = document.getElementById('backBtn');
+    if (back) back.onclick = () => { route = 'input'; render(); window.scrollTo(0,0); };
+
+    const cmpOpen = document.getElementById('compareOpenBtn');
+    if (cmpOpen) cmpOpen.onclick = () => { route = 'compare'; renderCompare(); };
+
+    // 정렬
+    const sort = document.getElementById('sortSelect');
+    if (sort) sort.onchange = (e) => { state.sort = e.target.value; saveState(); render(); };
+
+    // 패싯
+    document.querySelectorAll('.facet-btn').forEach(b => b.onclick = () => {
+      const dim = b.getAttribute('data-facet');
+      const val = b.getAttribute('data-val');
+      const arr = dim === 'fuel' ? state.facetFuel : state.facetSegment;
+      const i = arr.indexOf(val);
+      if (i >= 0) arr.splice(i, 1); else arr.push(val);
+      saveState(); render();
+    });
+
+    // 체감 옵션 칩 (AND, requiredOptions)
+    document.querySelectorAll('.opt-btn').forEach(b => b.onclick = () => {
+      const k = b.getAttribute('data-opt');
+      const i = state.requiredOptions.indexOf(k);
+      if (i >= 0) state.requiredOptions.splice(i, 1); else state.requiredOptions.push(k);
+      saveState(); render();
+    });
+    const clearOpts = document.getElementById('clearOptsBtn');
+    if (clearOpts) clearOpts.onclick = () => {
+      state.requiredOptions = []; state.activePersonas = []; saveState(); render();
+    };
+
+    // 페르소나
+    document.querySelectorAll('.persona-btn').forEach(b => b.onclick = () => {
+      const tag = b.getAttribute('data-persona');
+      const p = PERSONAS.find(x => x.tag === tag);
+      if (!p) return;
+      const i = state.activePersonas.indexOf(tag);
+      if (i >= 0) {
+        // 끄기: 해당 페르소나 옵션 제거 (다른 활성 페르소나/수동 선택과 겹치는 건 보존)
+        state.activePersonas.splice(i, 1);
+        const keep = new Set();
+        state.activePersonas.forEach(t => {
+          const pp = PERSONAS.find(x => x.tag === t);
+          if (pp) pp.options.forEach(o => keep.add(o));
+        });
+        p.options.forEach(o => {
+          if (!keep.has(o)) {
+            const idx = state.requiredOptions.indexOf(o);
+            if (idx >= 0) state.requiredOptions.splice(idx, 1);
+          }
+        });
+      } else {
+        state.activePersonas.push(tag);
+        p.options.forEach(o => { if (!state.requiredOptions.includes(o)) state.requiredOptions.push(o); });
+      }
+      saveState(); render();
+    });
+
+    // 검색 (디바운스 없이 입력마다, 포커스 유지)
+    const search = document.getElementById('searchInput');
+    if (search) {
+      search.oninput = (e) => {
+        searchQuery = e.target.value;
+        const keys = searchToOptionKeys(searchQuery);
+        const hint = document.getElementById('searchHint');
+        if (hint) {
+          hint.innerHTML = searchQuery
+            ? (keys.length
+                ? `매칭 옵션: ${keys.map(k => OPTION_BY_KEY[k] ? OPTION_BY_KEY[k].label : k).join(', ')} <button id="applySearch" class="ml-1 text-brand font-semibold">필터 적용 ↵</button>`
+                : `<span class="text-ink-400">매칭되는 기능이 없어요.</span>`)
+            : '';
+          const apply = document.getElementById('applySearch');
+          if (apply) apply.onclick = () => applySearch(keys);
+        }
+      };
+      search.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          applySearch(searchToOptionKeys(searchQuery));
+        }
+      };
+    }
+  }
+
+  function applySearch(keys) {
+    keys.forEach(k => { if (!state.requiredOptions.includes(k)) state.requiredOptions.push(k); });
+    searchQuery = '';
+    saveState();
+    render();
+  }
+
+  // 차량 카드 클릭은 위임 (리렌더마다 새 노드라 매 render 시 재바인딩)
+  root.addEventListener('click', (e) => {
+    const card = e.target.closest('.car-card');
+    if (card) {
+      state.detailId = card.getAttribute('data-car');
+      renderDetail();
+    }
+  });
+
+  // ===== 초기 구동 =====
+  function boot() {
+    if (!CARS.length) {
+      root.innerHTML = `
+        <div class="min-h-screen flex items-center justify-center p-6 text-center">
+          <div>
+            <div class="text-4xl mb-3">📂</div>
+            <p class="font-bold text-ink-700">데이터를 불러오지 못했어요</p>
+            <p class="text-sm text-ink-400 mt-1">data.js 가 함께 있어야 차량 정보를 보여드릴 수 있어요.</p>
+          </div>
+        </div>`;
+      return;
+    }
+    render();
+  }
+  boot();
+  </script>
+</body>
+</html>

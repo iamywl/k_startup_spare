@@ -11,14 +11,14 @@
   tailwind.config = { theme: { extend: {
     fontFamily: { sans: ['Pretendard','-apple-system','BlinkMacSystemFont','Apple SD Gothic Neo','sans-serif'] },
     colors: {
-      brand:   { DEFAULT:'#3182F6', hover:'#1B64DA', light:'#E8F3FF' },
-      blue:    {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
-      indigo:  {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
-      sky:     {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
-      slate:   {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
-      gray:    {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
-      zinc:    {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
-      neutral: {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      brand:   { DEFAULT:'#4338CA', hover:'#3730A3', light:'#EEF2FF' },
+      blue:    {50:'#EEF2FF',100:'#E0E7FF',200:'#C7D0FE',300:'#A5B0FB',400:'#7C82F2',500:'#5B54E0',600:'#4338CA',700:'#3730A3',800:'#2E2882',900:'#252065'},
+      indigo:  {50:'#EEF2FF',100:'#E0E7FF',200:'#C7D0FE',300:'#A5B0FB',400:'#7C82F2',500:'#5B54E0',600:'#4338CA',700:'#3730A3',800:'#2E2882',900:'#252065'},
+      sky:     {50:'#EEF2FF',100:'#E0E7FF',200:'#C7D0FE',300:'#A5B0FB',400:'#7C82F2',500:'#5B54E0',600:'#4338CA',700:'#3730A3',800:'#2E2882',900:'#252065'},
+      slate:   {50:'#F7F8FB',100:'#EEF0F6',200:'#E0E2EE',300:'#CBCEDF',400:'#8A8CA8',500:'#7B7D98',600:'#56577A',700:'#3B3C5E',800:'#26273F',900:'#1F1B36'},
+      gray:    {50:'#F7F8FB',100:'#EEF0F6',200:'#E0E2EE',300:'#CBCEDF',400:'#8A8CA8',500:'#7B7D98',600:'#56577A',700:'#3B3C5E',800:'#26273F',900:'#1F1B36'},
+      zinc:    {50:'#F7F8FB',100:'#EEF0F6',200:'#E0E2EE',300:'#CBCEDF',400:'#8A8CA8',500:'#7B7D98',600:'#56577A',700:'#3B3C5E',800:'#26273F',900:'#1F1B36'},
+      neutral: {50:'#F7F8FB',100:'#EEF0F6',200:'#E0E2EE',300:'#CBCEDF',400:'#8A8CA8',500:'#7B7D98',600:'#56577A',700:'#3B3C5E',800:'#26273F',900:'#1F1B36'},
       emerald: {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
       green:   {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
       teal:    {50:'#E7F8EF',100:'#D2F2E0',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
@@ -34,7 +34,7 @@
 <style>
   body { font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
   .scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
-  .scrollbar-thin::-webkit-scrollbar-thumb { background: #D1D6DB; border-radius: 4px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: #CBCEDF; border-radius: 4px; }
   [x-cloak] { display: none !important; }
 
   /* ===== design-tone-components (guide §6·§7) ===== */
@@ -45,10 +45,75 @@
   input[type="submit"]:active, input[type="button"]:active { transform: scale(.97); }
   button:disabled, button[disabled], [role="button"][aria-disabled="true"] { opacity: .35; cursor: not-allowed; }
   input:focus-visible, textarea:focus-visible, select:focus-visible {
-    outline: none; border-color: #3182F6; box-shadow: 0 0 0 1.5px #3182F6;
+    outline: none; border-color: #4338CA; box-shadow: 0 0 0 1.5px #4338CA;
   }
   button.w-full, button[type="submit"].w-full, a.w-full[class*="bg-"] {
     min-height: 52px; border-radius: 12px;
+  }
+
+  /* glass-material (guide §5 — 떠 있는 레이어 전용) */
+  /* 페이지 베이스 + 은은한 그라데이션 (글래스가 색을 머금도록) */
+  body { background-color: #EEEFF8; }
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background:
+      radial-gradient(72% 56% at 8% -2%, rgba(67,56,202,0.20), transparent 60%),
+      radial-gradient(64% 52% at 98% 10%, rgba(20,174,92,0.14), transparent 60%),
+      radial-gradient(80% 62% at 50% 104%, rgba(99,102,241,0.18), transparent 60%);
+  }
+
+  /* 스티키 상단 헤더 — 스크롤되는 본문 위에서 frosted */
+  header.bg-white.border-b {
+    position: sticky; top: 0; z-index: 30;
+    background-color: rgba(255,255,255,0.55) !important;
+    -webkit-backdrop-filter: saturate(200%) blur(26px);
+            backdrop-filter: saturate(200%) blur(26px);
+    box-shadow: inset 0 1.5px 0 rgba(255,255,255,0.75), 0 1px 3px rgba(31,27,54,0.04);
+  }
+
+  /* 다크(잉크) 사이드바 — 다크 글래스 */
+  aside.bg-slate-900 {
+    background-color: rgba(31,27,54,0.55) !important;
+    -webkit-backdrop-filter: saturate(180%) blur(24px);
+            backdrop-filter: saturate(180%) blur(24px);
+    box-shadow: inset 0 1.5px 0 rgba(255,255,255,0.08);
+  }
+
+  /* 토스트 — 떠 있는 레이어 sheen (시맨틱 색은 유지) */
+  #toast-root > div {
+    -webkit-backdrop-filter: saturate(160%) blur(10px);
+            backdrop-filter: saturate(160%) blur(10px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 8px 24px rgba(31,27,54,0.18);
+  }
+
+  /* 콘텐츠 영역은 평면 유지 — 반투명 배경 카드가 비치도록 본문 배경만 살짝 투명 */
+  div.bg-slate-100.overflow-auto { background-color: transparent !important; }
+
+  /* 폴백 — 투명도 미지원 / 투명 감소 선호 시 불투명 복원 */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    header.bg-white.border-b { background-color: #FFFFFF !important; -webkit-backdrop-filter: none; backdrop-filter: none; }
+    aside.bg-slate-900 { background-color: #1F1B36 !important; -webkit-backdrop-filter: none; backdrop-filter: none; }
+    #toast-root > div { -webkit-backdrop-filter: none; backdrop-filter: none; }
+    div.bg-slate-100.overflow-auto { background-color: #F2F4F6 !important; }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    header.bg-white.border-b { background-color: #FFFFFF !important; -webkit-backdrop-filter: none; backdrop-filter: none; }
+    aside.bg-slate-900 { background-color: #1F1B36 !important; -webkit-backdrop-filter: none; backdrop-filter: none; }
+    #toast-root > div { -webkit-backdrop-filter: none; backdrop-filter: none; }
+    div.bg-slate-100.overflow-auto { background-color: #F2F4F6 !important; }
+  }
+
+  /* 반응형 보정 — 390px 모바일에서 가로 overflow 방지 (데스크톱 불변) */
+  @media (max-width: 640px) {
+    aside.w-64 { width: 13rem; }
+    header.bg-white.border-b { padding-left: 1rem; padding-right: 1rem; }
+    div.bg-slate-100.overflow-auto, div.overflow-auto.p-8 { padding: 1rem; }
+    .grid.grid-cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.grid-cols-3 { grid-template-columns: minmax(0, 1fr); }
+    .col-span-2 { grid-column: span 1 / span 1; }
+    /* 헤더 우측 지표 클러스터(준비율·잔여리스크 등) 줄바꿈 허용 */
+    header.bg-white.border-b { flex-wrap: wrap; gap: 0.5rem; }
+    header.bg-white.border-b .flex.items-center.gap-5 { flex-wrap: wrap; gap: 0.75rem; }
   }
   </style>
 </head>
@@ -1774,7 +1839,7 @@ function generatePackagePdf(statusEl, lang) {
       const ctx2 = c.getContext("2d");
       ctx2.clearRect(0,0,c.width,c.height);
       ctx2.font = `${bold?'bold ':''}${fontPx*scale}px -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif`;
-      ctx2.fillStyle = color || "#191F28"; ctx2.textBaseline = "top";
+      ctx2.fillStyle = color || "#1F1B36"; ctx2.textBaseline = "top";
       lines.forEach((ln,i) => ctx2.fillText(ln, pad + (indent?indent*scale:0), pad + i*lineH));
       const imgH = (c.height/scale);
       if (y + imgH > doc.internal.pageSize.getHeight() - 40) { doc.addPage(); y = 40; }
@@ -1787,15 +1852,15 @@ function generatePackagePdf(statusEl, lang) {
 
     // 표지
     y = 120;
-    drawText(dict.pkgTitle, 26, "#3182F6", true); y += 6;
-    drawText(t.name, 16, "#191F28", true);
+    drawText(dict.pkgTitle, 26, "#4338CA", true); y += 6;
+    drawText(t.name, 16, "#1F1B36", true);
     drawText(`${dict.framework}: ${fwLabel}`, 12, "#4E5968");
     drawText(`${dict.readiness}: ${stats.score}%`, 12, "#4E5968");
     drawText(`${dict.generatedAt}: ${new Date().toLocaleString(isEn?'en-US':'ko-KR')}`, 10, "#8B95A1");
     doc.addPage(); y = 40;
 
     // 1. 요약
-    drawText(`1. ${dict.summary}`, 16, "#3182F6", true); hr();
+    drawText(`1. ${dict.summary}`, 16, "#4338CA", true); hr();
     drawText(isEn
       ? `Total ${stats.total} · ${dict.met} ${stats.met} · ${dict.partial} ${stats.partial} · ${dict.none} ${stats.none} · ${dict.na} ${stats.na}`
       : `전체 통제 ${stats.total} · 충족 ${stats.met} · 부분충족 ${stats.partial} · 미점검 ${stats.none} · 해당없음 ${stats.na}`, 11, "#333D4B");
@@ -1803,7 +1868,7 @@ function generatePackagePdf(statusEl, lang) {
     y += 8;
 
     // 2. 통제별 충족 현황
-    drawText(`2. ${dict.controlStatus}`, 16, "#3182F6", true); hr();
+    drawText(`2. ${dict.controlStatus}`, 16, "#4338CA", true); hr();
     activeControls().forEach(c => {
       const s = (t.controls[c.uid]||{}).status||"none";
       const title = isEn ? c.en : c.title;
@@ -1812,19 +1877,19 @@ function generatePackagePdf(statusEl, lang) {
     doc.addPage(); y = 40;
 
     // 3. 증적 인덱스
-    drawText(`3. ${dict.evidenceIndex}`, 16, "#3182F6", true); hr();
+    drawText(`3. ${dict.evidenceIndex}`, 16, "#4338CA", true); hr();
     if (!t.evidences.length) drawText(isEn?"No evidence registered":"등록된 증적 없음", 10, "#8B95A1");
     t.evidences.forEach((e,i) => { const c = UNIFIED_CONTROLS.find(x=>x.uid===e.uid); const cid = c ? (c.map[t.framework]||e.uid) : e.uid; drawText(`${i+1}. ${e.name} · ${cid} · v${e.version} · ${e.source||'manual'}`, 10, "#333D4B"); });
     y += 8;
 
     // 4. 정책문서 목록
-    drawText(`4. ${dict.policyList}`, 16, "#3182F6", true); hr();
+    drawText(`4. ${dict.policyList}`, 16, "#4338CA", true); hr();
     if (!t.policies.length) drawText(isEn?"No policy documents":"생성된 정책문서 없음", 10, "#8B95A1");
     t.policies.forEach((p,i) => drawText(`${i+1}. ${p.title} (v${p.versions[p.versions.length-1].v})`, 10, "#333D4B"));
     y += 8;
 
     // 5. 위험 등록부
-    drawText(`5. ${dict.riskRegister}`, 16, "#3182F6", true); hr();
+    drawText(`5. ${dict.riskRegister}`, 16, "#4338CA", true); hr();
     const reg = riskRegister();
     if (!reg.length) drawText(isEn?"No open risks":"미흡 리스크 없음", 10, "#8B95A1");
     reg.slice(0,12).forEach((r,i) => { const title = isEn ? r.c.en : r.c.title; drawText(`${i+1}. [${r.c.control_id}] ${title} — risk ${r.score} (${RISK_META[r.level].label})`, 10, r.level==="critical"?"#F04452":r.level==="high"?"#FFB331":"#4E5968"); });
@@ -1868,10 +1933,10 @@ function renderAudit() {
     let svg = `<svg width="100%" viewBox="0 0 ${W} ${H}">
       <line x1="${pad}" y1="${ys(50)}" x2="${W-pad}" y2="${ys(50)}" stroke="#E5E8EB" stroke-dasharray="4"/>
       <line x1="${pad}" y1="${ys(70)}" x2="${W-pad}" y2="${ys(70)}" stroke="#D2F2E0" stroke-dasharray="4"/>
-      <polygon points="${area}" fill="#3182F620"/>
-      <polyline points="${pts}" fill="none" stroke="#3182F6" stroke-width="2.5"/>`;
-    snaps.forEach((s,i)=>{ svg+=`<circle cx="${xs(i)}" cy="${ys(s.score)}" r="3.5" fill="#3182F6"/>
-      <text x="${xs(i)}" y="${ys(s.score)-8}" font-size="10" text-anchor="middle" fill="#3182F6">${s.score}%</text>
+      <polygon points="${area}" fill="#4338CA20"/>
+      <polyline points="${pts}" fill="none" stroke="#4338CA" stroke-width="2.5"/>`;
+    snaps.forEach((s,i)=>{ svg+=`<circle cx="${xs(i)}" cy="${ys(s.score)}" r="3.5" fill="#4338CA"/>
+      <text x="${xs(i)}" y="${ys(s.score)-8}" font-size="10" text-anchor="middle" fill="#4338CA">${s.score}%</text>
       <text x="${xs(i)}" y="${H-10}" font-size="9" text-anchor="middle" fill="#8B95A1">${s.ts.slice(5)}</text>`; });
     svg += `<text x="${pad-6}" y="${ys(70)+3}" font-size="9" text-anchor="end" fill="#14AE5C">70</text>
       <text x="${pad-6}" y="${ys(50)+3}" font-size="9" text-anchor="end" fill="#8B95A1">50</text></svg>`;

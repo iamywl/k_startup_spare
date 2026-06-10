@@ -1,0 +1,2394 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>연봉 맞춤 차량 추천 v3 · 라이프스타일 역산 · Car Advisor</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            // 브랜드: 확신감 있는 블루 (자동차 도메인) — #2F6BF0 후보를 WCAG 조정해 살짝 더 깊고 풍부하게
+            brand: { DEFAULT: '#2560DE', hover: '#1B4AB5', light: '#EAF1FE' },
+            blue:   { DEFAULT: '#2560DE', 50: '#EAF1FE', 100: '#D6E3FC', 200: '#B3CBF9', 300: '#85A9F4', 400: '#5081EC', 500: '#2560DE', 600: '#1B4AB5', 700: '#173E97', 800: '#16357E', 900: '#142C66' },
+            indigo: { DEFAULT: '#2560DE', 50: '#EAF1FE', 100: '#D6E3FC', 200: '#B3CBF9', 300: '#85A9F4', 400: '#5081EC', 500: '#2560DE', 600: '#1B4AB5', 700: '#173E97', 800: '#16357E', 900: '#142C66' },
+            sky:    { DEFAULT: '#2560DE', 50: '#EAF1FE', 100: '#D6E3FC', 200: '#B3CBF9', 300: '#85A9F4', 400: '#5081EC', 500: '#2560DE', 600: '#1B4AB5', 700: '#173E97', 800: '#16357E', 900: '#142C66' },
+            // 잉크 그레이: 순흑 금지, 브랜드 블루 hue 미세 혼합한 부드러운 다크
+            ink: {
+              50: '#F7F8FA', 100: '#EFF1F5', 200: '#E1E5EC', 300: '#CBD2DD',
+              400: '#8A93A3', 500: '#6B7587', 600: '#4A5567', 700: '#2D3748',
+              800: '#161D2B', 900: '#161D2B'
+            },
+            slate: {
+              50: '#F7F8FA', 100: '#EFF1F5', 200: '#E1E5EC', 300: '#CBD2DD',
+              400: '#8A93A3', 500: '#6B7587', 600: '#4A5567', 700: '#2D3748',
+              800: '#161D2B', 900: '#161D2B'
+            },
+            gray: {
+              50: '#F7F8FA', 100: '#EFF1F5', 200: '#E1E5EC', 300: '#CBD2DD',
+              400: '#8A93A3', 500: '#6B7587', 600: '#4A5567', 700: '#2D3748',
+              800: '#161D2B', 900: '#161D2B'
+            },
+            emerald: { DEFAULT: '#14AE5C', 500: '#14AE5C', 600: '#14AE5C' },
+            green: { DEFAULT: '#14AE5C', 500: '#14AE5C', 600: '#14AE5C' },
+            amber: { DEFAULT: '#FFB331', 500: '#FFB331', 600: '#FFB331' },
+            yellow: { DEFAULT: '#FFB331', 500: '#FFB331', 600: '#FFB331' },
+            rose: { DEFAULT: '#F04452', 500: '#F04452', 600: '#F04452' },
+            red: { DEFAULT: '#F04452', 500: '#F04452', 600: '#F04452' }
+          },
+          fontFamily: {
+            sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'Roboto', 'sans-serif']
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* design-tone-components (v1/v2 동일 톤 재사용) */
+    html, body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
+    body { background: #F7F8FA; color: #161D2B; }
+    button { transition: transform .08s ease, background-color .15s ease, opacity .15s ease; }
+    button:active { transform: scale(.97); }
+    button:disabled { opacity: .35; cursor: not-allowed; }
+    input:focus-visible, select:focus-visible, button:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 1.5px #2560DE;
+    }
+    button.w-full { min-height: 52px; border-radius: 12px; }
+    .surface { background: #FFFFFF; }
+    .surface-sub { background: #EFF1F5; }
+    .modal-shadow { box-shadow: 0 8px 40px rgba(22,29,43,.18); }
+    .sheet-shadow { box-shadow: 0 -8px 40px rgba(22,29,43,.18); }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-thumb { background: #CBD2DD; border-radius: 8px; }
+    input[type=range] { -webkit-appearance: none; height: 6px; border-radius: 999px; background: #E1E5EC; }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 22px; height: 22px; border-radius: 999px;
+      background: #2560DE; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(22,29,43,.25); cursor: pointer;
+    }
+    .chip { transition: all .12s ease; }
+    .fade-in { animation: fadeIn .2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px);} to { opacity:1; transform:none;} }
+    .toast-in { animation: toastIn .2s ease; }
+    @keyframes toastIn { from { opacity:0; transform: translateY(8px);} to { opacity:1; transform:none;} }
+
+    /* ⓘ 툴팁 (순수 CSS hover/focus, 외부 라이브러리 없음) */
+    .info { position: relative; display: inline-flex; vertical-align: middle; }
+    .info-dot {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 15px; height: 15px; border-radius: 999px;
+      border: 1px solid #8A93A3; color: #8A93A3;
+      font-size: 10px; font-weight: 700; line-height: 1; font-style: normal;
+      cursor: help; background: transparent; flex: none; user-select: none;
+      transition: color .12s ease, border-color .12s ease;
+    }
+    .info-dot:hover, .info:hover .info-dot, .info-dot:focus-visible { color: #4A5567; border-color: #4A5567; }
+    .info-dot-on { color: #fff; border-color: rgba(255,255,255,.7); }
+    .info-dot-on:hover, .info:hover .info-dot-on, .info-dot-on:focus-visible { color: #fff; border-color: #fff; }
+    .info-dot:focus-visible { outline: none; box-shadow: 0 0 0 1.5px #2560DE; }
+    .info-pop {
+      position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+      width: max-content; max-width: 240px;
+      background: #FFFFFF; color: #4A5567; font-size: 13px; line-height: 1.45; font-weight: 500;
+      text-align: left; text-decoration: none; white-space: normal;
+      padding: 10px 12px; border-radius: 12px; border: 1px solid #E1E5EC;
+      box-shadow: 0 8px 24px rgba(22,29,43,.12);
+      opacity: 0; visibility: hidden; transform: translateX(-50%) translateY(3px);
+      transition: opacity .12s ease, transform .12s ease, visibility .12s;
+      z-index: 70; pointer-events: none;
+    }
+    .info:hover .info-pop, .info:focus-within .info-pop {
+      opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0);
+    }
+    .info-pop::after {
+      content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+      border: 5px solid transparent; border-top-color: #FFFFFF;
+      filter: drop-shadow(0 1px 0 #E1E5EC);
+    }
+    .info-pop.pop-left  { left: 0; transform: translateX(0) translateY(3px); }
+    .info:hover .info-pop.pop-left,  .info:focus-within .info-pop.pop-left  { transform: translateX(0) translateY(0); }
+    .info-pop.pop-left::after  { left: 12px; transform: none; }
+    .info-pop.pop-right { left: auto; right: 0; transform: translateX(0) translateY(3px); }
+    .info:hover .info-pop.pop-right, .info:focus-within .info-pop.pop-right { transform: translateX(0) translateY(0); }
+    .info-pop.pop-right::after { left: auto; right: 12px; transform: none; }
+  
+  /* ===== glass-material (design-guide §5) — 떠 있는 레이어 전용 ===== */
+  .sheet-shadow, .modal-shadow {
+    background-color: rgba(255,255,255,0.58) !important;
+    -webkit-backdrop-filter: saturate(200%) blur(26px);
+            backdrop-filter: saturate(200%) blur(26px);
+    box-shadow: inset 0 1.5px 0 rgba(255,255,255,0.75), 0 12px 40px rgba(22,29,43,0.20) !important;
+  }
+  .sheet-shadow .sticky:not(thead), .modal-shadow .sticky:not(thead) {
+    background-color: rgba(255,255,255,0.55) !important;
+    -webkit-backdrop-filter: saturate(200%) blur(26px);
+            backdrop-filter: saturate(200%) blur(26px);
+  }
+  header.sticky {
+    background-color: rgba(255,255,255,0.55) !important;
+    -webkit-backdrop-filter: saturate(200%) blur(26px);
+            backdrop-filter: saturate(200%) blur(26px);
+  }
+  .bg-ink-900\/40 {
+    background-color: rgba(22,29,43,0.18) !important;
+    -webkit-backdrop-filter: blur(2px);
+            backdrop-filter: blur(2px);
+  }
+  #toastHost > * {
+    -webkit-backdrop-filter: saturate(160%) blur(12px);
+            backdrop-filter: saturate(160%) blur(12px);
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .sheet-shadow, .modal-shadow, .sheet-shadow .sticky:not(thead),
+    .modal-shadow .sticky:not(thead), header.sticky { background-color: #FFFFFF !important; }
+    .bg-ink-900\/40 { background-color: rgba(22,29,43,0.40) !important; }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .sheet-shadow, .modal-shadow, .sheet-shadow .sticky:not(thead),
+    .modal-shadow .sticky:not(thead), header.sticky {
+      background-color: #FFFFFF !important;
+      -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+    }
+    .bg-ink-900\/40 { background-color: rgba(22,29,43,0.40) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  }
+  
+  /* glass-bg-gradient — 은은한 컬러 배경(글래스가 색을 머금게) */
+  body { background: #EEF2F9 !important; }
+  body::before {
+    content:''; position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background:
+      radial-gradient(72% 56% at 8% -2%, rgba(37,96,222,0.22), transparent 60%),
+      radial-gradient(64% 52% at 98% 10%, rgba(20,174,92,0.16), transparent 60%),
+      radial-gradient(80% 62% at 50% 104%, rgba(80,129,236,0.20), transparent 60%);
+  }
+  </style>
+
+  <!-- 데이터: Agent A가 작성. v3 신규 전역(realEfficiency·SUBSIDY_STOCK·OPTION_REVIEW·OPTION_PACKAGE·PERSONA_POPULAR·FINANCE·SOURCE_META) 부재 시 안전 fallback -->
+  <script src="data.js"></script>
+</head>
+
+<body class="text-ink-900">
+  <div id="app"></div>
+  <div id="toastHost" class="fixed left-1/2 -translate-x-1/2 bottom-6 z-[60] flex flex-col items-center gap-2 pointer-events-none"></div>
+
+  <script>
+  "use strict";
+
+  // ===== 전역 데이터 안전 참조 (v1 + v2) =====
+  const CARS        = Array.isArray(window.CARS) ? window.CARS : [];
+  const OPTION_META = Array.isArray(window.OPTION_META) ? window.OPTION_META : [];
+  const GROUP_META  = window.GROUP_META || {};
+  const PERSONAS    = Array.isArray(window.PERSONAS) ? window.PERSONAS : [];
+  const SYNONYMS    = window.SYNONYMS || {};
+  const COST        = window.COST || {};
+
+  const REGIONS = Array.isArray(window.REGIONS) && window.REGIONS.length
+    ? window.REGIONS
+    : [{ code: 'seoul', name: '서울', evLocalManwon: 150 }];
+  const SUBSIDY = (window.SUBSIDY && window.SUBSIDY.ev)
+    ? window.SUBSIDY
+    : { ev: { nationalMaxManwon: 650, fullPriceCapManwon: 5500, halfPriceCapManwon: 8500 },
+        taxBenefit: { EV: { gaesoseManwon: 300, chwideukManwon: 140 }, '하이브리드': { gaesoseManwon: 0, chwideukManwon: 40 } } };
+
+  // ===== v3 신규 전역 (계약 A2) — 부재 시 안전 fallback =====
+  const SUBSIDY_STOCK  = (window.SUBSIDY_STOCK  && typeof window.SUBSIDY_STOCK  === 'object') ? window.SUBSIDY_STOCK  : {};
+  const OPTION_REVIEW  = (window.OPTION_REVIEW  && typeof window.OPTION_REVIEW  === 'object') ? window.OPTION_REVIEW  : {};
+  const OPTION_PACKAGE = (window.OPTION_PACKAGE && typeof window.OPTION_PACKAGE === 'object') ? window.OPTION_PACKAGE : {};
+  const PERSONA_POPULAR= (window.PERSONA_POPULAR&& typeof window.PERSONA_POPULAR=== 'object') ? window.PERSONA_POPULAR: {};
+  const FINANCE        = (window.FINANCE        && typeof window.FINANCE        === 'object') ? window.FINANCE
+                        : { loanAprPct: 6.5, loanMonths: 60, rentResidualPct: 0.40, rentAprPct: 8.0 };
+  const SOURCE_META    = (window.SOURCE_META    && typeof window.SOURCE_META    === 'object') ? window.SOURCE_META : {};
+
+  const OPTION_BY_KEY = {};
+  OPTION_META.forEach(o => { OPTION_BY_KEY[o.key] = o; });
+  const GROUP_ORDER = ['climate', 'parking', 'digital', 'longdrive', 'cargo'];
+
+  // 옵션 직관 아이콘 (D31) — 키별 이모지
+  const OPTION_ICON = {
+    frontHeatedSeat:'🔥', rearHeatedSeat:'🔥', heatedWheel:'🧤', frontVentSeat:'💨', rearVentSeat:'💨',
+    remoteClimate:'📲', multiZoneHvac:'🌡️', memorySeat:'💺',
+    svm:'🛰️', parkingSensor:'📢', rearCam:'📷', rspa:'🅿️', bvm:'👀', ledHeadlamp:'💡',
+    oemNavi:'🗺️', phoneProjection:'📱', wirelessCharger:'🔋', hud:'🪟', ota:'🛰️',
+    scc:'🚙', lfa:'↔️', hda:'🛣️', fca:'🛑', bca:'⚠️', rcca:'⚠️', ecs:'🪶', autoHold:'⏸️',
+    powerTailgate:'🚪', flatFold:'🛏️', rearSunshade:'🌂', outlet220v:'🔌', sunroof:'🌤️'
+  };
+  function optIcon(key) { return OPTION_ICON[key] || '•'; }
+
+  const OPTION_DESC = (window.OPTION_DESC && typeof window.OPTION_DESC === 'object') ? window.OPTION_DESC : {};
+  const FIN_DESC = {
+    realPrice: '정가에서 보조금을 뺀, 실제로 내 돈으로 사는 가격이에요. 전기차는 국고+지자체 보조금을 빼고 비교해요.',
+    subsidy:   '전기차에 주는 국고+지자체 보조금이에요. 차량가와 사는 지역에 따라 받는 금액이 달라져요. [추정 2025]',
+    tco:       '실구매가에 5년간 유지비를 더하고 나중에 되팔 때 가치(잔존가치)를 뺀 진짜 총비용이에요. 싸 보여도 유지비·감가가 크면 TCO는 높아져요.',
+    burden:    '연봉(또는 월소득) 대비 차값·유지비가 차지하는 비중이에요. 낮을수록 부담이 적어 형편에 맞는 차예요.',
+    monthlyBurden: '60개월 할부 추정 원리금 + 월 유지비를 월 실수령(연봉/12 근사) 대비 비율로 본 거예요. 20% 이하면 안전, 30%를 넘으면 부담이 커요. [추정]',
+    realEff: '공인연비는 시험실 기준이고, 실연비는 실제 도로에서 체감하는 값에 가까워요. 보통 공인의 80~95% 수준이에요. [추정]'
+  };
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function infoTip(text, align) {
+    const t = (text || '').trim();
+    if (!t) return '';
+    const popCls = align === 'left' ? ' pop-left' : (align === 'right' ? ' pop-right' : '');
+    return `<span class="info"><span class="info-dot" tabindex="0" role="img" aria-label="설명: ${esc(t)}">i</span><span class="info-pop${popCls}" role="tooltip">${esc(t)}</span></span>`;
+  }
+  // 옵션 툴팁: 설명 + (있으면) 체감 후기 한 줄 (D26)
+  function optionTipText(key) {
+    const desc = OPTION_DESC[key] || '';
+    const rev = OPTION_REVIEW[key];
+    if (rev) return (desc ? desc + ' ' : '') + '— ' + rev + ' [mock]';
+    return desc;
+  }
+  function optionTip(key, align) { return infoTip(optionTipText(key), align); }
+
+  // ===== 상태 (localStorage 영속, 키 carAdvisorV3) =====
+  const LS_KEY = 'carAdvisorV3';
+  const defaultState = {
+    salary: 5000,
+    km: 13000,
+    risk: 0.5,
+    preset: 'balanced',
+    fuelPref: [],
+    region: REGIONS[0].code,
+    homeCharge: true,
+    // v3 라이프스타일 입력 (D2)
+    commuteKm: 25,           // 출퇴근 거리 km/일 (왕복)
+    familyCount: 2,          // 가족(탑승) 수
+    submitted: false,
+    // 결과 필터
+    facetFuel: [],
+    facetSegment: [],
+    requiredOptions: [],
+    excludedOptions: [],     // v3 D17 부정 검색 제외 옵션
+    activePersonas: [],
+    safe5Only: false,
+    mechParkOnly: false,
+    budgetSpread: false,     // v3 D5 ±1 예산구간 보기
+    sort: 'score',
+    compare: [],
+    detailId: null,
+    profiles: [],
+    activeProfileId: null,
+    syncLog: [],
+    syncedSubsidyAt: null,
+    syncedFuelAt: null
+  };
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return { ...defaultState };
+      const parsed = JSON.parse(raw);
+      return { ...defaultState, ...parsed };
+    } catch (e) {
+      return { ...defaultState };
+    }
+  }
+  function saveState() {
+    try {
+      const persist = {
+        salary: state.salary, km: state.km, risk: state.risk, preset: state.preset,
+        fuelPref: state.fuelPref, region: state.region, homeCharge: state.homeCharge,
+        commuteKm: state.commuteKm, familyCount: state.familyCount,
+        submitted: state.submitted,
+        facetFuel: state.facetFuel, facetSegment: state.facetSegment,
+        requiredOptions: state.requiredOptions, excludedOptions: state.excludedOptions,
+        activePersonas: state.activePersonas,
+        safe5Only: state.safe5Only, mechParkOnly: state.mechParkOnly, budgetSpread: state.budgetSpread,
+        sort: state.sort, compare: state.compare,
+        profiles: state.profiles, activeProfileId: state.activeProfileId,
+        syncLog: state.syncLog, syncedSubsidyAt: state.syncedSubsidyAt, syncedFuelAt: state.syncedFuelAt
+      };
+      localStorage.setItem(LS_KEY, JSON.stringify(persist));
+    } catch (e) { /* 저장 실패 무시 */ }
+  }
+
+  let state = loadState();
+  if (!REGIONS.some(r => r.code === state.region)) state.region = REGIONS[0].code;
+
+  // ===== 유지비 계산 (v1/v2 그대로) =====
+  function fuelPrice(fuel) {
+    const m = COST.fuelPriceWon || {};
+    return m[fuel] != null ? m[fuel] : 1650;
+  }
+  function autoTaxWon(car) {
+    if (car.fuel === 'EV') return COST.autoTaxEvFlatWon || 130000;
+    const tiers = COST.autoTaxPerCc || [];
+    let perCc = 200;
+    for (const t of tiers) {
+      if (car.displacementCc <= t.max) { perCc = t.won; break; }
+    }
+    return Math.round((car.displacementCc || 0) * perCc * 1.3);
+  }
+  function insuranceWon(car) {
+    const base = COST.insuranceBaseWon != null ? COST.insuranceBaseWon : 400000;
+    const rate = COST.insurancePriceRate != null ? COST.insurancePriceRate : 0.012;
+    return Math.round(base + (car.price * 10000) * rate);
+  }
+  function maintWon(car) {
+    const m = COST.maintByFuelWon || {};
+    return m[car.fuel] != null ? m[car.fuel] : 600000;
+  }
+  function fuelCostWon(car, km) {
+    const eff = car.efficiency || 1;
+    const liters = km / eff;
+    return Math.round(liters * fuelPrice(car.fuel === 'EV' ? 'EV' : car.fuel));
+  }
+  function costBreakdown(car, km) {
+    const fuel = fuelCostWon(car, km);
+    const tax = autoTaxWon(car);
+    const ins = insuranceWon(car);
+    const maint = maintWon(car);
+    const total = fuel + tax + ins + maint;
+    return { fuel, tax, ins, maint, total, monthly: Math.round(total / 12) };
+  }
+
+  // ===== v2 전기차 보조금 =====
+  function subsidyFor(car, regionCode) {
+    const ev = SUBSIDY.ev || {};
+    const code = regionCode || state.region;
+    const region = REGIONS.find(r => r.code === code) || REGIONS[0];
+    if (car.fuel !== 'EV') {
+      return { national: 0, local: 0, sum: 0, realPrice: car.price, region, isEv: false };
+    }
+    const full = ev.fullPriceCapManwon != null ? ev.fullPriceCapManwon : 5500;
+    const half = ev.halfPriceCapManwon != null ? ev.halfPriceCapManwon : 8500;
+    const nat = ev.nationalMaxManwon != null ? ev.nationalMaxManwon : 650;
+    const national = car.price < full ? nat : (car.price < half ? Math.round(nat * 0.5) : 0);
+    const local = region ? (region.evLocalManwon || 0) : 0;
+    const sum = national + local;
+    const realPrice = Math.max(0, car.price - sum);
+    return { national, local, sum, realPrice, region, isEv: true };
+  }
+  function effectivePrice(car) {
+    return subsidyFor(car).realPrice;
+  }
+  function taxBenefitManwon(car) {
+    const tb = (SUBSIDY.taxBenefit || {})[car.fuel];
+    if (!tb) return 0;
+    return (tb.gaesoseManwon || 0) + (tb.chwideukManwon || 0);
+  }
+
+  // ===== v2 5년 TCO =====
+  function tco5(car) {
+    const real = effectivePrice(car) * 10000;
+    const annualOp = costBreakdown(car, state.km).total;
+    const op5 = annualOp * 5;
+    const dep = (car.depreciationRate != null ? car.depreciationRate : 0.14);
+    const residual = Math.round(car.price * 10000 * Math.pow(1 - dep, 5));
+    const total = real + op5 - residual;
+    return { real, op5, residual, total, dep };
+  }
+
+  // ===== v3 금융 계산 (D9·D10) =====
+  // 원리금 균등상환 월 납입금(원). principalWon: 원, aprPct: 연%, months: 개월
+  function monthlyPayment(principalWon, aprPct, months) {
+    const r = (aprPct / 100) / 12;
+    if (months <= 0) return principalWon;
+    if (r <= 0) return Math.round(principalWon / months);
+    const f = Math.pow(1 + r, months);
+    return Math.round(principalWon * (r * f) / (f - 1));
+  }
+  // 월 차량지출(원) = 60개월 할부 추정 원리금 + 월 유지비 (D9)
+  function monthlyCarSpend(car) {
+    const principal = effectivePrice(car) * 10000;
+    const loan = monthlyPayment(principal, FINANCE.loanAprPct, FINANCE.loanMonths || 60);
+    const maint = costBreakdown(car, state.km).monthly;
+    return { loan, maint, total: loan + maint };
+  }
+  // 월 실수령 근사 (연봉/12)
+  function monthlyIncomeWon() { return state.salary > 0 ? (state.salary * 10000) / 12 : 0; }
+  // D9 부담률 신호등
+  function spendSignal(car) {
+    const inc = monthlyIncomeWon();
+    const spend = monthlyCarSpend(car).total;
+    if (inc <= 0) return { lvl: 'na', label: '연봉 입력', ratio: 0, cls: 'bg-ink-100 text-ink-500', dot: '#8A93A3' };
+    const ratio = Math.round((spend / inc) * 1000) / 10;
+    if (ratio <= 20) return { lvl: 'green', label: '여유', ratio, cls: 'bg-[#E7F7EF] text-emerald-600', dot: '#14AE5C' };
+    if (ratio <= 30) return { lvl: 'amber', label: '적정', ratio, cls: 'bg-[#FFF6E5] text-amber-600', dot: '#FFB331' };
+    return { lvl: 'red', label: '부담', ratio, cls: 'bg-[#FDECEE] text-rose-600', dot: '#F04452' };
+  }
+  // D10 구매방식 비교 (현금 / 60개월 할부 / 장기렌트 48개월)
+  function purchaseCompare(car) {
+    const priceWon = effectivePrice(car) * 10000;
+    const months = FINANCE.loanMonths || 60;
+    // 현금: 실구매가 일시불
+    const cash = { total: priceWon };
+    // 할부: 월 납입 × 개월 (이자 포함 총액)
+    const loanM = monthlyPayment(priceWon, FINANCE.loanAprPct, months);
+    const loan = { monthly: loanM, total: loanM * months };
+    // 장기렌트: 잔가 제외 원금에 렌트 이율, 48개월(잔가 반납형) — 총 납입(보유 안 함)
+    const rentMonths = 48;
+    const residual = priceWon * (FINANCE.rentResidualPct != null ? FINANCE.rentResidualPct : 0.4);
+    const rentPrincipal = priceWon - residual;
+    const rentM = monthlyPayment(rentPrincipal, FINANCE.rentAprPct, rentMonths) + Math.round(residual * ((FINANCE.rentAprPct/100)/12));
+    const rent = { monthly: rentM, total: rentM * rentMonths, months: rentMonths, residual };
+    return { cash, loan, rent, months };
+  }
+
+  // ===== v3 EV vs 가솔린 연료비 (D13) =====
+  function evVsGasFuel(car) {
+    // 같은 주행거리(state.km) 기준 EV 충전비 vs 동급(같은 세그먼트) 가솔린 대표 유류비
+    const evCost = fuelCostWon(car, state.km);
+    const gasPeers = CARS.filter(c => c.segment === car.segment && c.fuel === '가솔린');
+    let gasCost, peerName;
+    if (gasPeers.length) {
+      // 같은 세그먼트 가솔린 평균 연비로 근사
+      const avgEff = gasPeers.reduce((s, c) => s + (c.efficiency || 0), 0) / gasPeers.length;
+      gasCost = Math.round((state.km / (avgEff || 12)) * fuelPrice('가솔린'));
+      peerName = `동급 가솔린(${car.segment}) 평균`;
+    } else {
+      gasCost = Math.round((state.km / 12) * fuelPrice('가솔린'));
+      peerName = '동급 가솔린 추정(연비 12km/L)';
+    }
+    const save = gasCost - evCost;
+    return { evCost, gasCost, save, peerName };
+  }
+
+  // ===== v2 파생 속성 =====
+  function kncap(car) { return car.kncapGrade != null ? car.kncapGrade : null; }
+  function mechParkOk(car) {
+    const l = car.lengthMm, w = car.widthMm, kg = car.weightKg;
+    if (l == null || w == null || kg == null) return false;
+    return l <= 5050 && w <= 1900 && kg <= 2300;
+  }
+  // v3 실연비 (D25) — 부재 시 공인×0.87 근사
+  function realEff(car) {
+    if (car.realEfficiency != null) return car.realEfficiency;
+    return Math.round((car.efficiency || 0) * 0.87 * 10) / 10;
+  }
+  // v3 보조금 잔여 배지 (D14)
+  function subsidyStock(regionCode) {
+    const v = SUBSIDY_STOCK[regionCode || state.region];
+    if (v == null) return null;
+    if (v <= 0.2) return { ratio: v, label: '잔여 적음', cls: 'bg-[#FDECEE] text-rose-600' };
+    if (v <= 0.4) return { ratio: v, label: '잔여 보통', cls: 'bg-[#FFF6E5] text-amber-600' };
+    return { ratio: v, label: '잔여 여유', cls: 'bg-[#E7F7EF] text-emerald-600' };
+  }
+
+  // ===== 포맷 헬퍼 =====
+  const fmtMan = n => Math.round(n).toLocaleString('ko-KR');
+  const fmtWon = n => Math.round(n).toLocaleString('ko-KR');
+  const won2man = won => Math.round(won / 10000);
+  const pct = (a, b) => (b > 0 ? Math.round((a / b) * 1000) / 10 : 0);
+  const stars = g => g ? '★'.repeat(g) + '☆'.repeat(Math.max(0, 5 - g)) : '–';
+  const fmtTs = ts => { const d = new Date(ts); const p = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; };
+
+  // ===== 추천 점수 (v1/v2 + v3 commute/family 가점) =====
+  const PRESET_WEIGHTS = {
+    options:  { opt: 0.55, value: 0.15, cost: 0.15, burden: 0.15 },
+    cost:     { opt: 0.20, value: 0.20, cost: 0.45, burden: 0.15 },
+    price:    { opt: 0.15, value: 0.45, cost: 0.15, burden: 0.25 },
+    balanced: { opt: 0.30, value: 0.25, cost: 0.25, burden: 0.20 }
+  };
+  const PRESETS = [
+    { key: 'options', label: '옵션 중시' },
+    { key: 'cost', label: '유지비 중시' },
+    { key: 'price', label: '가격 중시' },
+    { key: 'balanced', label: '표준' }
+  ];
+
+  function optWeight(key) {
+    const m = OPTION_BY_KEY[key];
+    if (!m) return 1;
+    if (m.valueWeight === 'high') return 1.6;
+    if (m.valueWeight === 'low') return 0.6;
+    return 1;
+  }
+  function carOptionCount(car) {
+    let c = 0;
+    OPTION_META.forEach(o => { if (car.options && car.options[o.key]) c++; });
+    return c;
+  }
+  function buildSegmentStats(cars) {
+    const stats = {};
+    cars.forEach(c => {
+      const s = c.segment || '기타';
+      if (!stats[s]) stats[s] = { minPrice: Infinity, maxPrice: -Infinity, minOpt: Infinity, maxOpt: -Infinity };
+      const oc = carOptionCount(c);
+      const p = effectivePrice(c);
+      stats[s].minPrice = Math.min(stats[s].minPrice, p);
+      stats[s].maxPrice = Math.max(stats[s].maxPrice, p);
+      stats[s].minOpt = Math.min(stats[s].minOpt, oc);
+      stats[s].maxOpt = Math.max(stats[s].maxOpt, oc);
+    });
+    return stats;
+  }
+  function buildGlobalStats(cars) {
+    let minM = Infinity, maxM = -Infinity, minB = Infinity, maxB = -Infinity;
+    const salaryWon = state.salary * 10000;
+    cars.forEach(c => {
+      const cb = costBreakdown(c, state.km);
+      minM = Math.min(minM, cb.monthly); maxM = Math.max(maxM, cb.monthly);
+      const burden = salaryWon > 0 ? (effectivePrice(c) * 10000) / salaryWon : 0;
+      minB = Math.min(minB, burden); maxB = Math.max(maxB, burden);
+    });
+    return { minM, maxM, minB, maxB };
+  }
+  function norm(v, lo, hi) {
+    if (!isFinite(lo) || !isFinite(hi) || hi <= lo) return 0.5;
+    return (v - lo) / (hi - lo);
+  }
+
+  function scoreCar(car, ctx) {
+    const w = PRESET_WEIGHTS[state.preset] || PRESET_WEIGHTS.balanced;
+    const required = state.requiredOptions;
+
+    let reqScore = 1;
+    if (required.length) {
+      let hit = 0;
+      required.forEach(k => { if (car.options && car.options[k]) hit++; });
+      reqScore = hit / required.length;
+    }
+    let wsum = 0;
+    OPTION_META.forEach(o => { if (car.options && car.options[o.key]) wsum += optWeight(o.key); });
+    const richness = norm(wsum, ctx.minWsum, ctx.maxWsum);
+    const optScore = 0.6 * reqScore + 0.4 * richness;
+
+    const seg = ctx.segStats[car.segment] || {};
+    const oc = carOptionCount(car);
+    const optN = norm(oc, seg.minOpt, seg.maxOpt);
+    const priceN = norm(effectivePrice(car), seg.minPrice, seg.maxPrice);
+    const valueScore = Math.max(0, Math.min(1, 0.5 + (optN - priceN) / 2));
+
+    const cb = costBreakdown(car, state.km);
+    const costScore = 1 - norm(cb.monthly, ctx.g.minM, ctx.g.maxM);
+
+    const salaryWon = state.salary * 10000;
+    const burden = salaryWon > 0 ? (effectivePrice(car) * 10000) / salaryWon : 1;
+    const burdenScore = 1 - norm(burden, ctx.g.minB, ctx.g.maxB);
+
+    let raw = w.opt * optScore + w.value * valueScore + w.cost * costScore + w.burden * burdenScore;
+
+    // EV 충전 환경 보정 (v2 B4)
+    let chargeAdj = 0;
+    if (car.fuel === 'EV') {
+      chargeAdj = state.homeCharge ? 0.06 : -0.10;
+    }
+    // v3 라이프스타일 가점 (D2 §7.2 가점) — 하드 제외는 마법사가 필터로 처리, 여기선 부드러운 가점
+    let lifeAdj = 0;
+    if (state.commuteKm >= 50 && (car.fuel === '하이브리드' || car.fuel === '디젤' || car.fuel === 'EV')) lifeAdj += 0.03;
+    if (state.commuteKm >= 50 && car.options && car.options.scc && car.options.lfa) lifeAdj += 0.02;
+    if (state.familyCount >= 4 && (car.seats || 0) >= 5) lifeAdj += 0.02;
+
+    raw = Math.max(0, Math.min(1, raw + chargeAdj + lifeAdj));
+    return Math.round(raw * 1000) / 10;
+  }
+
+  // ===== 필터 파이프라인 (v1/v2 + v3 제외옵션·예산구간) =====
+  function passFacets(car) {
+    if (state.facetFuel.length && !state.facetFuel.includes(car.fuel)) return false;
+    if (state.facetSegment.length && !state.facetSegment.includes(car.segment)) return false;
+    return true;
+  }
+  function passRequiredOptions(car) {
+    return state.requiredOptions.every(k => car.options && car.options[k]);
+  }
+  // v3 D17: 제외 옵션을 가진 차는 탈락
+  function passExcludedOptions(car) {
+    return state.excludedOptions.every(k => !(car.options && car.options[k]));
+  }
+  function passFuelPref(car) {
+    if (!state.fuelPref.length) return true;
+    return state.fuelPref.includes(car.fuel);
+  }
+  function passV2Filters(car) {
+    if (state.safe5Only && kncap(car) !== 5) return false;
+    if (state.mechParkOnly && !mechParkOk(car)) return false;
+    return true;
+  }
+  // v3 D5: 예산 구간(연봉×성향) — 기본은 ±0%, budgetSpread 시 ±35% 확장
+  function passBudget(car) {
+    if (!state.budgetSpread) return true; // 토글 OFF면 예산 하드 필터 미적용 (v2 동작 보존)
+    return true; // budgetSpread ON일 때는 "한 칸 위/아래까지 포함" = 제한 완화이므로 항상 통과
+  }
+
+  function getResults() {
+    const segStats = buildSegmentStats(CARS);
+    const g = buildGlobalStats(CARS);
+    let minWsum = Infinity, maxWsum = -Infinity;
+    CARS.forEach(c => {
+      let ws = 0;
+      OPTION_META.forEach(o => { if (c.options && c.options[o.key]) ws += optWeight(o.key); });
+      minWsum = Math.min(minWsum, ws); maxWsum = Math.max(maxWsum, ws);
+    });
+    const ctx = { segStats, g, minWsum, maxWsum };
+
+    let list = CARS.filter(c => passFuelPref(c) && passFacets(c) && passRequiredOptions(c)
+      && passExcludedOptions(c) && passV2Filters(c) && passBudget(c));
+    list = list.map(c => ({
+      car: c, score: scoreCar(c, ctx), cost: costBreakdown(c, state.km),
+      sub: subsidyFor(c), tco: tco5(c)
+    }));
+
+    list.sort((a, b) => {
+      switch (state.sort) {
+        case 'cost': return a.cost.monthly - b.cost.monthly;
+        case 'price': return a.sub.realPrice - b.sub.realPrice;
+        case 'eff': return (b.car.efficiency || 0) - (a.car.efficiency || 0);
+        case 'tco': return a.tco.total - b.tco.total;
+        case 'spend': return monthlyCarSpend(a.car).total - monthlyCarSpend(b.car).total; // v3 월지출순
+        case 'score':
+        default: return b.score - a.score;
+      }
+    });
+    return list;
+  }
+
+  function facetCounts(dimension) {
+    const counts = {};
+    CARS.forEach(c => {
+      if (!passFuelPref(c)) return;
+      if (!passRequiredOptions(c)) return;
+      if (!passExcludedOptions(c)) return;
+      if (!passV2Filters(c)) return;
+      if (dimension !== 'fuel') {
+        if (state.facetFuel.length && !state.facetFuel.includes(c.fuel)) return;
+      }
+      if (dimension !== 'segment') {
+        if (state.facetSegment.length && !state.facetSegment.includes(c.segment)) return;
+      }
+      const key = dimension === 'fuel' ? c.fuel : c.segment;
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    return counts;
+  }
+
+  function allFuels() { return [...new Set(CARS.map(c => c.fuel))]; }
+  function allSegments() { return [...new Set(CARS.map(c => c.segment))]; }
+
+  // ===== 예산 신호등 (실구매가 기준) =====
+  function budgetSignal(car) {
+    const cap = state.salary * state.risk;
+    if (cap <= 0) return { color: 'ink', label: '연봉 입력', cls: 'bg-ink-100 text-ink-500' };
+    const ratio = effectivePrice(car) / cap;
+    if (ratio <= 1.0) return { color: 'green', label: '여유', cls: 'bg-[#E7F7EF] text-emerald-600' };
+    if (ratio <= 1.35) return { color: 'amber', label: '적정', cls: 'bg-[#FFF6E5] text-amber-600' };
+    return { color: 'red', label: '부담', cls: 'bg-[#FDECEE] text-rose-600' };
+  }
+
+  // ===== 검색 (v1 + v3 부정 검색 D17) =====
+  // "통풍 빼고", "선루프 없는" → {keys: 포함, negKeys: 제외}
+  const NEG_TOKENS = ['빼고', '제외', '없는', '없이', '말고', '빼줘', '빼', '제거', '안나오', '안 나오'];
+  function searchToOptionKeys(query) {
+    const raw = (query || '');
+    if (!raw.trim()) return { keys: [], negKeys: [] };
+    // 부정 의도 토큰을 찾아 텍스트에서 제거하고, 매칭 옵션을 negKeys 로
+    let isNeg = false;
+    let cleaned = raw;
+    NEG_TOKENS.forEach(tok => {
+      if (cleaned.includes(tok)) { isNeg = true; cleaned = cleaned.split(tok).join(' '); }
+    });
+    const q = cleaned.toLowerCase().replace(/\s+/g, '');
+    const keys = new Set();
+    if (q) {
+      Object.keys(SYNONYMS).forEach(syn => {
+        const s = syn.toLowerCase().replace(/\s+/g, '');
+        if (s.includes(q) || q.includes(s)) SYNONYMS[syn].forEach(k => keys.add(k));
+      });
+      OPTION_META.forEach(o => {
+        const hay = [(o.label || ''), (o.consumer || ''), (o.key || '')].join('').toLowerCase().replace(/\s+/g, '');
+        if (hay.includes(q)) keys.add(o.key);
+      });
+    }
+    const arr = [...keys];
+    return isNeg ? { keys: [], negKeys: arr } : { keys: arr, negKeys: [] };
+  }
+
+  // ===== 토스트 =====
+  function toast(msg, kind) {
+    const host = document.getElementById('toastHost');
+    if (!host) return;
+    const el = document.createElement('div');
+    const color = kind === 'error' ? 'bg-rose-500' : (kind === 'info' ? 'bg-ink-800' : 'bg-ink-900');
+    el.className = `toast-in pointer-events-auto ${color} text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg`;
+    el.textContent = msg;
+    host.appendChild(el);
+    setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .25s'; setTimeout(() => el.remove(), 260); }, 1900);
+  }
+
+  // ===== D32 결과 공유 링크 — URL 쿼리 인코딩/복원 =====
+  function encodeStateToQuery() {
+    const p = new URLSearchParams();
+    p.set('sal', state.salary); p.set('km', state.km); p.set('risk', state.risk);
+    p.set('pre', state.preset); p.set('reg', state.region); p.set('hc', state.homeCharge ? 1 : 0);
+    p.set('cm', state.commuteKm); p.set('fam', state.familyCount);
+    if (state.fuelPref.length) p.set('fp', state.fuelPref.join('~'));
+    if (state.facetFuel.length) p.set('ff', state.facetFuel.join('~'));
+    if (state.facetSegment.length) p.set('fs', state.facetSegment.join('~'));
+    if (state.requiredOptions.length) p.set('req', state.requiredOptions.join('~'));
+    if (state.excludedOptions.length) p.set('exc', state.excludedOptions.join('~'));
+    if (state.activePersonas.length) p.set('per', state.activePersonas.join('~'));
+    if (state.safe5Only) p.set('s5', 1);
+    if (state.mechParkOnly) p.set('mp', 1);
+    if (state.budgetSpread) p.set('bs', 1);
+    p.set('sort', state.sort); p.set('sub', 1);
+    return p.toString();
+  }
+  function restoreStateFromQuery() {
+    const p = new URLSearchParams(window.location.search);
+    if (![...p.keys()].length) return false;
+    const num = (k, d) => { const v = p.get(k); return v != null && v !== '' && !isNaN(+v) ? +v : d; };
+    const arr = (k) => { const v = p.get(k); return v ? v.split('~').filter(Boolean) : []; };
+    if (p.has('sal')) state.salary = Math.max(0, num('sal', state.salary));
+    if (p.has('km')) state.km = num('km', state.km);
+    if (p.has('risk')) state.risk = num('risk', state.risk);
+    if (p.has('pre') && PRESETS.some(x => x.key === p.get('pre'))) state.preset = p.get('pre');
+    if (p.has('reg') && REGIONS.some(r => r.code === p.get('reg'))) state.region = p.get('reg');
+    if (p.has('hc')) state.homeCharge = p.get('hc') === '1';
+    if (p.has('cm')) state.commuteKm = num('cm', state.commuteKm);
+    if (p.has('fam')) state.familyCount = num('fam', state.familyCount);
+    if (p.has('fp')) state.fuelPref = arr('fp').filter(f => allFuels().includes(f));
+    if (p.has('ff')) state.facetFuel = arr('ff').filter(f => allFuels().includes(f));
+    if (p.has('fs')) state.facetSegment = arr('fs').filter(s => allSegments().includes(s));
+    if (p.has('req')) state.requiredOptions = arr('req').filter(k => OPTION_BY_KEY[k]);
+    if (p.has('exc')) state.excludedOptions = arr('exc').filter(k => OPTION_BY_KEY[k]);
+    if (p.has('per')) state.activePersonas = arr('per').filter(t => PERSONAS.some(x => x.tag === t));
+    state.safe5Only = p.get('s5') === '1';
+    state.mechParkOnly = p.get('mp') === '1';
+    state.budgetSpread = p.get('bs') === '1';
+    if (p.has('sort')) state.sort = p.get('sort');
+    if (p.get('sub') === '1') state.submitted = true;
+    detailKm = state.km;
+    return true;
+  }
+  function shareLink() {
+    const url = `${location.origin}${location.pathname}?${encodeStateToQuery()}`;
+    const done = () => toast('공유 링크를 복사했어요');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(done).catch(() => { promptCopy(url); });
+    } else { promptCopy(url); }
+  }
+  function promptCopy(url) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); ta.remove();
+      toast('공유 링크를 복사했어요');
+    } catch (e) { window.prompt('아래 링크를 복사하세요', url); }
+  }
+
+  // ===== 라우팅 / 뷰 =====
+  let route = 'input';
+  let searchQuery = '';
+  let detailKm = state.km;
+  const root = document.getElementById('app');
+
+  function render() {
+    if (route === 'input') root.innerHTML = viewInput();
+    else root.innerHTML = viewResults();
+    bindEvents();
+    if (state.detailId) renderDetail();
+    if (route === 'compare') renderCompare();
+    if (route === 'profiles') renderProfiles();
+    if (route === 'sync') renderSync();
+    if (route === 'subsidyGuide') renderSubsidyGuide();
+  }
+
+  function regionName(code) { const r = REGIONS.find(x => x.code === code); return r ? r.name : code; }
+
+  // ---------- 입력 화면 (뷰 1) ----------
+  function viewInput() {
+    return `
+    <div class="min-h-screen flex flex-col">
+      <header class="surface border-b border-ink-100">
+        <div class="max-w-xl mx-auto px-5 py-5">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl bg-brand flex items-center justify-center text-white text-lg">🚗</div>
+            <h1 class="text-xl font-bold text-ink-900">연봉 맞춤 차량 추천</h1>
+            <span class="text-[11px] font-bold text-brand bg-brand-light rounded-md px-1.5 py-0.5">v3 · 라이프스타일 역산</span>
+          </div>
+          <p class="mt-1 text-sm text-ink-500">연봉·라이프스타일을 알려주시면 보조금·월 부담률까지 따져 딱 맞는 차를 골라드려요.</p>
+        </div>
+      </header>
+
+      <main class="flex-1 max-w-xl w-full mx-auto px-5 py-6 space-y-7">
+        <!-- D2 라이프스타일 역산 마법사 진입 -->
+        <section>
+          <button id="wizardBtn" class="w-full text-left rounded-2xl border border-brand bg-brand-light px-4 py-4 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-brand text-white flex items-center justify-center text-xl shrink-0">🪄</div>
+            <div class="flex-1 min-w-0">
+              <div class="font-bold text-brand">라이프스타일 역산 마법사</div>
+              <div class="text-xs text-ink-500 mt-0.5">출퇴근 거리·가족 수·충전 환경만 답하면 권장 유종·차급·필수 옵션을 자동으로 잡아드려요.</div>
+            </div>
+            <span class="text-brand text-xl">›</span>
+          </button>
+        </section>
+
+        <!-- 연봉 -->
+        <section>
+          <label class="block text-sm font-semibold text-ink-700 mb-2">연봉 (세전, 만원)</label>
+          <div class="relative">
+            <input id="salaryInput" type="number" inputmode="numeric" min="0" step="100"
+              value="${state.salary}"
+              class="w-full surface border border-ink-200 rounded-xl px-4 py-3 text-2xl font-bold text-ink-900 tabular-nums" />
+            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-ink-400 text-sm">만원</span>
+          </div>
+          <p class="mt-1.5 text-xs text-ink-400">연 ${fmtMan(state.salary)}만원 · 월 약 ${fmtMan(Math.round(state.salary/12))}만원</p>
+        </section>
+
+        <!-- 주행거리 -->
+        <section>
+          <div class="flex items-baseline justify-between mb-2">
+            <label class="text-sm font-semibold text-ink-700">연간 주행거리</label>
+            <span class="text-brand font-bold tabular-nums">${fmtMan(state.km)} km</span>
+          </div>
+          <input id="kmRange" type="range" min="0" max="40000" step="500" value="${state.km}" class="w-full" />
+          <div class="flex justify-between text-xs text-ink-400 mt-1"><span>0</span><span>40,000 km</span></div>
+        </section>
+
+        <!-- v3: 출퇴근 거리 / 가족 수 (D2 입력 반영) -->
+        <section class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-semibold text-ink-700 mb-2">출퇴근 거리 <span class="text-ink-400 font-normal">(km/일 왕복)</span></label>
+            <div class="relative">
+              <input id="commuteInput" type="number" inputmode="numeric" min="0" step="5" value="${state.commuteKm}"
+                class="w-full surface border border-ink-200 rounded-xl px-4 py-3 text-lg font-bold text-ink-900 tabular-nums" />
+              <span class="absolute right-4 top-1/2 -translate-y-1/2 text-ink-400 text-sm">km</span>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-ink-700 mb-2">가족(탑승) 수</label>
+            <div class="relative">
+              <input id="familyInput" type="number" inputmode="numeric" min="1" max="9" step="1" value="${state.familyCount}"
+                class="w-full surface border border-ink-200 rounded-xl px-4 py-3 text-lg font-bold text-ink-900 tabular-nums" />
+              <span class="absolute right-4 top-1/2 -translate-y-1/2 text-ink-400 text-sm">명</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- v2: 거주 지역 (EV 보조금) -->
+        <section>
+          <label class="block text-sm font-semibold text-ink-700 mb-2">거주 지역 <span class="text-ink-400 font-normal">(전기차 지자체 보조금 기준)</span></label>
+          <select id="regionSelect" class="w-full surface border border-ink-200 rounded-xl px-4 py-3 text-base font-semibold text-ink-800">
+            ${REGIONS.map(r => `<option value="${r.code}" ${state.region===r.code?'selected':''}>${r.name} (지자체 −${fmtMan(r.evLocalManwon)}만 [추정])</option>`).join('')}
+          </select>
+          <p class="mt-1.5 text-xs text-ink-400">전기차는 국고+지자체 보조금을 빼고 <b>실구매가</b>로 비교해요. <span class="text-ink-300">[추정 2025]</span></p>
+        </section>
+
+        <!-- v2: 충전 환경 -->
+        <section>
+          <label class="block text-sm font-semibold text-ink-700 mb-2">자택·직장 충전 가능</label>
+          <div class="grid grid-cols-2 gap-2">
+            ${[{v:true,t:'가능해요',d:'EV 추천 가점'},{v:false,t:'어려워요',d:'EV 추천 감점'}].map(o => `
+              <button data-charge="${o.v}" class="charge-btn rounded-xl border px-3 py-3 text-center ${state.homeCharge===o.v ? 'border-brand bg-brand-light' : 'border-ink-200 surface'}">
+                <div class="font-bold ${state.homeCharge===o.v ? 'text-brand' : 'text-ink-700'}">${o.t}</div>
+                <div class="text-xs text-ink-400 mt-0.5">${o.d}</div>
+              </button>`).join('')}
+          </div>
+          <p class="mt-1.5 text-xs text-ink-400">집·회사에서 충전할 수 있으면 전기차를 더 잘 추천해 드려요.</p>
+        </section>
+
+        <!-- 예산 성향 -->
+        <section>
+          <label class="block text-sm font-semibold text-ink-700 mb-2">예산 성향</label>
+          <div class="grid grid-cols-3 gap-2">
+            ${[
+              { v: 0.4, t: '보수', d: '안정적으로' },
+              { v: 0.5, t: '표준', d: '적당하게' },
+              { v: 0.7, t: '공격', d: '좋은 차로' }
+            ].map(o => `
+              <button data-risk="${o.v}" class="risk-btn rounded-xl border px-3 py-3 text-center ${state.risk===o.v ? 'border-brand bg-brand-light' : 'border-ink-200 surface'}">
+                <div class="font-bold ${state.risk===o.v ? 'text-brand' : 'text-ink-700'}">${o.t}</div>
+                <div class="text-xs text-ink-400 mt-0.5">${o.d}</div>
+              </button>`).join('')}
+          </div>
+        </section>
+
+        <!-- 우선순위 프리셋 -->
+        <section>
+          <label class="block text-sm font-semibold text-ink-700 mb-2">무엇을 가장 중요하게 볼까요?</label>
+          <div class="grid grid-cols-2 gap-2">
+            ${PRESETS.map(p => `
+              <button data-preset="${p.key}" class="preset-btn rounded-xl border px-3 py-3 text-sm font-semibold ${state.preset===p.key ? 'border-brand bg-brand-light text-brand' : 'border-ink-200 surface text-ink-700'}">
+                ${p.label}
+              </button>`).join('')}
+          </div>
+        </section>
+
+        <!-- 연료 선호 -->
+        <section>
+          <label class="block text-sm font-semibold text-ink-700 mb-2">선호 연료 <span class="text-ink-400 font-normal">(선택 안 하면 전체)</span></label>
+          <div class="flex flex-wrap gap-2">
+            ${allFuels().map(f => `
+              <button data-fuel="${f}" class="fuel-btn chip rounded-full border px-4 py-2 text-sm font-semibold ${state.fuelPref.includes(f) ? 'border-brand bg-brand-light text-brand' : 'border-ink-200 surface text-ink-600'}">
+                ${f}
+              </button>`).join('')}
+          </div>
+        </section>
+
+        <!-- 저장된 프로필 진입 + 동기화 -->
+        <section class="grid grid-cols-2 gap-2">
+          <button id="profilesBtn" class="rounded-xl border border-ink-200 surface px-3 py-3 text-sm font-semibold text-ink-700">📁 내 시나리오 ${state.profiles.length ? `<span class="text-brand">(${state.profiles.length})</span>` : ''}</button>
+          <button id="syncBtn" class="rounded-xl border border-ink-200 surface px-3 py-3 text-sm font-semibold text-ink-700">🔄 데이터 동기화</button>
+        </section>
+      </main>
+
+      <footer class="sticky bottom-0 surface border-t border-ink-100">
+        <div class="max-w-xl mx-auto px-5 py-4">
+          <button id="findBtn" class="w-full bg-brand hover:bg-brand-hover text-white font-bold text-base">내 차 찾기</button>
+        </div>
+      </footer>
+    </div>`;
+  }
+
+  // ---------- 결과 화면 (뷰 2) ----------
+  function viewResults() {
+    const results = getResults();
+    const fuelCounts = facetCounts('fuel');
+    const segCounts = facetCounts('segment');
+
+    const sortOptions = [
+      { v: 'score', t: '추천순' }, { v: 'cost', t: '유지비순' },
+      { v: 'price', t: '실구매가순' }, { v: 'tco', t: '5년 TCO 낮은 순' },
+      { v: 'spend', t: '월 총지출 낮은 순' }, { v: 'eff', t: '연비순' }
+    ];
+
+    const personaBar = PERSONAS.map(p => {
+      const on = state.activePersonas.includes(p.tag);
+      return `<button data-persona="${p.tag}" class="persona-btn chip whitespace-nowrap rounded-full border px-3.5 py-1.5 text-sm font-semibold ${on ? 'border-brand bg-brand text-white' : 'border-ink-200 surface text-ink-600'}">#${p.tag}</button>`;
+    }).join('');
+
+    const facetChips = (dim, values, counts) => values.map(v => {
+      const sel = dim === 'fuel' ? state.facetFuel.includes(v) : state.facetSegment.includes(v);
+      const n = counts[v] || 0;
+      return `<button data-facet="${dim}" data-val="${v}" class="facet-btn chip rounded-full border px-3 py-1.5 text-sm ${sel ? 'border-brand bg-brand-light text-brand font-semibold' : 'border-ink-200 surface text-ink-600'}">
+        ${v} <span class="tabular-nums ${sel ? 'text-brand' : 'text-ink-400'}">${n}</span>
+      </button>`;
+    }).join('');
+
+    const optionGroups = GROUP_ORDER.map(g => {
+      const meta = GROUP_META[g] || { label: g, icon: '•' };
+      const keys = OPTION_META.filter(o => o.group === g).map(o => o.key);
+      const chips = keys.map(k => {
+        const o = OPTION_BY_KEY[k];
+        const on = state.requiredOptions.includes(k);
+        const tip = optionTipText(k)
+          ? `<span class="info"><span class="info-dot ${on ? 'info-dot-on' : ''}" tabindex="0" role="img" aria-label="설명: ${esc(optionTipText(k))}">i</span><span class="info-pop" role="tooltip">${esc(optionTipText(k))}</span></span>`
+          : '';
+        return `<span class="inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs ${on ? 'border-brand bg-brand text-white font-semibold' : 'border-ink-200 surface text-ink-600'}">
+          <button data-opt="${k}" class="opt-btn">${optIcon(k)} ${o.label}</button>${tip}
+        </span>`;
+      }).join('');
+      return `
+        <div class="mb-3">
+          <div class="text-xs font-bold text-ink-500 mb-1.5">${meta.icon} ${meta.label}</div>
+          <div class="flex flex-wrap gap-1.5">${chips}</div>
+        </div>`;
+    }).join('');
+
+    // D27 같은 페르소나 인기 차 섹션
+    const personaPopularBlock = personaPopularHtml();
+
+    const cards = results.length
+      ? results.map(r => cardHtml(r)).join('')
+      : `<div class="surface rounded-2xl py-16 text-center">
+           <div class="text-4xl mb-3">🔎</div>
+           <p class="font-bold text-ink-700">아직 조건에 맞는 차가 없어요</p>
+           <p class="text-sm text-ink-400 mt-1">필터나 옵션을 줄여보세요.</p>
+         </div>`;
+
+    const excludeChips = state.excludedOptions.length
+      ? `<div class="flex flex-wrap items-center gap-1.5 mt-1">
+          <span class="text-xs text-ink-400">제외:</span>
+          ${state.excludedOptions.map(k => `<button data-rmexc="${k}" class="text-xs px-2 py-0.5 rounded-full bg-[#FDECEE] text-rose-600 font-semibold">${OPTION_BY_KEY[k]?OPTION_BY_KEY[k].label:k} ✕</button>`).join('')}
+        </div>` : '';
+
+    return `
+    <div class="min-h-screen flex flex-col">
+      <header class="sticky top-0 z-20 surface border-b border-ink-100">
+        <div class="max-w-3xl mx-auto px-5 py-3 flex items-center gap-2">
+          <button id="backBtn" class="text-ink-500 text-sm font-semibold">‹ 조건수정</button>
+          <h1 class="text-base font-bold text-ink-900 flex-1">추천 결과 <span class="text-brand">${results.length}</span>대</h1>
+          <button id="shareCardBtn" class="text-sm font-semibold text-ink-600 px-2 py-1.5 rounded-lg surface-sub">🖼️ 카드</button>
+          <button id="shareLinkBtn" class="text-sm font-semibold text-ink-600 px-2 py-1.5 rounded-lg surface-sub">🔗 공유</button>
+          <button id="compareOpenBtn" class="relative text-sm font-semibold text-ink-700 px-2.5 py-1.5 rounded-lg surface-sub">
+            비교함 ${state.compare.length ? `<span class="ml-0.5 text-brand">${state.compare.length}</span>` : ''}
+          </button>
+        </div>
+
+        <div class="max-w-3xl mx-auto px-5 pb-1 flex items-center gap-2 text-xs text-ink-500 flex-wrap">
+          <span class="px-2 py-0.5 rounded-full surface-sub">📍 ${regionName(state.region)}</span>
+          <span class="px-2 py-0.5 rounded-full surface-sub">${state.homeCharge ? '🔌 충전 가능' : '🚫 충전 어려움'}</span>
+          <span class="px-2 py-0.5 rounded-full surface-sub">🛣️ 출퇴근 ${fmtMan(state.commuteKm)}km</span>
+          <span class="px-2 py-0.5 rounded-full surface-sub">👨‍👩‍👧 ${state.familyCount}명</span>
+          <button id="subsidyGuideBtn" class="px-2 py-0.5 rounded-full surface-sub text-brand font-semibold">보조금 안내</button>
+        </div>
+
+        <!-- 검색 (D17 부정 검색 지원) -->
+        <div class="max-w-3xl mx-auto px-5 pt-2 pb-2">
+          <div class="relative">
+            <input id="searchInput" type="text" placeholder="엉따, 360, 차박… 또는 ‘통풍 빼고’, ‘선루프 없는’"
+              value="${searchQuery.replace(/"/g,'&quot;')}"
+              class="w-full surface-sub rounded-xl pl-9 pr-3 py-2.5 text-sm text-ink-800 placeholder:text-ink-400 border border-transparent" />
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400">🔍</span>
+          </div>
+          <div id="searchHint" class="mt-1 text-xs text-ink-400"></div>
+          ${excludeChips}
+        </div>
+
+        <!-- 페르소나 바 -->
+        <div class="max-w-3xl mx-auto px-5 pb-2 overflow-x-auto">
+          <div class="flex gap-2">${personaBar}</div>
+        </div>
+      </header>
+
+      <main class="flex-1 max-w-3xl w-full mx-auto px-5 py-4 space-y-4">
+        ${personaPopularBlock}
+
+        <!-- 패싯 + v2 필터 + D5 예산구간 + 옵션 필터 -->
+        <section class="surface rounded-2xl p-4 space-y-3">
+          <div>
+            <div class="text-xs font-bold text-ink-500 mb-1.5">유종</div>
+            <div class="flex flex-wrap gap-1.5">${facetChips('fuel', allFuels(), fuelCounts)}</div>
+          </div>
+          <div>
+            <div class="text-xs font-bold text-ink-500 mb-1.5">세그먼트</div>
+            <div class="flex flex-wrap gap-1.5">${facetChips('segment', allSegments(), segCounts)}</div>
+          </div>
+          <div>
+            <div class="text-xs font-bold text-ink-500 mb-1.5">안전·주차·예산</div>
+            <div class="flex flex-wrap gap-1.5">
+              <button id="safe5Btn" class="chip rounded-full border px-3 py-1.5 text-sm ${state.safe5Only ? 'border-brand bg-brand-light text-brand font-semibold' : 'border-ink-200 surface text-ink-600'}">KNCAP ★5만</button>
+              <button id="mechParkBtn" class="chip rounded-full border px-3 py-1.5 text-sm ${state.mechParkOnly ? 'border-brand bg-brand-light text-brand font-semibold' : 'border-ink-200 surface text-ink-600'}">기계식 주차 OK</button>
+              <button id="budgetSpreadBtn" class="chip rounded-full border px-3 py-1.5 text-sm ${state.budgetSpread ? 'border-brand bg-brand-light text-brand font-semibold' : 'border-ink-200 surface text-ink-600'}">한 칸 위/아래 예산도 보기</button>
+            </div>
+          </div>
+          <details class="pt-1">
+            <summary class="text-xs font-bold text-ink-500 cursor-pointer select-none">체감 옵션으로 좁히기 ${state.requiredOptions.length ? `<span class="text-brand">(${state.requiredOptions.length})</span>` : ''}</summary>
+            <div class="mt-3">${optionGroups}</div>
+            ${(state.requiredOptions.length || state.excludedOptions.length) ? `<button id="clearOptsBtn" class="mt-1 text-xs text-rose-500 font-semibold">옵션 조건 비우기</button>` : ''}
+          </details>
+        </section>
+
+        <!-- 정렬 -->
+        <div class="flex items-center justify-between gap-2">
+          <div class="text-sm text-ink-500">${results.length}대 · 주행 ${fmtMan(state.km)}km 기준</div>
+          <select id="sortSelect" class="surface border border-ink-200 rounded-lg px-3 py-2 text-sm font-semibold text-ink-700">
+            ${sortOptions.map(o => `<option value="${o.v}" ${state.sort===o.v?'selected':''}>${o.t}</option>`).join('')}
+          </select>
+        </div>
+
+        <!-- 카드 -->
+        <div class="space-y-3">${cards}</div>
+      </main>
+
+      ${footerHtml()}
+    </div>`;
+  }
+
+  // D27 같은 페르소나 인기 차 (활성 페르소나 첫 항목 기준)
+  function personaPopularHtml() {
+    if (!state.activePersonas.length) return '';
+    const tag = state.activePersonas[0];
+    const ids = Array.isArray(PERSONA_POPULAR[tag]) ? PERSONA_POPULAR[tag] : [];
+    const cars = ids.map(id => CARS.find(c => c.id === id)).filter(Boolean).slice(0, 5);
+    if (!cars.length) return '';
+    const chips = cars.map(c => `
+      <button data-car="${c.id}" class="car-card text-left shrink-0 surface-sub rounded-xl px-3 py-2.5 min-w-[150px]">
+        <div class="text-[11px] text-ink-400">${c.brand} · ${c.fuel}</div>
+        <div class="font-bold text-sm text-ink-800 truncate">${c.model}</div>
+        <div class="text-xs text-brand font-semibold tabular-nums mt-0.5">${fmtMan(effectivePrice(c))}만</div>
+      </button>`).join('');
+    return `
+      <section class="surface rounded-2xl p-4">
+        <div class="text-sm font-bold text-ink-800 mb-2">#${tag} 분들이 많이 본 차 <span class="text-xs font-normal text-ink-400">[mock 집계]</span></div>
+        <div class="flex gap-2 overflow-x-auto">${chips}</div>
+      </section>`;
+  }
+
+  // D23 출처·신선도 푸터
+  function sourceMetaHtml() {
+    const keys = Object.keys(SOURCE_META);
+    if (!keys.length) return '';
+    const labelMap = { price:'가격', subsidy:'보조금', fuel:'유가', efficiency:'연비' };
+    const items = keys.map(k => {
+      const m = SOURCE_META[k] || {};
+      return `<span class="px-2 py-0.5 rounded-full surface-sub">${labelMap[k]||k}: ${esc(m.src||'-')} · ${esc(m.date||'-')}</span>`;
+    }).join(' ');
+    return `<div class="flex flex-wrap justify-center gap-1.5 mb-2 text-[11px] text-ink-400">${items}</div>`;
+  }
+  function footerHtml() {
+    return `
+      <footer class="surface border-t border-ink-100 mt-4">
+        <div class="max-w-3xl mx-auto px-5 py-4 text-xs text-ink-400 text-center space-y-1">
+          ${sourceMetaHtml()}
+          <p>보조금·세제·유지비·금융 수치는 모두 <b>근사치([추정]/[mock])</b>예요. 실제는 지자체·제조사·금융사 확인이 필요해요.</p>
+          <p class="text-ink-300">본 결과는 참고용이며 구매 의사결정의 법적 근거가 되지 않아요.</p>
+        </div>
+      </footer>`;
+  }
+
+  // ===== 차량 카드 (v2 + D9·D14·D25·D31) =====
+  function cardHtml(r) {
+    const c = r.car;
+    const sig = budgetSignal(c);
+    const sub = r.sub;
+    const sg = spendSignal(c); // D9
+    const owned = OPTION_META.filter(o => c.options && c.options[o.key]);
+    owned.sort((a, b) => optWeight(b.key) - optWeight(a.key));
+    const topBadges = owned.slice(0, 3).map(o =>
+      `<span class="text-xs px-2 py-0.5 rounded-md surface-sub text-ink-600">${optIcon(o.key)} ${o.consumer || o.label}</span>`).join('');
+    const moreCount = owned.length - 3;
+    const effUnit = c.fuel === 'EV' ? 'km/kWh' : 'km/L';
+    const g = kncap(c);
+    const stock = sub.isEv ? subsidyStock(state.region) : null; // D14
+
+    const priceBlock = sub.isEv
+      ? `<div class="text-xs text-ink-400 line-through tabular-nums">${fmtMan(c.price)}만</div>
+         <div class="font-bold text-lg text-ink-900 tabular-nums">${fmtMan(sub.realPrice)}<span class="text-sm text-ink-400">만</span></div>
+         <div class="text-[11px] font-semibold text-emerald-600">보조금 −${fmtMan(sub.sum)}만 [추정]</div>`
+      : `<div class="font-bold text-lg text-ink-900 tabular-nums">${fmtMan(c.price)}<span class="text-sm text-ink-400">만</span></div>`;
+
+    const evBadge = sub.isEv
+      ? `<span class="text-xs px-1.5 py-0.5 rounded surface-sub text-emerald-600 font-semibold">실구매가</span>` : '';
+    const stockBadge = stock
+      ? `<span class="text-xs px-1.5 py-0.5 rounded font-semibold ${stock.cls}">보조금 ${stock.label} [mock]</span>` : '';
+
+    return `
+    <button data-car="${c.id}" class="car-card w-full text-left surface rounded-2xl p-4 border border-transparent hover:border-ink-200 transition">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="text-xs text-ink-400">${c.brand}</span>
+            <span class="text-xs px-1.5 py-0.5 rounded surface-sub text-ink-500">${c.segment}</span>
+            <span class="text-xs px-1.5 py-0.5 rounded surface-sub text-ink-500">${c.fuel}</span>
+            ${g ? `<span class="text-xs text-amber-600">${stars(g)}</span>` : ''}
+            ${evBadge}
+            ${stockBadge}
+          </div>
+          <div class="font-bold text-lg text-ink-900 mt-0.5">${c.model} <span class="text-ink-500 font-medium text-sm">${c.trim}</span></div>
+        </div>
+        <div class="text-right shrink-0">
+          ${priceBlock}
+          <span class="inline-block mt-1 text-xs font-semibold px-2 py-0.5 rounded-full ${sig.cls}">● ${sig.label}</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 text-center">
+        <div class="surface-sub rounded-lg py-2">
+          <div class="text-[11px] text-ink-400">연비</div>
+          <div class="font-bold text-sm text-ink-800 tabular-nums">${c.efficiency} <span class="text-[10px] text-ink-400">${effUnit}</span></div>
+          <div class="text-[10px] text-ink-400">실 ${realEff(c)}</div>
+        </div>
+        <div class="surface-sub rounded-lg py-2">
+          <div class="text-[11px] text-ink-400">월 유지비</div>
+          <div class="font-bold text-sm text-brand tabular-nums">${fmtMan(won2man(r.cost.monthly))}만</div>
+        </div>
+        <div class="surface-sub rounded-lg py-2">
+          <div class="text-[11px] text-ink-400">5년 TCO</div>
+          <div class="font-bold text-sm text-ink-800 tabular-nums">${fmtMan(won2man(r.tco.total))}만</div>
+        </div>
+        <div class="surface-sub rounded-lg py-2">
+          <div class="text-[11px] text-ink-400">월 부담률</div>
+          <div class="font-bold text-sm tabular-nums" style="color:${sg.dot}">${sg.lvl==='na'?'–':sg.ratio+'%'}</div>
+        </div>
+      </div>
+
+      <!-- D9 월 총지출 신호등 -->
+      <div class="flex items-center gap-2 mt-2 text-xs">
+        <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${sg.dot}"></span>
+        <span class="text-ink-500">월 차량지출 약 <b class="text-ink-700">${fmtMan(won2man(monthlyCarSpend(c).total))}만</b> (할부+유지비) · 실수령 대비 <b style="color:${sg.dot}">${sg.lvl==='na'?'-':sg.ratio+'%'}</b></span>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-1.5 mt-3">
+        ${topBadges}
+        ${moreCount > 0 ? `<span class="text-xs text-ink-400">외 ${moreCount}개</span>` : ''}
+      </div>
+    </button>`;
+  }
+
+  // ---------- 상세 (뷰 3) ----------
+  function renderDetail() {
+    const c = CARS.find(x => x.id === state.detailId);
+    if (!c) return;
+    detailKm = state.km;
+    let overlay = document.getElementById('detailOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'detailOverlay';
+      document.body.appendChild(overlay);
+    }
+    overlay.className = 'fixed inset-0 z-40 flex items-end sm:items-center justify-center';
+    overlay.innerHTML = `
+      <div id="detailBackdrop" class="absolute inset-0 bg-ink-900/40"></div>
+      <div class="relative w-full sm:max-w-lg surface rounded-t-3xl sm:rounded-3xl sheet-shadow sm:modal-shadow max-h-[92vh] overflow-y-auto fade-in">
+        <div id="detailBody"></div>
+      </div>`;
+    document.getElementById('detailBackdrop').onclick = closeDetail;
+    paintDetailBody(c);
+  }
+
+  function paintDetailBody(c) {
+    const body = document.getElementById('detailBody');
+    if (!body) return;
+    const cb = costBreakdown(c, detailKm);
+    const sig = budgetSignal(c);
+    const sub = subsidyFor(c);
+    const salaryWon = state.salary * 10000;
+    const priceBurden = pct(effectivePrice(c) * 10000, salaryWon);
+    const monthlyBurden = pct(cb.monthly, salaryWon / 12);
+    const effUnit = c.fuel === 'EV' ? 'km/kWh' : 'km/L';
+    const g = kncap(c);
+    const mech = mechParkOk(c);
+    const tb = taxBenefitManwon(c);
+    const sg = spendSignal(c); // D9
+
+    const items = [
+      { t: '연료비', v: cb.fuel, color: '#2560DE' },
+      { t: '자동차세', v: cb.tax, color: '#14AE5C' },
+      { t: '보험(추정)', v: cb.ins, color: '#FFB331' },
+      { t: '정비(추정)', v: cb.maint, color: '#8A93A3' }
+    ];
+    const maxV = Math.max(...items.map(i => i.v), 1);
+    const bars = items.map(i => `
+      <div class="flex items-center gap-2 text-sm">
+        <div class="w-16 text-ink-500 shrink-0">${i.t}</div>
+        <div class="flex-1 h-5 surface-sub rounded-md overflow-hidden">
+          <div class="h-full rounded-md" style="width:${Math.max(4,(i.v/maxV)*100)}%;background:${i.color}"></div>
+        </div>
+        <div class="w-20 text-right tabular-nums text-ink-700 font-semibold shrink-0">${fmtWon(i.v)}원</div>
+      </div>`).join('');
+
+    // 보조금 분해 블록 (EV) + D14 잔여 배지
+    const stock = sub.isEv ? subsidyStock(state.region) : null;
+    const subsidyBlock = sub.isEv ? `
+      <section class="rounded-2xl p-4 border border-emerald-500/30 bg-[#F0FBF5]">
+        <div class="flex items-baseline justify-between mb-2">
+          <div class="font-bold text-emerald-700">전기차 보조금 ${infoTip(FIN_DESC.subsidy, 'left')} <span class="text-xs font-normal text-emerald-600">[추정 2025]</span></div>
+          <div class="text-emerald-700 font-bold tabular-nums">−${fmtMan(sub.sum)}만</div>
+        </div>
+        ${stock ? `<div class="mb-2"><span class="text-xs px-2 py-0.5 rounded-full font-semibold ${stock.cls}">${sub.region.name} 보조금 ${stock.label} · 잔여 ${Math.round(stock.ratio*100)}% [mock]</span></div>` : ''}
+        <div class="space-y-1 text-sm">
+          <div class="flex justify-between"><span class="text-ink-500">정가</span><span class="tabular-nums text-ink-700">${fmtMan(c.price)}만</span></div>
+          <div class="flex justify-between"><span class="text-ink-500">국고 보조금</span><span class="tabular-nums text-emerald-600">−${fmtMan(sub.national)}만</span></div>
+          <div class="flex justify-between"><span class="text-ink-500">지자체 보조금 (${sub.region.name})</span><span class="tabular-nums text-emerald-600">−${fmtMan(sub.local)}만</span></div>
+          <div class="flex justify-between border-t border-emerald-500/20 pt-1 mt-1"><span class="font-bold text-ink-800">실구매가 ${infoTip(FIN_DESC.realPrice, 'left')}</span><span class="tabular-nums font-bold text-ink-900">${fmtMan(sub.realPrice)}만</span></div>
+        </div>
+      </section>` : '';
+
+    // D11 지자체별 실구매가 비교 (EV)
+    const regionalBlock = sub.isEv ? regionalSubsidyTable(c) : '';
+    // D13 EV vs 동급 가솔린 연료비 (EV)
+    const evGasBlock = sub.isEv ? evVsGasBlock(c) : '';
+
+    const taxBlock = (c.fuel === 'EV' || c.fuel === '하이브리드') && tb > 0 ? `
+      <div class="surface-sub rounded-xl px-4 py-3 text-sm flex items-center justify-between">
+        <span class="text-ink-600">친환경차 세제 감면 한도 <span class="text-xs text-ink-400">[추정]</span></span>
+        <span class="font-bold text-brand tabular-nums">약 −${fmtMan(tb)}만 (취득 부대비)</span>
+      </div>` : '';
+
+    // 5년 TCO 분해
+    const tco = tco5(c);
+    const tcoBlock = `
+      <section class="surface-sub rounded-2xl p-4">
+        <div class="flex items-baseline justify-between mb-1">
+          <div class="font-bold text-ink-800">5년 총소유비용(TCO) ${infoTip(FIN_DESC.tco, 'left')} <span class="text-xs font-normal text-ink-400">[추정]</span></div>
+          <div class="text-ink-900 font-bold tabular-nums">${fmtMan(won2man(tco.total))}만</div>
+        </div>
+        <div class="text-xs text-ink-400 mb-3">실구매가 + 5년 운영비 − 5년 잔존가치 (감가율 ${(tco.dep*100).toFixed(0)}%/년)</div>
+        <div class="space-y-1.5 text-sm">
+          <div class="flex justify-between"><span class="text-ink-500">실구매가</span><span class="tabular-nums text-ink-700">+ ${fmtMan(won2man(tco.real))}만</span></div>
+          <div class="flex justify-between"><span class="text-ink-500">5년 운영비(연 ${fmtMan(won2man(tco.op5/5))}만×5)</span><span class="tabular-nums text-ink-700">+ ${fmtMan(won2man(tco.op5))}만</span></div>
+          <div class="flex justify-between"><span class="text-ink-500">5년 잔존가치 회수</span><span class="tabular-nums text-emerald-600">− ${fmtMan(won2man(tco.residual))}만</span></div>
+          <div class="flex justify-between border-t border-ink-200 pt-1.5 mt-1"><span class="font-bold text-ink-800">5년 TCO</span><span class="tabular-nums font-bold text-ink-900">${fmtMan(won2man(tco.total))}만</span></div>
+        </div>
+      </section>`;
+
+    // D9 월 총지출 부담률 신호등 (상세)
+    const ms = monthlyCarSpend(c);
+    const inc = monthlyIncomeWon();
+    const spendBlock = `
+      <section class="surface-sub rounded-2xl p-4">
+        <div class="flex items-baseline justify-between mb-1">
+          <div class="font-bold text-ink-800">월 총지출 부담률 ${infoTip(FIN_DESC.monthlyBurden, 'left')} <span class="text-xs font-normal text-ink-400">[추정]</span></div>
+          <span class="text-sm font-bold px-2.5 py-1 rounded-full ${sg.cls}">● ${sg.label} ${sg.lvl==='na'?'':sg.ratio+'%'}</span>
+        </div>
+        <div class="space-y-1.5 text-sm mt-2">
+          <div class="flex justify-between"><span class="text-ink-500">60개월 할부 추정(연 ${FINANCE.loanAprPct}%)</span><span class="tabular-nums text-ink-700">${fmtMan(won2man(ms.loan))}만/월</span></div>
+          <div class="flex justify-between"><span class="text-ink-500">월 유지비</span><span class="tabular-nums text-ink-700">${fmtMan(won2man(ms.maint))}만/월</span></div>
+          <div class="flex justify-between border-t border-ink-200 pt-1.5 mt-1"><span class="font-bold text-ink-800">월 차량지출 합계</span><span class="tabular-nums font-bold text-ink-900">${fmtMan(won2man(ms.total))}만/월</span></div>
+          <div class="flex justify-between"><span class="text-ink-500">월 실수령 근사(연봉/12)</span><span class="tabular-nums text-ink-500">${inc>0?fmtMan(won2man(inc))+'만/월':'연봉 입력 필요'}</span></div>
+        </div>
+        <div class="h-2 surface rounded-full mt-3 overflow-hidden"><div class="h-full" style="width:${Math.min(100, sg.ratio)}%;background:${sg.dot}"></div></div>
+        <div class="text-[11px] text-ink-400 mt-1">초록 ≤20% · 노랑 ≤30% · 빨강 그 이상</div>
+      </section>`;
+
+    // D10 구매방식 비교
+    const pc = purchaseCompare(c);
+    const purchaseBlock = `
+      <section class="surface-sub rounded-2xl p-4">
+        <div class="font-bold text-ink-800 mb-2">구매방식 비교 <span class="text-xs font-normal text-ink-400">[추정]</span></div>
+        <div class="grid grid-cols-3 gap-2 text-center text-sm">
+          <div class="surface rounded-xl p-3">
+            <div class="text-xs text-ink-400 mb-1">현금 일시불</div>
+            <div class="font-bold text-ink-900 tabular-nums">${fmtMan(won2man(pc.cash.total))}만</div>
+            <div class="text-[11px] text-ink-400 mt-1">선납 부담 큼</div>
+          </div>
+          <div class="surface rounded-xl p-3 ring-1 ring-brand">
+            <div class="text-xs text-brand font-semibold mb-1">${pc.months}개월 할부</div>
+            <div class="font-bold text-ink-900 tabular-nums">${fmtMan(won2man(pc.loan.total))}만</div>
+            <div class="text-[11px] text-ink-400 mt-1">월 ${fmtMan(won2man(pc.loan.monthly))}만</div>
+          </div>
+          <div class="surface rounded-xl p-3">
+            <div class="text-xs text-ink-400 mb-1">장기렌트 ${pc.rent.months}개월</div>
+            <div class="font-bold text-ink-900 tabular-nums">${fmtMan(won2man(pc.rent.total))}만</div>
+            <div class="text-[11px] text-ink-400 mt-1">월 ${fmtMan(won2man(pc.rent.monthly))}만·반납형</div>
+          </div>
+        </div>
+        <div class="text-[11px] text-ink-400 mt-2">할부 연 ${FINANCE.loanAprPct}% · 렌트 연 ${FINANCE.rentAprPct}%·잔가 ${Math.round((FINANCE.rentResidualPct||0.4)*100)}% 가정. 렌트는 보유권 없음. [추정]</div>
+      </section>`;
+
+    // D24 잔존가치 시세방어 옵션 안내 (valueWeight high 보유 옵션)
+    const valueOpts = OPTION_META.filter(o => o.valueWeight === 'high' && c.options && c.options[o.key]);
+    const resaleBlock = `
+      <section class="surface-sub rounded-2xl p-4">
+        <div class="font-bold text-ink-800 mb-1">잔존가치·시세방어 안내 <span class="text-xs font-normal text-ink-400">[추정]</span></div>
+        <div class="text-xs text-ink-500 mb-2">5년 감가율 ${(tco.dep*100).toFixed(0)}%/년 기준, 5년 뒤 잔존가치 약 <b class="text-ink-700">${fmtMan(won2man(tco.residual))}만</b>이에요.</div>
+        ${valueOpts.length
+          ? `<div class="text-xs text-ink-500 mb-1.5">되팔 때 유리한 옵션을 갖췄어요:</div>
+             <div class="flex flex-wrap gap-1.5">${valueOpts.map(o => `<span class="text-xs px-2 py-0.5 rounded-full bg-[#E7F7EF] text-emerald-600 font-semibold">${optIcon(o.key)} ${o.label}</span>`).join('')}</div>`
+          : `<div class="text-xs text-ink-400">시세방어에 특히 유리한 고가치 옵션(통풍·HUD·360뷰·LED·내비·크루즈 등)은 적은 편이에요.</div>`}
+      </section>`;
+
+    // 옵션 매트릭스 (D19 패키지 배지 + D26 체감 후기 + D31 아이콘)
+    const matrix = GROUP_ORDER.map(grp => {
+      const meta = GROUP_META[grp] || { label: grp, icon: '•' };
+      const keys = OPTION_META.filter(o => o.group === grp);
+      const rows = keys.map(o => {
+        const has = !!(c.options && c.options[o.key]);
+        const pkg = OPTION_PACKAGE[o.key];
+        const pkgBadge = pkg ? `<span class="text-[10px] px-1.5 py-0.5 rounded surface text-brand font-semibold whitespace-nowrap">${esc(pkg)} [mock]</span>` : '';
+        return `
+          <div class="flex items-center gap-1.5 py-1 flex-wrap">
+            <span class="w-5 h-5 rounded-md flex items-center justify-center text-xs shrink-0 ${has ? 'bg-brand text-white' : 'surface-sub text-ink-300'}">${has ? '✓' : '·'}</span>
+            <span class="text-sm ${has ? 'text-ink-800' : 'text-ink-300 line-through'}">${optIcon(o.key)} ${o.label}</span>
+            ${optionTip(o.key, 'left')}
+            ${has && pkgBadge ? pkgBadge : ''}
+          </div>`;
+      }).join('');
+      return `
+        <div class="mb-3">
+          <div class="text-xs font-bold text-ink-500 mb-1">${meta.icon} ${meta.label}</div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-3">${rows}</div>
+        </div>`;
+    }).join('');
+
+    const inCompare = state.compare.includes(c.id);
+
+    body.innerHTML = `
+      <div class="sticky top-0 surface px-5 pt-4 pb-3 border-b border-ink-100 z-10">
+        <div class="w-10 h-1 bg-ink-200 rounded-full mx-auto mb-3 sm:hidden"></div>
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="text-xs text-ink-400">${c.brand} · ${c.segment} · ${c.fuel} ${g ? `· <span class="text-amber-600">${stars(g)}</span>` : ''}</div>
+            <div class="font-bold text-xl text-ink-900">${c.model} <span class="text-ink-500 text-sm font-medium">${c.trim}</span></div>
+          </div>
+          <button id="detailClose" class="text-ink-400 text-2xl leading-none px-1">×</button>
+        </div>
+      </div>
+
+      <div class="px-5 py-4 space-y-5">
+        <div class="flex items-end justify-between">
+          <div>
+            <div class="text-xs text-ink-400">${sub.isEv ? `실구매가 (보조금 반영) ${infoTip(FIN_DESC.realPrice, 'left')}` : '차량 가격'}</div>
+            ${sub.isEv ? `<div class="text-xs text-ink-400 line-through tabular-nums">${fmtMan(c.price)}만원</div>` : ''}
+            <div class="font-bold text-2xl text-ink-900 tabular-nums">${fmtMan(effectivePrice(c))}<span class="text-base text-ink-400">만원</span></div>
+          </div>
+          <span class="text-sm font-semibold px-3 py-1 rounded-full ${sig.cls}">● ${sig.label}</span>
+        </div>
+
+        ${subsidyBlock}
+        ${regionalBlock}
+        ${taxBlock}
+
+        <!-- 유지비 + D25 실연비 -->
+        <section class="surface-sub rounded-2xl p-4">
+          <div class="flex items-baseline justify-between mb-1">
+            <div class="font-bold text-ink-800">예상 유지비</div>
+            <div class="text-brand font-bold tabular-nums">월 ${fmtMan(won2man(cb.monthly))}만원</div>
+          </div>
+          <div class="text-xs text-ink-400 mb-2">연 ${fmtWon(cb.total)}원 · 주행 ${fmtMan(detailKm)}km 기준</div>
+          <div class="text-xs text-ink-500 mb-3">연비 공인 <b class="text-ink-700">${c.efficiency}</b> · 실연비 <b class="text-ink-700">${realEff(c)}</b> ${effUnit} ${infoTip(FIN_DESC.realEff, 'left')} <span class="text-ink-300">[추정]</span></div>
+          <div class="flex items-baseline justify-between mb-2">
+            <span class="text-xs font-semibold text-ink-500">주행거리 조정</span>
+            <span class="text-xs text-brand font-bold tabular-nums">${fmtMan(detailKm)} km</span>
+          </div>
+          <input id="detailKmRange" type="range" min="0" max="40000" step="500" value="${detailKm}" class="w-full mb-4" />
+          <div class="space-y-2">${bars}</div>
+        </section>
+
+        ${evGasBlock}
+        ${spendBlock}
+        ${tcoBlock}
+        ${purchaseBlock}
+        ${resaleBlock}
+
+        <!-- 부담률 -->
+        <section class="grid grid-cols-2 gap-3">
+          <div class="surface-sub rounded-2xl p-4">
+            <div class="text-xs text-ink-400">연봉 대비 ${sub.isEv ? '실구매가' : '차량가'} 부담률 ${infoTip(FIN_DESC.burden, 'left')}</div>
+            <div class="font-bold text-xl text-ink-800 tabular-nums">${priceBurden}<span class="text-sm">%</span></div>
+            <div class="h-1.5 surface rounded-full mt-2 overflow-hidden"><div class="h-full bg-brand" style="width:${Math.min(100,priceBurden)}%"></div></div>
+          </div>
+          <div class="surface-sub rounded-2xl p-4">
+            <div class="text-xs text-ink-400">월소득 대비 유지비</div>
+            <div class="font-bold text-xl text-ink-800 tabular-nums">${monthlyBurden}<span class="text-sm">%</span></div>
+            <div class="h-1.5 surface rounded-full mt-2 overflow-hidden"><div class="h-full ${monthlyBurden>15?'bg-rose-500':'bg-emerald-500'}" style="width:${Math.min(100,monthlyBurden*3)}%"></div></div>
+          </div>
+        </section>
+
+        <!-- 제원 · 안전 · 주차 -->
+        <section class="surface-sub rounded-2xl p-4 space-y-2 text-sm">
+          <div class="font-bold text-ink-800 mb-1">제원 · 안전 · 주차</div>
+          <div class="flex justify-between"><span class="text-ink-500">KNCAP 안전도</span><span class="font-semibold ${g===5?'text-emerald-600':'text-ink-700'}">${g ? `${stars(g)} (${g}등급) [추정]` : '정보 없음'}</span></div>
+          <div class="flex justify-between"><span class="text-ink-500">전장 / 전폭</span><span class="tabular-nums text-ink-700">${c.lengthMm!=null?fmtMan(c.lengthMm):'-'} / ${c.widthMm!=null?fmtMan(c.widthMm):'-'} mm</span></div>
+          <div class="flex justify-between"><span class="text-ink-500">공차중량</span><span class="tabular-nums text-ink-700">${c.weightKg!=null?fmtMan(c.weightKg):'-'} kg</span></div>
+          <div class="flex justify-between"><span class="text-ink-500">기계식 주차 <span class="text-xs text-ink-400">[추정 기준]</span></span><span class="font-semibold ${mech?'text-emerald-600':'text-rose-500'}">${mech ? '✓ 가능' : '✕ 어려움'}</span></div>
+        </section>
+
+        <!-- 옵션 매트릭스 -->
+        <section>
+          <div class="font-bold text-ink-800 mb-2">옵션 매트릭스 <span class="text-xs text-ink-400 font-normal">(보유 ${carOptionCount(c)}/${OPTION_META.length} · 패키지·후기 [mock])</span></div>
+          ${matrix}
+        </section>
+      </div>
+
+      <div class="sticky bottom-0 surface border-t border-ink-100 px-5 py-3">
+        <button id="toggleCompareBtn" class="w-full font-bold ${inCompare ? 'surface-sub text-ink-700' : 'bg-brand hover:bg-brand-hover text-white'}">
+          ${inCompare ? '비교함에서 빼기' : '비교함에 담기'}
+        </button>
+      </div>`;
+
+    document.getElementById('detailClose').onclick = closeDetail;
+    document.getElementById('detailKmRange').oninput = (e) => {
+      detailKm = parseInt(e.target.value, 10);
+      paintDetailBody(c);
+    };
+    document.getElementById('toggleCompareBtn').onclick = () => {
+      toggleCompare(c.id);
+      paintDetailBody(c);
+    };
+  }
+
+  // D11 지자체별 실구매가 비교 표
+  function regionalSubsidyTable(c) {
+    const rows = REGIONS.map(r => {
+      const s = subsidyFor(c, r.code);
+      return { name: r.name, code: r.code, real: s.realPrice, sum: s.sum };
+    });
+    const min = Math.min(...rows.map(r => r.real));
+    const max = Math.max(...rows.map(r => r.real));
+    const body = rows.map(r => {
+      const isMin = r.real === min, isMax = r.real === max;
+      const here = r.code === state.region;
+      return `
+        <tr class="border-t border-ink-100 ${here ? 'bg-brand-light' : ''}">
+          <td class="p-2 text-sm ${here ? 'font-bold text-brand' : 'text-ink-700'}">${r.name}${here ? ' 📍' : ''}</td>
+          <td class="p-2 text-sm text-right tabular-nums text-emerald-600">−${fmtMan(r.sum)}만</td>
+          <td class="p-2 text-sm text-right tabular-nums font-semibold ${isMin ? 'text-emerald-600' : (isMax ? 'text-rose-500' : 'text-ink-800')}">${fmtMan(r.real)}만${isMin ? ' ▼최저' : (isMax ? ' ▲최고' : '')}</td>
+        </tr>`;
+    }).join('');
+    return `
+      <section>
+        <div class="text-sm font-bold text-ink-700 mb-1">지자체별 실구매가 비교 <span class="text-xs font-normal text-ink-400">[추정 2025]</span></div>
+        <div class="text-xs text-ink-400 mb-2">같은 차라도 지역 보조금에 따라 최대 ${fmtMan(max - min)}만원까지 차이가 나요.</div>
+        <div class="surface rounded-2xl border border-ink-100 overflow-hidden max-h-64 overflow-y-auto">
+          <table class="w-full">
+            <thead class="sticky top-0"><tr class="surface-sub"><th class="p-2 text-left text-xs text-ink-400">지역</th><th class="p-2 text-right text-xs text-ink-400">보조금</th><th class="p-2 text-right text-xs text-ink-400">실구매가</th></tr></thead>
+            <tbody>${body}</tbody>
+          </table>
+        </div>
+      </section>`;
+  }
+
+  // D13 EV vs 동급 가솔린 연료비 비교
+  function evVsGasBlock(c) {
+    const e = evVsGasFuel(c);
+    const maxV = Math.max(e.evCost, e.gasCost, 1);
+    return `
+      <section class="surface-sub rounded-2xl p-4">
+        <div class="flex items-baseline justify-between mb-2">
+          <div class="font-bold text-ink-800">EV vs 동급 가솔린 연료비 <span class="text-xs font-normal text-ink-400">[추정]</span></div>
+          <div class="text-emerald-600 font-bold tabular-nums">${e.save>=0?'연 '+fmtMan(won2man(e.save))+'만 절감':'연 '+fmtMan(won2man(-e.save))+'만 더 듦'}</div>
+        </div>
+        <div class="text-xs text-ink-400 mb-3">연 ${fmtMan(state.km)}km · ${e.peerName} 기준</div>
+        <div class="space-y-2 text-sm">
+          <div class="flex items-center gap-2">
+            <div class="w-20 text-ink-500 shrink-0">이 EV 충전</div>
+            <div class="flex-1 h-5 surface rounded-md overflow-hidden"><div class="h-full bg-emerald-500 rounded-md" style="width:${Math.max(4,(e.evCost/maxV)*100)}%"></div></div>
+            <div class="w-24 text-right tabular-nums text-ink-700 font-semibold shrink-0">${fmtWon(e.evCost)}원</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="w-20 text-ink-500 shrink-0">동급 가솔린</div>
+            <div class="flex-1 h-5 surface rounded-md overflow-hidden"><div class="h-full bg-ink-400 rounded-md" style="width:${Math.max(4,(e.gasCost/maxV)*100)}%"></div></div>
+            <div class="w-24 text-right tabular-nums text-ink-700 font-semibold shrink-0">${fmtWon(e.gasCost)}원</div>
+          </div>
+        </div>
+      </section>`;
+  }
+
+  function closeDetail() {
+    state.detailId = null;
+    const o = document.getElementById('detailOverlay');
+    if (o) o.remove();
+  }
+
+  function toggleCompare(id) {
+    const i = state.compare.indexOf(id);
+    if (i >= 0) state.compare.splice(i, 1);
+    else {
+      if (state.compare.length >= 3) state.compare.shift();
+      state.compare.push(id);
+    }
+    saveState();
+    const btn = document.getElementById('compareOpenBtn');
+    if (btn) btn.innerHTML = `비교함 ${state.compare.length ? `<span class="ml-0.5 text-brand">${state.compare.length}</span>` : ''}`;
+  }
+
+  // ---------- 비교함 (뷰 4) ----------
+  function renderCompare() {
+    const cars = state.compare.map(id => CARS.find(c => c.id === id)).filter(Boolean);
+    let overlay = document.getElementById('compareOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'compareOverlay';
+      document.body.appendChild(overlay);
+    }
+    overlay.className = 'fixed inset-0 z-40 flex items-end sm:items-center justify-center';
+
+    const body = !cars.length
+      ? `<div class="py-20 text-center">
+           <div class="text-4xl mb-3">⚖️</div>
+           <p class="font-bold text-ink-700">비교함이 비어 있어요</p>
+           <p class="text-sm text-ink-400 mt-1">차량 상세에서 "비교함에 담기"를 눌러 2~3대를 모아보세요.</p>
+         </div>`
+      : compareTable(cars);
+
+    overlay.innerHTML = `
+      <div id="compareBackdrop" class="absolute inset-0 bg-ink-900/40"></div>
+      <div class="relative w-full sm:max-w-2xl surface rounded-t-3xl sm:rounded-3xl sheet-shadow sm:modal-shadow max-h-[92vh] overflow-y-auto fade-in">
+        <div class="sticky top-0 surface px-5 pt-4 pb-3 border-b border-ink-100 flex items-center justify-between z-10">
+          <div class="font-bold text-lg text-ink-900">비교함 <span class="text-brand">${cars.length}</span></div>
+          <button id="compareClose" class="text-ink-400 text-2xl leading-none px-1">×</button>
+        </div>
+        <div class="px-4 py-4">${body}</div>
+      </div>`;
+    document.getElementById('compareBackdrop').onclick = closeCompare;
+    document.getElementById('compareClose').onclick = closeCompare;
+    overlay.querySelectorAll('[data-rm]').forEach(b => {
+      b.onclick = () => { toggleCompare(b.getAttribute('data-rm')); renderCompare(); };
+    });
+  }
+
+  function compareTable(cars) {
+    const rows = [];
+    const header = `<th class="p-2 text-left text-xs text-ink-400 font-semibold sticky left-0 surface">항목</th>` +
+      cars.map(c => `<th class="p-2 text-left align-top min-w-[120px]">
+        <div class="font-bold text-ink-900 text-sm">${c.model}</div>
+        <div class="text-xs text-ink-400">${c.trim}</div>
+        <button data-rm="${c.id}" class="mt-1 text-xs text-rose-500 font-semibold">빼기</button>
+      </th>`).join('');
+
+    const specRow = (label, fn) => `
+      <tr class="border-t border-ink-100">
+        <td class="p-2 text-xs text-ink-500 sticky left-0 surface font-semibold">${label}</td>
+        ${cars.map(c => `<td class="p-2 text-sm text-ink-800 tabular-nums">${fn(c)}</td>`).join('')}
+      </tr>`;
+
+    rows.push(specRow('정가', c => `${fmtMan(c.price)}만`));
+    rows.push(specRow('보조금', c => { const s = subsidyFor(c); return s.isEv ? `<span class="text-emerald-600">−${fmtMan(s.sum)}만</span>` : '–'; }));
+    rows.push(specRow('실구매가', c => { const s = subsidyFor(c); return `<span class="font-bold text-brand">${fmtMan(s.realPrice)}만</span>`; }));
+    rows.push(specRow('유종', c => c.fuel));
+    rows.push(specRow('안전도', c => { const g = kncap(c); return g ? `<span class="text-amber-600">${stars(g)}</span>` : '-'; }));
+    rows.push(specRow('연비(공인/실)', c => `${c.efficiency} / ${realEff(c)} ${c.fuel==='EV'?'km/kWh':'km/L'}`));
+    rows.push(specRow('월 유지비', c => `<span class="text-brand font-bold">${fmtMan(won2man(costBreakdown(c, state.km).monthly))}만</span>`));
+    rows.push(specRow('월 총지출(할부+유지)', c => `${fmtMan(won2man(monthlyCarSpend(c).total))}만`));
+    rows.push(specRow('월 부담률', c => { const s = spendSignal(c); return s.lvl==='na' ? '-' : `<span style="color:${s.dot}" class="font-bold">${s.ratio}%</span>`; }));
+    rows.push(specRow('5년 TCO', c => `<span class="font-bold text-ink-900">${fmtMan(won2man(tco5(c).total))}만</span>`));
+    rows.push(specRow('5년 잔존가치', c => `${fmtMan(won2man(tco5(c).residual))}만`));
+    rows.push(specRow('승차정원', c => `${c.seats}인`));
+    rows.push(specRow('전장', c => c.lengthMm ? `${fmtMan(c.lengthMm)}mm` : '-'));
+    rows.push(specRow('기계식 주차', c => mechParkOk(c) ? '<span class="text-emerald-600">가능</span>' : '<span class="text-rose-500">어려움</span>'));
+    rows.push(specRow('트렁크', c => c.trunkL != null ? `${c.trunkL}L` : '-'));
+    rows.push(specRow('보유 옵션수', c => `${carOptionCount(c)}/${OPTION_META.length}`));
+
+    GROUP_ORDER.forEach(g => {
+      const meta = GROUP_META[g] || { label: g, icon: '' };
+      const keys = OPTION_META.filter(o => o.group === g).map(o => o.key);
+      rows.push(specRow(`${meta.icon} ${meta.label}`, c => {
+        const n = keys.filter(k => c.options && c.options[k]).length;
+        return `${n}/${keys.length}`;
+      }));
+    });
+
+    return `<div class="overflow-x-auto"><table class="w-full border-collapse">
+      <thead><tr>${header}</tr></thead>
+      <tbody>${rows.join('')}</tbody>
+    </table></div>`;
+  }
+
+  function closeCompare() {
+    route = 'results';
+    const o = document.getElementById('compareOverlay');
+    if (o) o.remove();
+  }
+
+  // ---------- 프로필 (뷰 5) ----------
+  function uid() { return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+  function currentScenario(name) {
+    return {
+      id: uid(), name: name,
+      salary: state.salary, km: state.km, risk: state.risk, preset: state.preset,
+      fuelPref: [...state.fuelPref], region: state.region, homeCharge: state.homeCharge,
+      commuteKm: state.commuteKm, familyCount: state.familyCount
+    };
+  }
+  function applyProfile(p) {
+    state.salary = p.salary; state.km = p.km; state.risk = p.risk; state.preset = p.preset;
+    state.fuelPref = [...(p.fuelPref || [])];
+    state.region = REGIONS.some(r => r.code === p.region) ? p.region : REGIONS[0].code;
+    state.homeCharge = !!p.homeCharge;
+    if (p.commuteKm != null) state.commuteKm = p.commuteKm;
+    if (p.familyCount != null) state.familyCount = p.familyCount;
+    state.activeProfileId = p.id;
+    detailKm = state.km;
+  }
+
+  function renderProfiles() {
+    let overlay = document.getElementById('profilesOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'profilesOverlay';
+      document.body.appendChild(overlay);
+    }
+    overlay.className = 'fixed inset-0 z-40 flex items-end sm:items-center justify-center';
+
+    const list = state.profiles.length
+      ? state.profiles.map(p => `
+        <div class="surface-sub rounded-2xl p-4 ${state.activeProfileId===p.id?'ring-1 ring-brand':''}">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <div class="font-bold text-ink-900 truncate">${p.name} ${state.activeProfileId===p.id?'<span class="text-xs text-brand">· 적용중</span>':''}</div>
+              <div class="text-xs text-ink-500 mt-0.5">연봉 ${fmtMan(p.salary)}만 · ${fmtMan(p.km)}km · ${regionName(p.region)} · ${p.homeCharge?'충전 가능':'충전 어려움'}</div>
+              <div class="text-xs text-ink-400">성향 ${p.risk} · ${(PRESETS.find(x=>x.key===p.preset)||{}).label||p.preset} · 연료 ${(p.fuelPref&&p.fuelPref.length)?p.fuelPref.join('/'):'전체'}</div>
+            </div>
+            <div class="flex flex-col gap-1 shrink-0">
+              <button data-apply="${p.id}" class="text-xs font-bold text-white bg-brand rounded-lg px-3 py-1.5">전환</button>
+              <button data-del="${p.id}" class="text-xs font-semibold text-rose-500">삭제</button>
+            </div>
+          </div>
+        </div>`).join('')
+      : `<div class="py-12 text-center">
+           <div class="text-4xl mb-3">📁</div>
+           <p class="font-bold text-ink-700">저장된 시나리오가 없어요</p>
+           <p class="text-sm text-ink-400 mt-1">지금 입력값을 이름 붙여 저장하면 나중에 한 번에 불러올 수 있어요.</p>
+         </div>`;
+
+    overlay.innerHTML = `
+      <div id="profilesBackdrop" class="absolute inset-0 bg-ink-900/40"></div>
+      <div class="relative w-full sm:max-w-lg surface rounded-t-3xl sm:rounded-3xl sheet-shadow sm:modal-shadow max-h-[92vh] overflow-y-auto fade-in">
+        <div class="sticky top-0 surface px-5 pt-4 pb-3 border-b border-ink-100 flex items-center justify-between z-10">
+          <div class="font-bold text-lg text-ink-900">내 시나리오</div>
+          <button id="profilesClose" class="text-ink-400 text-2xl leading-none px-1">×</button>
+        </div>
+        <div class="px-5 py-4 space-y-4">
+          <div class="surface-sub rounded-2xl p-4">
+            <div class="text-sm font-semibold text-ink-700 mb-2">현재 입력값을 저장</div>
+            <div class="text-xs text-ink-500 mb-3">연봉 ${fmtMan(state.salary)}만 · ${fmtMan(state.km)}km · ${regionName(state.region)} · ${state.homeCharge?'충전 가능':'충전 어려움'} · ${(PRESETS.find(x=>x.key===state.preset)||{}).label}</div>
+            <div class="flex gap-2">
+              <input id="profileName" type="text" placeholder="예: 출퇴근용 / 주말 차박" class="flex-1 surface rounded-xl border border-ink-200 px-3 py-2.5 text-sm" />
+              <button id="profileSave" class="bg-brand hover:bg-brand-hover text-white font-bold rounded-xl px-4 text-sm">저장</button>
+            </div>
+          </div>
+          <div class="space-y-2">${list}</div>
+        </div>
+      </div>`;
+
+    document.getElementById('profilesBackdrop').onclick = closeProfiles;
+    document.getElementById('profilesClose').onclick = closeProfiles;
+    const saveBtn = document.getElementById('profileSave');
+    saveBtn.onclick = () => {
+      const inp = document.getElementById('profileName');
+      const name = (inp.value || '').trim() || `시나리오 ${state.profiles.length + 1}`;
+      const sc = currentScenario(name);
+      state.profiles.push(sc);
+      state.activeProfileId = sc.id;
+      saveState();
+      toast(`"${name}" 저장했어요`);
+      renderProfiles();
+    };
+    overlay.querySelectorAll('[data-apply]').forEach(b => b.onclick = () => {
+      const p = state.profiles.find(x => x.id === b.getAttribute('data-apply'));
+      if (p) { applyProfile(p); saveState(); toast(`"${p.name}" 으로 전환했어요`); closeProfiles(); render(); }
+    });
+    overlay.querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
+      const id = b.getAttribute('data-del');
+      state.profiles = state.profiles.filter(x => x.id !== id);
+      if (state.activeProfileId === id) state.activeProfileId = null;
+      saveState();
+      renderProfiles();
+    });
+  }
+  function closeProfiles() {
+    route = state.submitted ? (route === 'profiles' ? 'input' : route) : 'input';
+    if (route === 'profiles') route = 'input';
+    const o = document.getElementById('profilesOverlay');
+    if (o) o.remove();
+    render();
+  }
+
+  // ---------- 데이터 동기화 (뷰 6) ----------
+  function mockSubsidyTable() {
+    return REGIONS.map(r => ({ region: r.name, local: r.evLocalManwon, national: (SUBSIDY.ev||{}).nationalMaxManwon }));
+  }
+  function mockFuelPrices() {
+    const m = COST.fuelPriceWon || { 가솔린: 1650, 디젤: 1550, LPG: 1050, EV: 320 };
+    return Object.keys(m).map(k => ({ fuel: k, won: m[k] }));
+  }
+  function pushSync(source, count) {
+    const entry = { ts: Date.now(), source, count };
+    state.syncLog.unshift(entry);
+    if (state.syncLog.length > 50) state.syncLog.length = 50;
+    saveState();
+    return entry;
+  }
+
+  function renderSync() {
+    let overlay = document.getElementById('syncOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'syncOverlay';
+      document.body.appendChild(overlay);
+    }
+    overlay.className = 'fixed inset-0 z-40 flex items-end sm:items-center justify-center';
+
+    const logRows = state.syncLog.length
+      ? state.syncLog.map(e => `
+        <div class="flex items-center justify-between py-2 border-b border-ink-100 text-sm">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full ${e.source.includes('보조금') ? 'bg-emerald-500' : 'bg-brand'}"></span>
+            <span class="text-ink-700 font-semibold">${e.source}</span>
+          </div>
+          <div class="text-right">
+            <div class="text-ink-800 font-semibold tabular-nums">${e.count}건</div>
+            <div class="text-[11px] text-ink-400 tabular-nums">${fmtTs(e.ts)}</div>
+          </div>
+        </div>`).join('')
+      : `<div class="py-10 text-center text-sm text-ink-400">아직 동기화 기록이 없어요. 위 버튼으로 동기화해 보세요.</div>`;
+
+    overlay.innerHTML = `
+      <div id="syncBackdrop" class="absolute inset-0 bg-ink-900/40"></div>
+      <div class="relative w-full sm:max-w-lg surface rounded-t-3xl sm:rounded-3xl sheet-shadow sm:modal-shadow max-h-[92vh] overflow-y-auto fade-in">
+        <div class="sticky top-0 surface px-5 pt-4 pb-3 border-b border-ink-100 flex items-center justify-between z-10">
+          <div class="font-bold text-lg text-ink-900">데이터 동기화</div>
+          <button id="syncClose" class="text-ink-400 text-2xl leading-none px-1">×</button>
+        </div>
+        <div class="px-5 py-4 space-y-4">
+          <p class="text-xs text-ink-400">외부 공개 데이터를 불러와 보조금·유가 기준을 최신화해요. 데모에서는 오프라인 mock 으로 동작해요. <span class="text-ink-300">[추정/mock]</span></p>
+          <div class="grid grid-cols-1 gap-2">
+            <button id="syncSubsidy" class="w-full bg-brand hover:bg-brand-hover text-white font-bold text-sm flex items-center justify-center gap-2">🌿 보조금 테이블 동기화 <span class="text-xs font-normal opacity-80">(무공해차 누리집 mock)</span></button>
+            <button id="syncFuel" class="w-full surface-sub text-ink-800 font-bold text-sm flex items-center justify-center gap-2">⛽ 유가 동기화 <span class="text-xs font-normal text-ink-400">(오피넷 mock)</span></button>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div class="surface-sub rounded-xl p-3">
+              <div class="text-ink-400">보조금 최근 동기화</div>
+              <div class="font-semibold text-ink-700 tabular-nums">${state.syncedSubsidyAt ? fmtTs(state.syncedSubsidyAt) : '없음'}</div>
+            </div>
+            <div class="surface-sub rounded-xl p-3">
+              <div class="text-ink-400">유가 최근 동기화</div>
+              <div class="font-semibold text-ink-700 tabular-nums">${state.syncedFuelAt ? fmtTs(state.syncedFuelAt) : '없음'}</div>
+            </div>
+          </div>
+          <div>
+            <div class="text-sm font-bold text-ink-700 mb-1">동기화 로그</div>
+            <div id="syncLogBox">${logRows}</div>
+          </div>
+        </div>
+      </div>`;
+
+    document.getElementById('syncBackdrop').onclick = closeSync;
+    document.getElementById('syncClose').onclick = closeSync;
+    document.getElementById('syncSubsidy').onclick = () => {
+      const data = mockSubsidyTable();
+      state.syncedSubsidyAt = Date.now();
+      pushSync('보조금 테이블 (무공해차 누리집 mock)', data.length);
+      toast(`보조금 테이블 ${data.length}건 동기화 완료`);
+      renderSync();
+    };
+    document.getElementById('syncFuel').onclick = () => {
+      const data = mockFuelPrices();
+      state.syncedFuelAt = Date.now();
+      pushSync('유가 (오피넷 mock)', data.length);
+      toast(`유가 ${data.length}건 동기화 완료`);
+      renderSync();
+    };
+  }
+  function closeSync() {
+    route = state.submitted ? 'results' : 'input';
+    const o = document.getElementById('syncOverlay');
+    if (o) o.remove();
+    render();
+  }
+
+  // ---------- 보조금 안내 (뷰 7) ----------
+  function renderSubsidyGuide() {
+    let overlay = document.getElementById('subsidyOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'subsidyOverlay';
+      document.body.appendChild(overlay);
+    }
+    overlay.className = 'fixed inset-0 z-40 flex items-end sm:items-center justify-center';
+
+    const ev = SUBSIDY.ev || {};
+    const regionRows = REGIONS.map(r => {
+      const stock = SUBSIDY_STOCK[r.code];
+      const stockTxt = stock != null ? ` <span class="text-[11px] ${stock<=0.2?'text-rose-500':(stock<=0.4?'text-amber-600':'text-emerald-600')}">잔여 ${Math.round(stock*100)}% [mock]</span>` : '';
+      return `
+      <tr class="border-t border-ink-100 ${r.code===state.region?'bg-brand-light':''}">
+        <td class="p-2 text-sm ${r.code===state.region?'font-bold text-brand':'text-ink-700'}">${r.name}${r.code===state.region?' 📍':''}${stockTxt}</td>
+        <td class="p-2 text-sm text-right tabular-nums text-ink-700">${fmtMan(r.evLocalManwon)}만</td>
+      </tr>`;
+    }).join('');
+
+    overlay.innerHTML = `
+      <div id="subsidyBackdrop" class="absolute inset-0 bg-ink-900/40"></div>
+      <div class="relative w-full sm:max-w-lg surface rounded-t-3xl sm:rounded-3xl sheet-shadow sm:modal-shadow max-h-[92vh] overflow-y-auto fade-in">
+        <div class="sticky top-0 surface px-5 pt-4 pb-3 border-b border-ink-100 flex items-center justify-between z-10">
+          <div class="font-bold text-lg text-ink-900">전기차 보조금 안내</div>
+          <button id="subsidyClose" class="text-ink-400 text-2xl leading-none px-1">×</button>
+        </div>
+        <div class="px-5 py-4 space-y-4">
+          <section class="surface-sub rounded-2xl p-4 text-sm space-y-2">
+            <div class="font-bold text-ink-800">국고 보조금 계산 기준 <span class="text-xs font-normal text-ink-400">[추정 2025]</span></div>
+            <div class="flex justify-between"><span class="text-ink-500">차량가 &lt; ${fmtMan(ev.fullPriceCapManwon)}만</span><span class="font-semibold text-emerald-600">국고 전액 ${fmtMan(ev.nationalMaxManwon)}만</span></div>
+            <div class="flex justify-between"><span class="text-ink-500">${fmtMan(ev.fullPriceCapManwon)}만 ~ ${fmtMan(ev.halfPriceCapManwon)}만</span><span class="font-semibold text-amber-600">국고 50% (${fmtMan(Math.round(ev.nationalMaxManwon*0.5))}만)</span></div>
+            <div class="flex justify-between"><span class="text-ink-500">${fmtMan(ev.halfPriceCapManwon)}만 이상</span><span class="font-semibold text-rose-500">국고 미지급</span></div>
+          </section>
+          <section>
+            <div class="text-sm font-bold text-ink-700 mb-1">지자체 보조금 + 잔여물량 (시·도별) <span class="text-xs font-normal text-ink-400">[추정/mock 2025]</span></div>
+            <div class="surface rounded-2xl border border-ink-100 overflow-hidden">
+              <table class="w-full">
+                <thead><tr class="surface-sub"><th class="p-2 text-left text-xs text-ink-400">지역 · 잔여물량</th><th class="p-2 text-right text-xs text-ink-400">지자체 보조금</th></tr></thead>
+                <tbody>${regionRows}</tbody>
+              </table>
+            </div>
+          </section>
+          <section class="surface-sub rounded-2xl p-4 text-sm space-y-1">
+            <div class="font-bold text-ink-800 mb-1">친환경차 세제 감면 한도 <span class="text-xs font-normal text-ink-400">[추정]</span></div>
+            <div class="flex justify-between"><span class="text-ink-500">전기차(EV)</span><span class="tabular-nums text-ink-700">개소세 ${fmtMan((SUBSIDY.taxBenefit.EV||{}).gaesoseManwon)}만 · 취득세 ${fmtMan((SUBSIDY.taxBenefit.EV||{}).chwideukManwon)}만</span></div>
+            <div class="flex justify-between"><span class="text-ink-500">하이브리드</span><span class="tabular-nums text-ink-700">개소세 ${fmtMan((SUBSIDY.taxBenefit['하이브리드']||{}).gaesoseManwon)}만 · 취득세 ${fmtMan((SUBSIDY.taxBenefit['하이브리드']||{}).chwideukManwon)}만</span></div>
+          </section>
+          <p class="text-xs text-ink-400">보조금·세제·유지비는 근사치예요. 실제는 지자체·제조사 확인이 필요해요.</p>
+        </div>
+      </div>`;
+
+    document.getElementById('subsidyBackdrop').onclick = closeSubsidyGuide;
+    document.getElementById('subsidyClose').onclick = closeSubsidyGuide;
+  }
+  function closeSubsidyGuide() {
+    route = 'results';
+    const o = document.getElementById('subsidyOverlay');
+    if (o) o.remove();
+    render();
+  }
+
+  // ---------- D2 라이프스타일 역산 마법사 (뷰 8) ----------
+  // §7.2 역산 규칙 → 권장 유종/차급/필수 옵션 도출 + 이유
+  function deriveRecommendation() {
+    const cm = state.commuteKm, fam = state.familyCount, hc = state.homeCharge;
+    const fuels = [];      // 권장(선호) 유종
+    const segments = [];   // 권장 차급
+    const reqOpts = [];    // 필수(가점→필수로 승격) 옵션
+    const reasons = [];
+
+    // 출퇴근 거리
+    if (cm >= 50) {
+      fuels.push('하이브리드', '디젤', 'EV');
+      reqOpts.push('scc', 'lfa');
+      reasons.push(`출퇴근 ${cm}km/일은 장거리예요. 연료비가 덜 드는 <b>하이브리드·디젤·EV</b>와 피로를 줄이는 <b>스마트 크루즈·차로 유지</b>를 권해요.`);
+    } else if (cm < 15) {
+      fuels.push('가솔린', 'EV');
+      reasons.push(`출퇴근 ${cm}km/일은 단거리예요. <b>가솔린·도심형 EV</b>가 잘 맞고, 잦은 단거리엔 디젤은 권하지 않아요.`);
+    } else {
+      fuels.push('가솔린', '하이브리드', 'EV');
+      reasons.push(`출퇴근 ${cm}km/일은 보통 수준이라 <b>가솔린·하이브리드·EV</b> 모두 무난해요.`);
+    }
+
+    // 가족 수
+    if (fam >= 4) {
+      ['중형', '준대형', '대형', '중형SUV', '대형SUV'].forEach(s => segments.push(s));
+      reqOpts.push('rearVentSeat');
+      reasons.push(`${fam}인 가족이면 <b>중형 이상·SUV</b>가 편하고, 뒷자리 승객을 위한 <b>2열 통풍</b>을 권해요.`);
+    } else {
+      ['경형', '소형SUV', '준중형', '중형'].forEach(s => segments.push(s));
+      reasons.push(`${fam}인 정도면 <b>경형~중형</b>까지 폭넓게 골라도 돼요.`);
+    }
+
+    // 충전 환경
+    if (hc) {
+      reasons.push(`집·회사 충전이 가능하니 <b>전기차</b>를 우선 고려하면 유지비를 크게 줄일 수 있어요.`);
+    } else {
+      const i = fuels.indexOf('EV');
+      if (i >= 0 && fuels.length > 1) fuels.splice(i, 1);
+      reasons.push(`충전이 어려운 환경이라 <b>전기차는 추천에서 제외</b>했어요. 충전 인프라가 갖춰지면 다시 고려해 보세요.`);
+    }
+
+    // 실제 차급은 데이터에 존재하는 것만
+    const validSegs = [...new Set(segments)].filter(s => allSegments().includes(s));
+    const validFuels = [...new Set(fuels)].filter(f => allFuels().includes(f));
+    const validOpts = [...new Set(reqOpts)].filter(k => OPTION_BY_KEY[k]);
+    return { fuels: validFuels, segments: validSegs, reqOpts: validOpts, reasons };
+  }
+
+  function renderWizard() {
+    const rec = deriveRecommendation();
+    let overlay = document.getElementById('wizardOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'wizardOverlay';
+      document.body.appendChild(overlay);
+    }
+    overlay.className = 'fixed inset-0 z-50 flex items-end sm:items-center justify-center';
+
+    const optLabels = rec.reqOpts.map(k => `<span class="text-xs px-2 py-0.5 rounded-full bg-brand-light text-brand font-semibold">${optIcon(k)} ${OPTION_BY_KEY[k].label}</span>`).join(' ') || '<span class="text-xs text-ink-400">필수 옵션 없음</span>';
+    const fuelLabels = rec.fuels.map(f => `<span class="text-xs px-2 py-0.5 rounded-full surface-sub text-ink-700 font-semibold">${f}</span>`).join(' ') || '<span class="text-xs text-ink-400">제한 없음</span>';
+    const segLabels = rec.segments.map(s => `<span class="text-xs px-2 py-0.5 rounded-full surface-sub text-ink-700 font-semibold">${s}</span>`).join(' ') || '<span class="text-xs text-ink-400">제한 없음</span>';
+
+    overlay.innerHTML = `
+      <div id="wizardBackdrop" class="absolute inset-0 bg-ink-900/40"></div>
+      <div class="relative w-full sm:max-w-lg surface rounded-t-3xl sm:rounded-3xl sheet-shadow sm:modal-shadow max-h-[92vh] overflow-y-auto fade-in">
+        <div class="sticky top-0 surface px-5 pt-4 pb-3 border-b border-ink-100 flex items-center justify-between z-10">
+          <div class="font-bold text-lg text-ink-900">🪄 라이프스타일 역산</div>
+          <button id="wizardClose" class="text-ink-400 text-2xl leading-none px-1">×</button>
+        </div>
+        <div class="px-5 py-4 space-y-5">
+          <!-- 입력 조정 -->
+          <section class="space-y-4">
+            <div>
+              <div class="flex items-baseline justify-between mb-1">
+                <label class="text-sm font-semibold text-ink-700">출퇴근 거리 (km/일 왕복)</label>
+                <span class="text-brand font-bold tabular-nums">${fmtMan(state.commuteKm)} km</span>
+              </div>
+              <input id="wizCommute" type="range" min="0" max="120" step="5" value="${state.commuteKm}" class="w-full" />
+            </div>
+            <div>
+              <div class="flex items-baseline justify-between mb-1">
+                <label class="text-sm font-semibold text-ink-700">가족(탑승) 수</label>
+                <span class="text-brand font-bold tabular-nums">${state.familyCount} 명</span>
+              </div>
+              <input id="wizFamily" type="range" min="1" max="7" step="1" value="${state.familyCount}" class="w-full" />
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-ink-700 mb-2">자택·직장 충전</label>
+              <div class="grid grid-cols-2 gap-2">
+                ${[{v:true,t:'가능해요'},{v:false,t:'어려워요'}].map(o => `
+                  <button data-wizcharge="${o.v}" class="rounded-xl border px-3 py-2.5 text-center text-sm font-bold ${state.homeCharge===o.v ? 'border-brand bg-brand-light text-brand' : 'border-ink-200 surface text-ink-700'}">${o.t}</button>`).join('')}
+              </div>
+            </div>
+          </section>
+
+          <!-- 권장 결과 -->
+          <section class="rounded-2xl p-4 border border-brand/30 bg-brand-light space-y-3">
+            <div class="font-bold text-brand">이렇게 권해 드려요</div>
+            <div class="space-y-2 text-sm">
+              <div><span class="text-ink-500 text-xs">권장 유종</span><div class="mt-1 flex flex-wrap gap-1.5">${fuelLabels}</div></div>
+              <div><span class="text-ink-500 text-xs">권장 차급</span><div class="mt-1 flex flex-wrap gap-1.5">${segLabels}</div></div>
+              <div><span class="text-ink-500 text-xs">필수 옵션</span><div class="mt-1 flex flex-wrap gap-1.5">${optLabels}</div></div>
+            </div>
+          </section>
+
+          <!-- 이유 설명 -->
+          <section>
+            <div class="text-sm font-bold text-ink-700 mb-2">왜 이렇게 권하나요?</div>
+            <ul class="space-y-2 text-sm text-ink-600 list-disc pl-5">
+              ${rec.reasons.map(r => `<li>${r}</li>`).join('')}
+            </ul>
+          </section>
+
+          <p class="text-xs text-ink-400">역산 규칙은 도메인 설계(§7.2) 기반의 <b>근사 가이드</b>예요. 적용하면 유종·차급·필수 옵션 필터가 한 번에 설정돼요.</p>
+        </div>
+        <div class="sticky bottom-0 surface border-t border-ink-100 px-5 py-3 grid grid-cols-2 gap-2">
+          <button id="wizardCancel" class="w-full surface-sub text-ink-700 font-bold">그냥 둘러볼게요</button>
+          <button id="wizardApply" class="w-full bg-brand hover:bg-brand-hover text-white font-bold">이대로 적용</button>
+        </div>
+      </div>`;
+
+    const close = () => { const o = document.getElementById('wizardOverlay'); if (o) o.remove(); };
+    document.getElementById('wizardBackdrop').onclick = close;
+    document.getElementById('wizardClose').onclick = close;
+    document.getElementById('wizardCancel').onclick = close;
+    document.getElementById('wizCommute').oninput = (e) => { state.commuteKm = parseInt(e.target.value, 10); saveState(); renderWizard(); };
+    document.getElementById('wizFamily').oninput = (e) => { state.familyCount = parseInt(e.target.value, 10); saveState(); renderWizard(); };
+    overlay.querySelectorAll('[data-wizcharge]').forEach(b => b.onclick = () => {
+      state.homeCharge = b.getAttribute('data-wizcharge') === 'true'; saveState(); renderWizard();
+    });
+    document.getElementById('wizardApply').onclick = () => {
+      // 필터 적용: 유종 패싯, 세그먼트 패싯, 필수 옵션
+      state.facetFuel = [...rec.fuels];
+      state.facetSegment = [...rec.segments];
+      rec.reqOpts.forEach(k => { if (!state.requiredOptions.includes(k)) state.requiredOptions.push(k); });
+      state.submitted = true;
+      route = 'results';
+      saveState();
+      close();
+      render();
+      window.scrollTo(0, 0);
+      toast('역산 추천을 필터에 적용했어요');
+    };
+  }
+
+  // ---------- D28 내 조건 공유 카드 (canvas) ----------
+  function buildShareCardCanvas() {
+    const results = getResults();
+    const top = results[0];
+    const W = 800, H = 1000;
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+
+    // 배경
+    ctx.fillStyle = '#F7F8FA'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#2560DE'; ctx.fillRect(0, 0, W, 200);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 44px Pretendard, sans-serif';
+    ctx.fillText('🚗 내 연봉 맞춤 차량', 48, 96);
+    ctx.font = '600 26px Pretendard, sans-serif';
+    ctx.fillText('Car Advisor v3 · 라이프스타일 역산', 48, 144);
+
+    // 입력 요약 카드
+    let y = 250;
+    const line = (label, value, color) => {
+      ctx.fillStyle = '#8A93A3'; ctx.font = '600 24px Pretendard, sans-serif';
+      ctx.fillText(label, 48, y);
+      ctx.fillStyle = color || '#161D2B'; ctx.font = 'bold 30px Pretendard, sans-serif';
+      ctx.textAlign = 'right'; ctx.fillText(value, W - 48, y); ctx.textAlign = 'left';
+      y += 64;
+    };
+    line('연봉', `${fmtMan(state.salary)}만원`);
+    line('지역 · 충전', `${regionName(state.region)} · ${state.homeCharge ? '충전 가능' : '충전 어려움'}`);
+    line('출퇴근 · 가족', `${fmtMan(state.commuteKm)}km/일 · ${state.familyCount}명`);
+    line('우선순위', `${(PRESETS.find(x => x.key === state.preset) || {}).label || state.preset}`);
+
+    // 구분선
+    y += 8;
+    ctx.strokeStyle = '#E1E5EC'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(48, y); ctx.lineTo(W - 48, y); ctx.stroke();
+    y += 56;
+
+    // Top1 추천
+    ctx.fillStyle = '#2560DE'; ctx.font = 'bold 28px Pretendard, sans-serif';
+    ctx.fillText('🏆 추천 1위', 48, y); y += 56;
+    if (top) {
+      const c = top.car;
+      const sub = top.sub;
+      ctx.fillStyle = '#161D2B'; ctx.font = 'bold 40px Pretendard, sans-serif';
+      ctx.fillText(`${c.brand} ${c.model}`, 48, y); y += 50;
+      ctx.fillStyle = '#4A5567'; ctx.font = '500 26px Pretendard, sans-serif';
+      ctx.fillText(`${c.trim} · ${c.segment} · ${c.fuel}`, 48, y); y += 58;
+
+      const sg = spendSignal(c);
+      line('실구매가', `${fmtMan(sub.realPrice)}만원` + (sub.isEv ? ' (보조금 반영)' : ''), '#2560DE');
+      line('월 유지비', `${fmtMan(won2man(top.cost.monthly))}만원`);
+      line('5년 TCO', `${fmtMan(won2man(top.tco.total))}만원`);
+      line('월 부담률', sg.lvl === 'na' ? '-' : `${sg.ratio}% (${sg.label})`, sg.dot);
+    } else {
+      ctx.fillStyle = '#8A93A3'; ctx.font = '500 26px Pretendard, sans-serif';
+      ctx.fillText('조건에 맞는 차가 없어요. 필터를 줄여보세요.', 48, y);
+      y += 60;
+    }
+
+    // 푸터 면책
+    ctx.fillStyle = '#8A93A3'; ctx.font = '400 20px Pretendard, sans-serif';
+    ctx.fillText('모든 수치는 근사치([추정]/[mock]) · 참고용', 48, H - 48);
+
+    return cv;
+  }
+
+  function renderShareCard() {
+    let overlay = document.getElementById('shareCardOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'shareCardOverlay';
+      document.body.appendChild(overlay);
+    }
+    overlay.className = 'fixed inset-0 z-50 flex items-end sm:items-center justify-center';
+    overlay.innerHTML = `
+      <div id="shareCardBackdrop" class="absolute inset-0 bg-ink-900/40"></div>
+      <div class="relative w-full sm:max-w-md surface rounded-t-3xl sm:rounded-3xl sheet-shadow sm:modal-shadow max-h-[92vh] overflow-y-auto fade-in">
+        <div class="sticky top-0 surface px-5 pt-4 pb-3 border-b border-ink-100 flex items-center justify-between z-10">
+          <div class="font-bold text-lg text-ink-900">🖼️ 내 조건 공유 카드</div>
+          <button id="shareCardClose" class="text-ink-400 text-2xl leading-none px-1">×</button>
+        </div>
+        <div class="px-5 py-4 space-y-4">
+          <div id="shareCardHost" class="rounded-2xl overflow-hidden border border-ink-100"></div>
+          <p class="text-xs text-ink-400 text-center">현재 입력·추천 1위를 이미지로 만들었어요. 저장해서 친구·가족에게 공유해 보세요.</p>
+        </div>
+        <div class="sticky bottom-0 surface border-t border-ink-100 px-5 py-3">
+          <button id="shareCardDownload" class="w-full bg-brand hover:bg-brand-hover text-white font-bold">PNG 이미지 저장</button>
+        </div>
+      </div>`;
+
+    const close = () => { const o = document.getElementById('shareCardOverlay'); if (o) o.remove(); };
+    document.getElementById('shareCardBackdrop').onclick = close;
+    document.getElementById('shareCardClose').onclick = close;
+
+    let canvas;
+    try {
+      canvas = buildShareCardCanvas();
+      canvas.style.width = '100%';
+      canvas.style.display = 'block';
+      const host = document.getElementById('shareCardHost');
+      if (host) host.appendChild(canvas);
+    } catch (e) {
+      const host = document.getElementById('shareCardHost');
+      if (host) host.innerHTML = '<div class="p-6 text-center text-sm text-ink-400">카드 생성에 실패했어요.</div>';
+    }
+    document.getElementById('shareCardDownload').onclick = () => {
+      try {
+        const c = canvas || buildShareCardCanvas();
+        const url = c.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = url; a.download = 'car-advisor-내조건.png';
+        document.body.appendChild(a); a.click(); a.remove();
+        toast('이미지를 저장했어요');
+      } catch (e) { toast('저장에 실패했어요', 'error'); }
+    };
+  }
+
+  // ===== 이벤트 바인딩 =====
+  function bindEvents() {
+    if (route === 'input') bindInput();
+    else bindResults();
+  }
+
+  function bindInput() {
+    const salary = document.getElementById('salaryInput');
+    if (salary) salary.oninput = (e) => {
+      state.salary = Math.max(0, parseInt(e.target.value || '0', 10) || 0);
+      saveState();
+    };
+    const km = document.getElementById('kmRange');
+    if (km) km.oninput = (e) => { state.km = parseInt(e.target.value, 10); detailKm = state.km; saveState(); render(); };
+
+    const commute = document.getElementById('commuteInput');
+    if (commute) commute.oninput = (e) => { state.commuteKm = Math.max(0, parseInt(e.target.value || '0', 10) || 0); saveState(); };
+    const family = document.getElementById('familyInput');
+    if (family) family.oninput = (e) => { state.familyCount = Math.max(1, Math.min(9, parseInt(e.target.value || '1', 10) || 1)); saveState(); };
+
+    const region = document.getElementById('regionSelect');
+    if (region) region.onchange = (e) => { state.region = e.target.value; saveState(); render(); };
+
+    const wiz = document.getElementById('wizardBtn');
+    if (wiz) wiz.onclick = () => {
+      // 입력 반영 후 마법사 오픈
+      if (salary) state.salary = Math.max(0, parseInt(salary.value || '0', 10) || 0);
+      if (commute) state.commuteKm = Math.max(0, parseInt(commute.value || '0', 10) || 0);
+      if (family) state.familyCount = Math.max(1, Math.min(9, parseInt(family.value || '1', 10) || 1));
+      saveState();
+      renderWizard();
+    };
+
+    document.querySelectorAll('.charge-btn').forEach(b => b.onclick = () => {
+      state.homeCharge = b.getAttribute('data-charge') === 'true'; saveState(); render();
+    });
+    document.querySelectorAll('.risk-btn').forEach(b => b.onclick = () => {
+      state.risk = parseFloat(b.getAttribute('data-risk')); saveState(); render();
+    });
+    document.querySelectorAll('.preset-btn').forEach(b => b.onclick = () => {
+      state.preset = b.getAttribute('data-preset'); saveState(); render();
+    });
+    document.querySelectorAll('.fuel-btn').forEach(b => b.onclick = () => {
+      const f = b.getAttribute('data-fuel');
+      const i = state.fuelPref.indexOf(f);
+      if (i >= 0) state.fuelPref.splice(i, 1); else state.fuelPref.push(f);
+      saveState(); render();
+    });
+
+    const profilesBtn = document.getElementById('profilesBtn');
+    if (profilesBtn) profilesBtn.onclick = () => { renderProfiles(); };
+    const syncBtn = document.getElementById('syncBtn');
+    if (syncBtn) syncBtn.onclick = () => { renderSync(); };
+
+    const find = document.getElementById('findBtn');
+    if (find) find.onclick = () => {
+      if (salary) state.salary = Math.max(0, parseInt(salary.value || '0', 10) || 0);
+      if (commute) state.commuteKm = Math.max(0, parseInt(commute.value || '0', 10) || 0);
+      if (family) state.familyCount = Math.max(1, Math.min(9, parseInt(family.value || '1', 10) || 1));
+      state.submitted = true;
+      route = 'results';
+      saveState();
+      render();
+      window.scrollTo(0, 0);
+    };
+  }
+
+  function bindResults() {
+    const back = document.getElementById('backBtn');
+    if (back) back.onclick = () => { route = 'input'; render(); window.scrollTo(0,0); };
+
+    const cmpOpen = document.getElementById('compareOpenBtn');
+    if (cmpOpen) cmpOpen.onclick = () => { renderCompare(); };
+
+    const guideBtn = document.getElementById('subsidyGuideBtn');
+    if (guideBtn) guideBtn.onclick = () => { renderSubsidyGuide(); };
+
+    const shareCard = document.getElementById('shareCardBtn');
+    if (shareCard) shareCard.onclick = () => { renderShareCard(); };
+    const shareLinkBtn = document.getElementById('shareLinkBtn');
+    if (shareLinkBtn) shareLinkBtn.onclick = () => { shareLink(); };
+
+    const sort = document.getElementById('sortSelect');
+    if (sort) sort.onchange = (e) => { state.sort = e.target.value; saveState(); render(); };
+
+    const safe5 = document.getElementById('safe5Btn');
+    if (safe5) safe5.onclick = () => { state.safe5Only = !state.safe5Only; saveState(); render(); };
+    const mech = document.getElementById('mechParkBtn');
+    if (mech) mech.onclick = () => { state.mechParkOnly = !state.mechParkOnly; saveState(); render(); };
+    const budgetSpread = document.getElementById('budgetSpreadBtn');
+    if (budgetSpread) budgetSpread.onclick = () => { state.budgetSpread = !state.budgetSpread; saveState(); render(); };
+
+    document.querySelectorAll('.facet-btn').forEach(b => b.onclick = () => {
+      const dim = b.getAttribute('data-facet');
+      const val = b.getAttribute('data-val');
+      const arr = dim === 'fuel' ? state.facetFuel : state.facetSegment;
+      const i = arr.indexOf(val);
+      if (i >= 0) arr.splice(i, 1); else arr.push(val);
+      saveState(); render();
+    });
+
+    document.querySelectorAll('.opt-btn').forEach(b => b.onclick = () => {
+      const k = b.getAttribute('data-opt');
+      const i = state.requiredOptions.indexOf(k);
+      if (i >= 0) state.requiredOptions.splice(i, 1); else state.requiredOptions.push(k);
+      saveState(); render();
+    });
+    const clearOpts = document.getElementById('clearOptsBtn');
+    if (clearOpts) clearOpts.onclick = () => {
+      state.requiredOptions = []; state.excludedOptions = []; state.activePersonas = []; saveState(); render();
+    };
+
+    // D17 제외 칩 제거
+    document.querySelectorAll('[data-rmexc]').forEach(b => b.onclick = () => {
+      const k = b.getAttribute('data-rmexc');
+      const i = state.excludedOptions.indexOf(k);
+      if (i >= 0) state.excludedOptions.splice(i, 1);
+      saveState(); render();
+    });
+
+    document.querySelectorAll('.persona-btn').forEach(b => b.onclick = () => {
+      const tag = b.getAttribute('data-persona');
+      const p = PERSONAS.find(x => x.tag === tag);
+      if (!p) return;
+      const i = state.activePersonas.indexOf(tag);
+      if (i >= 0) {
+        state.activePersonas.splice(i, 1);
+        const keep = new Set();
+        state.activePersonas.forEach(t => {
+          const pp = PERSONAS.find(x => x.tag === t);
+          if (pp) pp.options.forEach(o => keep.add(o));
+        });
+        p.options.forEach(o => {
+          if (!keep.has(o)) {
+            const idx = state.requiredOptions.indexOf(o);
+            if (idx >= 0) state.requiredOptions.splice(idx, 1);
+          }
+        });
+      } else {
+        state.activePersonas.push(tag);
+        p.options.forEach(o => { if (!state.requiredOptions.includes(o)) state.requiredOptions.push(o); });
+      }
+      saveState(); render();
+    });
+
+    const search = document.getElementById('searchInput');
+    if (search) {
+      search.oninput = (e) => {
+        searchQuery = e.target.value;
+        const parsed = searchToOptionKeys(searchQuery);
+        const hint = document.getElementById('searchHint');
+        if (hint) {
+          if (!searchQuery.trim()) {
+            hint.innerHTML = '';
+          } else if (parsed.negKeys.length) {
+            hint.innerHTML = `제외할 옵션: ${parsed.negKeys.map(k => OPTION_BY_KEY[k] ? OPTION_BY_KEY[k].label : k).join(', ')} <button id="applySearch" class="ml-1 text-rose-500 font-semibold">제외 적용 ↵</button>`;
+          } else if (parsed.keys.length) {
+            hint.innerHTML = `매칭 옵션: ${parsed.keys.map(k => OPTION_BY_KEY[k] ? OPTION_BY_KEY[k].label : k).join(', ')} <button id="applySearch" class="ml-1 text-brand font-semibold">필터 적용 ↵</button>`;
+          } else {
+            hint.innerHTML = `<span class="text-ink-400">매칭되는 기능이 없어요. ‘통풍 빼고’처럼 제외 검색도 돼요.</span>`;
+          }
+          const apply = document.getElementById('applySearch');
+          if (apply) apply.onclick = () => applySearch(parsed);
+        }
+      };
+      search.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          applySearch(searchToOptionKeys(searchQuery));
+        }
+      };
+    }
+  }
+
+  function applySearch(parsed) {
+    if (parsed.negKeys && parsed.negKeys.length) {
+      parsed.negKeys.forEach(k => {
+        if (!state.excludedOptions.includes(k)) state.excludedOptions.push(k);
+        // 제외와 필수 동시 불가 → 필수에서 제거
+        const i = state.requiredOptions.indexOf(k);
+        if (i >= 0) state.requiredOptions.splice(i, 1);
+      });
+    }
+    if (parsed.keys && parsed.keys.length) {
+      parsed.keys.forEach(k => {
+        if (!state.requiredOptions.includes(k)) state.requiredOptions.push(k);
+        const i = state.excludedOptions.indexOf(k);
+        if (i >= 0) state.excludedOptions.splice(i, 1);
+      });
+    }
+    searchQuery = '';
+    saveState();
+    render();
+  }
+
+  // 차량 카드 클릭 위임
+  root.addEventListener('click', (e) => {
+    const card = e.target.closest('.car-card');
+    if (card) {
+      state.detailId = card.getAttribute('data-car');
+      renderDetail();
+    }
+  });
+
+  // ===== 초기 구동 =====
+  function boot() {
+    if (!CARS.length) {
+      root.innerHTML = `
+        <div class="min-h-screen flex items-center justify-center p-6 text-center">
+          <div>
+            <div class="text-4xl mb-3">📂</div>
+            <p class="font-bold text-ink-700">데이터를 불러오지 못했어요</p>
+            <p class="text-sm text-ink-400 mt-1">data.js 가 함께 있어야 차량 정보를 보여드릴 수 있어요.</p>
+          </div>
+        </div>`;
+      return;
+    }
+    // D32: URL 쿼리가 있으면 복원
+    restoreStateFromQuery();
+    route = state.submitted ? 'results' : 'input';
+    render();
+  }
+  boot();
+  </script>
+</body>
+</html>

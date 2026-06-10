@@ -49,7 +49,7 @@ function B(ko, en){ return state.lang === 'en' ? en : ko; }
 function seedTenants(){
   return {
     'co-smallbox': {
-      id:'co-smallbox', name:'(주)스몰박스', nameEn:'Smallbox Inc.', biz:'129-81-00001', plan:'Growth', color:'#2563eb',
+      id:'co-smallbox', name:'(주)스몰박스', nameEn:'Smallbox Inc.', biz:'129-81-00001', plan:'Growth', color:'#4F46E5',
       employees:[
         { id:'E001', name:'이지원', nameEn:'Jiwon Lee', dept:'개발', join:'2024-03-01', salary:3800000, bank:'국민', acct:'123-45-678901', annualUsed:5, annualTotal:15 },
         { id:'E002', name:'박민서', nameEn:'Minseo Park', dept:'마케팅', join:'2024-08-15', salary:3200000, bank:'신한', acct:'110-222-333444', annualUsed:8, annualTotal:15 },
@@ -325,13 +325,13 @@ function vDash(){
     <div class="bg-white rounded-2xl p-5 border">
       <div class="font-semibold mb-4">${L('insBurden')}</div>
       <div class="flex h-6 rounded-full overflow-hidden mb-4">
-        <div style="width:${burdenTotal?burdenAgg.np/burdenTotal*100:0}%;background:#2563eb"></div>
+        <div style="width:${burdenTotal?burdenAgg.np/burdenTotal*100:0}%;background:#4F46E5"></div>
         <div style="width:${burdenTotal?burdenAgg.hi/burdenTotal*100:0}%;background:#0891b2"></div>
         <div style="width:${burdenTotal?burdenAgg.emp/burdenTotal*100:0}%;background:#16a34a"></div>
         <div style="width:${burdenTotal?burdenAgg.accident/burdenTotal*100:0}%;background:#db2777"></div>
       </div>
       <div class="space-y-2">
-        ${seg(B('국민연금','Pension'),burdenAgg.np,'#2563eb')}
+        ${seg(B('국민연금','Pension'),burdenAgg.np,'#4F46E5')}
         ${seg(B('건강+장기요양','Health+LTC'),burdenAgg.hi,'#0891b2')}
         ${seg(B('고용보험','Employment'),burdenAgg.emp,'#16a34a')}
         ${seg(B('산재보험','Accident'),burdenAgg.accident,'#db2777')}

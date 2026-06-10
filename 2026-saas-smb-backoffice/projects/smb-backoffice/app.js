@@ -7,7 +7,7 @@ const KEY = 'smb_state_v2';
 function seedTenants(){
   return {
     'co-smallbox': {
-      id:'co-smallbox', name:'(주)스몰박스', biz:'129-81-00001', plan:'Growth', color:'#2563eb',
+      id:'co-smallbox', name:'(주)스몰박스', biz:'129-81-00001', plan:'Growth', color:'#4F46E5',
       employees:[
         { id:'E001', name:'이지원', dept:'개발', join:'2024-03-01', salary:3800000, email:'lee@smb.kr', phone:'010-1111-2222' },
         { id:'E002', name:'박민서', dept:'마케팅', join:'2024-08-15', salary:3200000, email:'park@smb.kr', phone:'010-2222-3333' },
@@ -736,7 +736,7 @@ function chatSend(){
 
 function bindSignature(canvasId,clearId,saveId,onSave){
   const sig=document.getElementById(canvasId); if(!sig) return;
-  const ctx=sig.getContext('2d'); ctx.lineWidth=2; ctx.strokeStyle='#0f172a'; let d=false;
+  const ctx=sig.getContext('2d'); ctx.lineWidth=2; ctx.strokeStyle='#1C1B2E'; let d=false;
   sig.onpointerdown=e=>{ d=true; ctx.beginPath(); ctx.moveTo(e.offsetX,e.offsetY); };
   sig.onpointermove=e=>{ if(d){ ctx.lineTo(e.offsetX,e.offsetY); ctx.stroke(); } };
   sig.onpointerup=()=>d=false; sig.onpointerleave=()=>d=false;
