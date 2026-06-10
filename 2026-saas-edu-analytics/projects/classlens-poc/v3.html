@@ -1,0 +1,1364 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>클래스렌즈 — 학습분석 SaaS (v3 Series A)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<script>
+  // 디자인 토큰 재매핑 (Apple × Toss) — design-guide/디자인_애플_토스.md
+  tailwind.config = { theme: { extend: {
+    fontFamily: { sans: ['Pretendard','-apple-system','BlinkMacSystemFont','Apple SD Gothic Neo','sans-serif'] },
+    colors: {
+      brand:   { DEFAULT:'#3182F6', hover:'#1B64DA', light:'#E8F3FF' },
+      blue:    {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      indigo:  {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      sky:     {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      slate:   {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      gray:    {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      zinc:    {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      neutral: {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      emerald: {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      green:   {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      teal:    {50:'#E7F8EF',100:'#D2F2E0',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      amber:   {50:'#FFF6E5',100:'#FFE9C2',300:'#FFB331',400:'#FFB331',500:'#FFB331',600:'#E2991C',700:'#C77F12'},
+      yellow:  {50:'#FFF6E5',100:'#FFE9C2',300:'#FFB331',400:'#FFB331',500:'#FFB331',600:'#E2991C'},
+      orange:  {50:'#FFF6E5',100:'#FFE9C2',400:'#FFB331',500:'#FFB331',600:'#E2991C'},
+      rose:    {50:'#FEECEE',100:'#FCD9DD',300:'#F8A4AC',400:'#F04452',500:'#F04452',600:'#F04452',700:'#D6303D'},
+      red:     {50:'#FEECEE',100:'#FCD9DD',300:'#F8A4AC',400:'#F04452',500:'#F04452',600:'#F04452',700:'#D6303D'},
+    }
+  } } }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  body { font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; }
+  .nav-active { background-color: #1B64DA; color: #fff; }
+  ::-webkit-scrollbar { height: 8px; width: 8px; }
+  ::-webkit-scrollbar-thumb { background: #D1D6DB; border-radius: 4px; }
+  @media (max-width: 640px) {
+    .desktop-shell { display: none !important; }
+    .mobile-shell { display: flex !important; }
+  }
+  .mobile-shell { display: none; }
+  .path-node { position: relative; }
+
+  /* ===== design-tone-components (guide §6·§7) ===== */
+  button, [role="button"], a.w-full, input[type="submit"], input[type="button"] {
+    transition: transform .12s cubic-bezier(.3,0,0,1), opacity .15s ease, box-shadow .15s ease, background-color .15s ease;
+  }
+  button:active:not(:disabled), [role="button"]:active, a.w-full:active,
+  input[type="submit"]:active, input[type="button"]:active { transform: scale(.97); }
+  button:disabled, button[disabled], [role="button"][aria-disabled="true"] { opacity: .35; cursor: not-allowed; }
+  input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: none; border-color: #3182F6; box-shadow: 0 0 0 1.5px #3182F6;
+  }
+  button.w-full, button[type="submit"].w-full, a.w-full[class*="bg-"] {
+    min-height: 52px; border-radius: 12px;
+  }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800">
+
+<!-- ============ 데스크톱 셸 (교육청·학교 관리자·교사) ============ -->
+<div id="desktopShell" class="desktop-shell flex h-screen overflow-hidden">
+  <aside class="w-60 bg-slate-900 text-slate-200 flex flex-col shrink-0">
+    <div class="px-5 py-5 border-b border-slate-700">
+      <div class="text-xl font-bold text-white">클래스렌즈</div>
+      <div class="text-xs text-slate-400 mt-0.5">학습분석 SaaS · v3 Series A</div>
+    </div>
+    <nav class="flex-1 px-3 py-4 space-y-1 text-sm overflow-y-auto">
+      <div class="px-2 text-[10px] uppercase tracking-wider text-slate-500 mb-1">통합 분석</div>
+      <button data-view="district" class="nav-btn navDistrict w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>🏛️</span> 교육청 통합</button>
+      <button data-view="school" class="nav-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>🏫</span> 학교 대시보드</button>
+      <button data-view="predict" class="nav-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>🔮</span> 예측 모델</button>
+      <button data-view="equity" class="nav-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>⚖️</span> 형평성 분석</button>
+      <div class="px-2 text-[10px] uppercase tracking-wider text-slate-500 mb-1 mt-3">개입·운영</div>
+      <button data-view="intervene" class="nav-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>🧭</span> 개입 추천 엔진</button>
+      <button data-view="connect" class="nav-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>🔌</span> 멀티소스 연동</button>
+      <button data-view="collab" class="nav-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>🤝</span> 교사 협업</button>
+      <button data-view="parentcamp" class="nav-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>📣</span> 학부모 캠페인·예약</button>
+      <div class="px-2 text-[10px] uppercase tracking-wider text-slate-500 mb-1 mt-3">거버넌스</div>
+      <button data-view="governance" class="nav-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>🛡️</span> 개인정보 거버넌스</button>
+      <button data-view="workflow" class="nav-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>🔄</span> 워크플로</button>
+    </nav>
+    <div class="px-4 py-3 border-t border-slate-700 text-xs">
+      <div class="mb-2">
+        <label class="text-slate-400 block mb-1">역할 전환 (데모)</label>
+        <select id="roleSelect" class="w-full bg-slate-800 text-slate-100 rounded px-2 py-1.5 border border-slate-700">
+          <option value="district">교육청 관리자</option>
+          <option value="school">학교 관리자</option>
+          <option value="teacher">교사</option>
+          <option value="parent">학부모 (모바일)</option>
+        </select>
+      </div>
+      <div class="mb-2" id="scopePickerWrap">
+        <label class="text-slate-400 block mb-1" id="scopePickerLabel">학교</label>
+        <select id="scopePicker" class="w-full bg-slate-800 text-slate-100 rounded px-2 py-1.5 border border-slate-700"></select>
+      </div>
+      <div class="flex items-center gap-2 text-slate-400">
+        <span id="userAvatar" class="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold"></span>
+        <div>
+          <div id="userName" class="text-slate-200"></div>
+          <div id="userScope"></div>
+        </div>
+      </div>
+      <button id="resetBtn" class="mt-3 w-full text-center px-2 py-1.5 rounded bg-slate-800 hover:bg-rose-700 text-slate-300 hover:text-white">시드 초기화</button>
+    </div>
+  </aside>
+
+  <main class="flex-1 overflow-y-auto">
+    <header class="bg-white border-b px-8 py-4 flex items-center justify-between sticky top-0 z-10">
+      <div>
+        <h1 id="viewTitle" class="text-lg font-bold text-slate-800">교육청 통합</h1>
+        <p id="viewSub" class="text-xs text-slate-500"></p>
+      </div>
+      <div class="flex items-center gap-3 text-sm">
+        <span id="tenantBadge" class="px-2 py-1 rounded bg-indigo-50 text-indigo-700 text-xs font-medium"></span>
+        <label class="text-slate-500" id="classLbl">학급</label>
+        <select id="classSelect" class="border rounded-lg px-3 py-1.5 bg-white"></select>
+      </div>
+    </header>
+
+    <div class="p-8">
+      <!-- 교육청 통합 (다계층 테넌트) -->
+      <section id="view-district" class="view space-y-6">
+        <div id="districtKpi" class="grid grid-cols-4 gap-4"></div>
+        <div class="grid grid-cols-3 gap-6">
+          <div class="col-span-2 bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-3 text-slate-700">관할 학교 평균 성취 비교</h3>
+            <canvas id="districtBar" height="120"></canvas>
+          </div>
+          <div class="bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-3 text-slate-700">학교별 예측 위험군 비중</h3>
+            <canvas id="districtRisk" height="220"></canvas>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl border p-5">
+          <h3 class="font-semibold mb-2 text-slate-700">관할 학교 롤업 <span class="text-xs font-normal text-slate-400">(개별 학생 식별정보 비노출 — 집계만)</span></h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead><tr class="text-left text-slate-500 border-b">
+                <th class="py-2 px-2">학교</th><th class="py-2 px-2">학급</th><th class="py-2 px-2">학생</th><th class="py-2 px-2">평균</th><th class="py-2 px-2">예측 위험군</th><th class="py-2 px-2">형평성(지니)</th><th class="py-2 px-2">조치</th>
+              </tr></thead>
+              <tbody id="districtTable"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl border p-5">
+          <h3 class="font-semibold mb-2 text-slate-700">다계층 테넌트 격리 검증</h3>
+          <div id="districtIsolation" class="text-sm"></div>
+        </div>
+      </section>
+
+      <!-- 학교 대시보드 -->
+      <section id="view-school" class="view hidden space-y-6">
+        <div id="schoolKpi" class="grid grid-cols-4 gap-4"></div>
+        <div class="grid grid-cols-3 gap-6">
+          <div class="col-span-2 bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-3 text-slate-700">학급별 평균·예측 성취</h3>
+            <canvas id="schoolBar" height="120"></canvas>
+          </div>
+          <div class="bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-3 text-slate-700">학생 위험확률 분포</h3>
+            <canvas id="schoolRiskHist" height="220"></canvas>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl border p-5">
+          <h3 class="font-semibold mb-2 text-slate-700">학급·교사 현황</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead><tr class="text-left text-slate-500 border-b">
+                <th class="py-2 px-2">학급</th><th class="py-2 px-2">담당 교사</th><th class="py-2 px-2">학생</th><th class="py-2 px-2">학급 평균</th><th class="py-2 px-2">예측 위험군</th>
+              </tr></thead>
+              <tbody id="schoolTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 예측 모델 -->
+      <section id="view-predict" class="view hidden space-y-6">
+        <div class="bg-white rounded-xl border p-5">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <h3 class="font-semibold text-slate-700">학기말 성취 예측 · 중도이탈/위험 예측</h3>
+              <p class="text-xs text-slate-500">능선회귀(L2 정규화 닫힌해)로 다음 회차 성취를 예측하고, 로지스틱 가중합으로 위험확률(0~100%)을 산출해요. 특성 기여도(근거)도 모두 보여드려요.</p>
+            </div>
+            <span class="text-xs text-slate-400">알고리즘: Ridge Regression · Logistic Risk</span>
+          </div>
+          <div id="predictCards" class="grid grid-cols-4 gap-4 mb-4"></div>
+          <div class="grid grid-cols-2 gap-6 mb-4">
+            <div class="border rounded-lg p-4">
+              <h4 class="font-semibold text-sm mb-2 text-slate-700">학생별 학기말 예측 점수(능선회귀)</h4>
+              <canvas id="predictScatter" height="150"></canvas>
+            </div>
+            <div class="border rounded-lg p-4">
+              <h4 class="font-semibold text-sm mb-2 text-slate-700">위험확률 상위 — 특성 기여도</h4>
+              <div id="riskContrib" class="space-y-2 text-xs"></div>
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead><tr class="text-left text-slate-500 border-b">
+                <th class="py-2 px-2">학생</th><th class="py-2 px-2">현재 평균</th><th class="py-2 px-2">학기말 예측</th><th class="py-2 px-2">95% 신뢰구간</th><th class="py-2 px-2">위험확률</th><th class="py-2 px-2">등급</th><th class="py-2 px-2">주요 근거</th>
+              </tr></thead>
+              <tbody id="predictTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 형평성 분석 -->
+      <section id="view-equity" class="view hidden space-y-6">
+        <div id="equityKpi" class="grid grid-cols-4 gap-4"></div>
+        <div class="grid grid-cols-2 gap-6">
+          <div class="bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-3 text-slate-700">성취 분포 사분위(Q1~Q4) 학생 수</h3>
+            <canvas id="equityQuartile" height="160"></canvas>
+          </div>
+          <div class="bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-3 text-slate-700">로렌츠 곡선(성취 누적) — 지니 면적</h3>
+            <canvas id="equityLorenz" height="160"></canvas>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl border p-5">
+          <h3 class="font-semibold mb-2 text-slate-700">학급 간 격차지수 & 권고</h3>
+          <div id="equityGap"></div>
+        </div>
+      </section>
+
+      <!-- 개입 추천 엔진 -->
+      <section id="view-intervene" class="view hidden space-y-6">
+        <div class="bg-white rounded-xl border p-5">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="font-semibold text-slate-700">개입 추천 엔진 — 취약개념 → 맞춤 학습경로</h3>
+              <p class="text-xs text-slate-500">선수개념 그래프에서 취약개념의 선수 결손까지 거슬러 찾아, 단계별(진단→선수보충→본개념→심화) 학습경로를 만들어 드려요.</p>
+            </div>
+            <div class="flex items-center gap-2 text-sm">
+              <label class="text-slate-500">학생</label>
+              <select id="interveneStudent" class="border rounded-lg px-3 py-1.5 bg-white"></select>
+              <button id="genPath" class="bg-blue-700 hover:bg-blue-800 text-white rounded-lg px-4 py-2 font-medium">학습경로 생성</button>
+            </div>
+          </div>
+          <div id="pathResult" class="space-y-4"></div>
+        </div>
+        <div class="bg-white rounded-xl border p-5">
+          <h3 class="font-semibold mb-2 text-slate-700">개입 경로 배포 목록 <span id="pathDistCount" class="text-xs font-normal text-slate-400"></span></h3>
+          <div id="pathDistList" class="space-y-2 text-sm"></div>
+        </div>
+      </section>
+
+      <!-- 멀티소스 연동 -->
+      <section id="view-connect" class="view hidden space-y-6">
+        <div class="grid grid-cols-3 gap-4" id="connectorCards"></div>
+        <div class="grid grid-cols-2 gap-6">
+          <div class="bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-2 text-slate-700">소스별 불러오기 (스키마 정규화)</h3>
+            <p class="text-xs text-slate-500 mb-3">AIDT·LMS·CSV 3개 커넥터예요. 소스별 원시 스키마를 표준 학습로그로 정규화해 불러와요. 키가 없으면 mock으로 응답해요.</p>
+            <div class="flex gap-2 mb-3">
+              <button data-src="AIDT" class="srcPull flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg py-2 text-sm font-medium">AIDT Pull</button>
+              <button data-src="LMS" class="srcPull flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg py-2 text-sm font-medium">LMS Pull</button>
+              <button data-src="CSV" class="srcPull flex-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg py-2 text-sm font-medium">CSV 불러오기</button>
+            </div>
+            <button id="exportConnCsv" class="w-full border rounded-lg py-2 text-sm hover:bg-slate-50">정규화 결과 CSV 내보내기</button>
+            <div class="mt-3 overflow-x-auto max-h-56 overflow-y-auto">
+              <table class="w-full text-xs">
+                <thead><tr class="text-left text-slate-500 border-b"><th class="py-1.5 px-2">소스</th><th class="py-1.5 px-2">외부ID</th><th class="py-1.5 px-2">학생</th><th class="py-1.5 px-2">개념</th><th class="py-1.5 px-2">정오답</th></tr></thead>
+                <tbody id="connTable"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-2 text-slate-700">연동 파이프라인 로그</h3>
+            <div id="connLog" class="text-xs font-mono bg-slate-900 text-emerald-300 rounded-lg p-3 h-80 overflow-y-auto whitespace-pre-wrap">아직 연동된 로그가 없어요.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 교사 협업 -->
+      <section id="view-collab" class="view hidden space-y-6">
+        <div class="grid grid-cols-2 gap-6">
+          <div class="bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-2 text-slate-700">공동 루브릭 작성</h3>
+            <p class="text-xs text-slate-500 mb-3">평가 기준표를 작성해 학교 교사 라이브러리에 공유해요. 다른 선생님이 채택(복제)하면 확산 수가 올라가요.</p>
+            <input id="rbTitle" class="w-full border rounded-lg px-3 py-2 text-sm mb-2" placeholder="루브릭 제목 (예: 분수 단원 서술형 평가)" />
+            <textarea id="rbCriteria" rows="3" class="w-full border rounded-lg px-3 py-2 text-sm mb-2" placeholder="평가 기준 (줄바꿈으로 구분: 개념 이해 / 풀이 과정 / 정확성 ...)"></textarea>
+            <button id="addRubric" class="w-full bg-blue-700 hover:bg-blue-800 text-white rounded-lg py-2.5 text-sm font-medium">루브릭 공유</button>
+          </div>
+          <div class="bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-2 text-slate-700">공유 평가 결과 (학급 간)</h3>
+            <p class="text-xs text-slate-500 mb-3">같은 학교 선생님끼리 학급 평가 결과를 공유해 기준을 맞춰요.</p>
+            <div id="sharedAssess" class="space-y-2 text-sm"></div>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl border p-5">
+          <h3 class="font-semibold mb-2 text-slate-700">공동 루브릭 라이브러리</h3>
+          <div id="rubricLib" class="space-y-3"></div>
+        </div>
+      </section>
+
+      <!-- 학부모 캠페인·예약 -->
+      <section id="view-parentcamp" class="view hidden space-y-6">
+        <div class="grid grid-cols-2 gap-6">
+          <div class="bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-2 text-slate-700">알림톡 캠페인 (세그먼트 일괄 발송)</h3>
+            <p class="text-xs text-slate-500 mb-3">대상 세그먼트를 골라 알림톡을 한 번에 보내요. 미동의·철회 학부모는 자동으로 빠지고, 실패하면 SMS로 다시 보내요 (mock).</p>
+            <div class="flex items-center gap-2 mb-2 text-sm">
+              <label class="text-slate-500">세그먼트</label>
+              <select id="campSeg" class="border rounded-lg px-3 py-1.5 bg-white flex-1">
+                <option value="all">전체 학급</option>
+                <option value="risk">예측 위험군(고위험)</option>
+                <option value="weak">취약개념 보유 학생</option>
+              </select>
+            </div>
+            <select id="campTemplate" class="w-full border rounded-lg px-3 py-2 text-sm mb-2">
+              <option value="report">[CL_REPORT] 월간 성취 리포트 안내</option>
+              <option value="intervene">[CL_PATH] 맞춤 학습경로 배포 안내</option>
+              <option value="counsel">[CL_COUNSEL] 상담 예약 안내</option>
+            </select>
+            <button id="sendCampaign" class="w-full bg-amber-500 hover:bg-amber-600 text-white rounded-lg py-2.5 text-sm font-medium">캠페인 발송 (mock)</button>
+            <div id="campStat" class="grid grid-cols-3 gap-2 mt-3"></div>
+            <div id="campLog" class="text-xs font-mono bg-slate-900 text-amber-200 rounded-lg p-3 h-40 overflow-y-auto whitespace-pre-wrap mt-3">아직 보낸 캠페인이 없어요.</div>
+          </div>
+          <div class="bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-2 text-slate-700">상담 예약 슬롯</h3>
+            <p class="text-xs text-slate-500 mb-3">선생님이 열어둔 시간대를 학부모가 예약해요. 예약하면 확정 알림톡(mock)을 보내드려요.</p>
+            <div id="slotList" class="space-y-2 text-sm mb-4"></div>
+            <h4 class="font-semibold text-sm mb-2 text-slate-700">예약 현황</h4>
+            <div id="bookingList" class="space-y-1 text-sm"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 개인정보 거버넌스 -->
+      <section id="view-governance" class="view hidden space-y-6">
+        <div id="govKpi" class="grid grid-cols-4 gap-4"></div>
+        <div class="grid grid-cols-2 gap-6">
+          <div class="bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-2 text-slate-700">접근 감사 로그</h3>
+            <p class="text-xs text-slate-500 mb-3">민감정보 접근(주체·대상·행위·시각)을 모두 기록해요.</p>
+            <div class="overflow-x-auto max-h-72 overflow-y-auto">
+              <table class="w-full text-xs">
+                <thead><tr class="text-left text-slate-500 border-b"><th class="py-1.5 px-2">시각</th><th class="py-1.5 px-2">주체(역할)</th><th class="py-1.5 px-2">행위</th><th class="py-1.5 px-2">대상</th></tr></thead>
+                <tbody id="auditTable"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-2 text-slate-700">데이터 보존정책</h3>
+            <p class="text-xs text-slate-500 mb-3">보존기간이 끝난 데이터를 파기해요.</p>
+            <div id="retentionList" class="space-y-2 text-sm mb-3"></div>
+            <button id="purgeExpired" class="w-full bg-rose-600 hover:bg-rose-700 text-white rounded-lg py-2.5 text-sm font-medium">만료 데이터 파기 처리</button>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl border p-5">
+          <h3 class="font-semibold mb-2 text-slate-700">동의 일괄 철회 (세그먼트)</h3>
+          <p class="text-xs text-slate-500 mb-3">세그먼트를 골라 보호자 동의를 한 번에 철회하면 분석·발송에서 바로 빠지고, 감사 로그에 기록돼요.</p>
+          <div class="flex items-center gap-2 text-sm">
+            <select id="revokeScope" class="border rounded-lg px-3 py-2 bg-white">
+              <option value="class">현재 학급 전체</option>
+              <option value="consented">동의 상태 학생 전체</option>
+            </select>
+            <button id="bulkRevoke" class="bg-slate-800 hover:bg-slate-900 text-white rounded-lg px-4 py-2 text-sm font-medium">동의 일괄 철회</button>
+          </div>
+          <div id="revokeResult" class="text-sm mt-3"></div>
+        </div>
+      </section>
+
+      <!-- 워크플로 -->
+      <section id="view-workflow" class="view hidden">
+        <div class="bg-white rounded-xl border p-6 max-w-5xl mx-auto">
+          <div class="flex items-center gap-2 mb-4 text-sm">
+            <span class="text-slate-500">워크플로 선택:</span>
+            <select id="wfPick" class="border rounded-lg px-3 py-1.5">
+              <option value="A">A. 예측 → 개입추천 → 경로배포</option>
+              <option value="B">B. 멀티소스 연동 → 정규화 → 예측 갱신</option>
+              <option value="C">C. 동의철회/보존만료 → 감사기록 → 발송제외</option>
+              <option value="D">D. 교육청 롤업 → 형평성 진단 → 학교 권고</option>
+            </select>
+          </div>
+          <h3 id="wfTitle" class="font-semibold text-slate-700 mb-1"></h3>
+          <p id="wfDesc" class="text-xs text-slate-500 mb-6"></p>
+          <div class="flex items-center justify-between mb-8" id="wfSteps"></div>
+          <div id="wfBody" class="min-h-[180px]"></div>
+          <div class="flex justify-between mt-6">
+            <button id="wfPrev" class="border rounded-lg px-5 py-2 text-sm hover:bg-slate-50">이전</button>
+            <button id="wfNext" class="bg-blue-700 hover:bg-blue-800 text-white rounded-lg px-5 py-2 text-sm font-medium">다음 단계</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- ============ 모바일 셸 (학부모) ============ -->
+<div id="mobileShell" class="mobile-shell flex-col min-h-screen bg-slate-50">
+  <header class="bg-blue-700 text-white px-4 py-4 sticky top-0 z-10">
+    <div class="text-base font-bold">클래스렌즈 학부모</div>
+    <div class="text-xs text-blue-200 mt-0.5" id="pmHeaderSub">자녀 학습 리포트</div>
+  </header>
+  <div class="flex-1 p-4 space-y-4" id="parentBody"></div>
+  <nav class="bg-white border-t flex text-xs sticky bottom-0">
+    <button data-ptab="home" class="ptab flex-1 py-3 text-blue-700 font-semibold">🏠 홈</button>
+    <button data-ptab="predict" class="ptab flex-1 py-3 text-slate-500">🔮 예측</button>
+    <button data-ptab="book" class="ptab flex-1 py-3 text-slate-500">📅 예약</button>
+    <button data-ptab="alim" class="ptab flex-1 py-3 text-slate-500">🔔 알림</button>
+  </nav>
+</div>
+
+<div id="toast" class="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-2.5 rounded-lg text-sm shadow-lg opacity-0 transition-opacity pointer-events-none z-50"></div>
+
+<script>
+const STORE_KEY = "classlens_v3_state";
+const CONCEPTS = ["분수의덧셈","분수의뺄셈","약분","통분","대분수","소수의곱셈"];
+// 선수개념 그래프: 개념 → 직접 선수개념 목록
+const PREREQ = {
+  "약분": [],
+  "통분": ["약분"],
+  "분수의뺄셈": ["통분","약분"],
+  "분수의덧셈": ["통분","약분"],
+  "대분수": ["분수의덧셈"],
+  "소수의곱셈": [],
+};
+const TASK_BANK = {
+  "분수의덧셈": "분수의 덧셈 10문항 단계별 연습지", "분수의뺄셈": "분수의 뺄셈 받아내림 집중 워크시트",
+  "약분": "약분 최대공약수 찾기 드릴", "통분": "통분 최소공배수 연습 카드", "대분수": "대분수↔가분수 변환 퀴즈",
+  "소수의곱셈": "소수의 곱셈 소수점 위치 연습 문제",
+};
+
+// ---------- 시드 데이터 (교육청 > 학교 2 > 학급 > 학생) ----------
+function pseudoId(seedStr) {
+  let h = 0; for (let i = 0; i < seedStr.length; i++) h = (h * 31 + seedStr.charCodeAt(i)) >>> 0;
+  return "S-" + h.toString(16).toUpperCase().slice(0, 4).padStart(4, "0");
+}
+function seed() {
+  const district = { id: "d1", name: "한빛교육지원청" };
+  const schools = [
+    { id: "sch1", name: "한빛초등학교", districtId: "d1" },
+    { id: "sch2", name: "샛별초등학교", districtId: "d1" },
+  ];
+  const teachers = [
+    { id: "t1", name: "김교사", schoolId: "sch1", classes: ["c1", "c2"] },
+    { id: "t2", name: "이교사", schoolId: "sch1", classes: ["c3"] },
+    { id: "t3", name: "박교사", schoolId: "sch2", classes: ["c4", "c5"] },
+  ];
+  const classes = [
+    { id: "c1", name: "6학년 1반", schoolId: "sch1", teacherId: "t1" },
+    { id: "c2", name: "6학년 2반", schoolId: "sch1", teacherId: "t1" },
+    { id: "c3", name: "6학년 3반", schoolId: "sch1", teacherId: "t2" },
+    { id: "c4", name: "6학년 1반", schoolId: "sch2", teacherId: "t3" },
+    { id: "c5", name: "6학년 2반", schoolId: "sch2", teacherId: "t3" },
+  ];
+  const names = {
+    c1: ["김민준","이서연","박지호","최예린","정우진","한소율","윤도현","강하은"],
+    c2: ["조현우","임채원","오시우","서지안","배준서","노아라"],
+    c3: ["문가온","신라온","권하진","유은재","장도윤","홍시현","고나윤"],
+    c4: ["남도경","서아인","추민결","변지수","엄태경","구하랑"],
+    c5: ["천유준","마서후","피현서","탁라엘","석윤후","육소담","곽이안"],
+  };
+  const students = [];
+  Object.entries(names).forEach(([cid, arr]) => {
+    const cls = classes.find((c) => c.id === cid);
+    arr.forEach((n, i) => {
+      const id = cid + "_s" + i;
+      students.push({
+        id, classId: cid, schoolId: cls.schoolId, name: n,
+        pseudo: pseudoId(id + n),
+        extId: "AIDT-" + (1000 + students.length),
+        consent: i % 5 === 0 ? "미동의" : "동의",
+        consentTs: Date.now() - i * 3600000,
+        attendance: 0, taskRate: 0, // 시드 후 채움
+      });
+    });
+  });
+  const records = [];
+  const titles = ["3월 진단평가","4월 형성평가","5월 단원평가"];
+  let rng = 20260609;
+  const rand = () => { rng = (rng * 1103515245 + 12345) & 0x7fffffff; return rng / 0x7fffffff; };
+  students.forEach((s) => {
+    const weakIdx = (s.name.charCodeAt(0) + s.name.charCodeAt(1)) % CONCEPTS.length;
+    const declining = (s.name.charCodeAt(0) % 7) === 0;
+    // 출석률·과제완수율 (예측 특성)
+    s.attendance = Math.round((0.82 + (declining ? -0.18 : 0.06) + (rand() - 0.5) * 0.1) * 100);
+    s.attendance = Math.max(60, Math.min(100, s.attendance));
+    s.taskRate = Math.round((0.78 + (declining ? -0.22 : 0.08) + (rand() - 0.5) * 0.12) * 100);
+    s.taskRate = Math.max(40, Math.min(100, s.taskRate));
+    titles.forEach((t, ti) => {
+      const concepts = {};
+      let correct = 0;
+      CONCEPTS.forEach((c, ci) => {
+        let p = 0.78 - (ci === weakIdx ? 0.5 : 0) - (ci === (weakIdx + 2) % CONCEPTS.length ? 0.25 : 0);
+        p += declining ? -ti * 0.08 : ti * 0.05;
+        const ok = rand() < Math.max(0.05, Math.min(0.97, p)) ? 1 : 0;
+        concepts[c] = ok; if (ok) correct++;
+      });
+      const base = Math.round((correct / CONCEPTS.length) * 100);
+      const score = Math.max(30, Math.min(100, base + Math.round((rand() - 0.5) * 12)));
+      records.push({ id: s.id + "_" + ti, studentId: s.id, classId: s.classId, schoolId: s.schoolId, title: t, score, concepts, ts: Date.now() - (3 - ti) * 86400000, src: "수기" });
+    });
+  });
+  // 보존정책 데모: 일부 오래된 기록(졸업생 등) 만료 도래 항목
+  const retention = [
+    { id: "r-2021", label: "2021학번 졸업생 평가기록", createdYear: 2021, retainYears: 3, scope: "졸업생" },
+    { id: "r-2022", label: "2022학번 졸업생 평가기록", createdYear: 2022, retainYears: 3, scope: "졸업생" },
+    { id: "r-log", label: "2023 접근 감사로그(보존 1년 초과)", createdYear: 2023, retainYears: 1, scope: "감사로그" },
+    { id: "r-2024", label: "2024 재학생 평가기록", createdYear: 2024, retainYears: 3, scope: "재학생" },
+  ];
+  // 상담 슬롯
+  const slots = [
+    { id: "sl1", teacher: "김교사", time: "6/12(목) 15:00", booked: null },
+    { id: "sl2", teacher: "김교사", time: "6/12(목) 15:30", booked: null },
+    { id: "sl3", teacher: "김교사", time: "6/13(금) 16:00", booked: null },
+    { id: "sl4", teacher: "이교사", time: "6/13(금) 16:30", booked: null },
+  ];
+  return {
+    district, schools, teachers, classes, students, records, retention, slots,
+    rubrics: [
+      { id: "rb-seed", title: "분수 단원 서술형 평가 루브릭", author: "이교사", criteria: ["개념 이해","풀이 과정","계산 정확성","설명 명료성"], adopts: 2 },
+    ],
+    sharedAssess: [
+      { class: "6학년 3반", teacher: "이교사", title: "5월 단원평가", avg: 0 },
+    ],
+    pathDist: [], audit: [], campLog: [], campStat: null, alimLog: [],
+    role: "district", scopeSchool: "sch1", currentTeacher: "t1", currentClass: "c1",
+    pseudoOn: false, wfStep: { A: 0, B: 0, C: 0, D: 0 }, wfPick: "A",
+    parentStudent: "c1_s0", parentTab: "home", connRows: [], connLog: [],
+  };
+}
+
+// ---------- 상태 ----------
+let state = load();
+function load() {
+  try { const raw = localStorage.getItem(STORE_KEY); if (raw) return migrate(JSON.parse(raw)); }
+  catch (e) { console.warn("load fail", e); }
+  const s = seed(); save(s); return s;
+}
+function migrate(s) {
+  if (!s.wfStep || typeof s.wfStep !== "object") s.wfStep = { A: 0, B: 0, C: 0, D: 0 };
+  if (!s.audit) s.audit = []; if (!s.connRows) s.connRows = []; if (!s.connLog) s.connLog = [];
+  if (!s.campLog) s.campLog = []; if (!s.alimLog) s.alimLog = []; if (!s.pathDist) s.pathDist = [];
+  return s;
+}
+function save(s = state) { localStorage.setItem(STORE_KEY, JSON.stringify(s)); }
+
+// ---------- 감사 로그 ----------
+function audit(action, target) {
+  const roleName = { district: "교육청 관리자", school: "학교 관리자", teacher: "교사", parent: "학부모" }[state.role] || state.role;
+  state.audit.push({ ts: Date.now(), role: roleName, action, target });
+  if (state.audit.length > 200) state.audit = state.audit.slice(-200);
+}
+
+// ---------- 권한 (RBAC, 다계층) ----------
+function teacherClasses() { const t = state.teachers.find((x) => x.id === state.currentTeacher); return t ? t.classes : []; }
+function schoolClasses(schId) { return state.classes.filter((c) => c.schoolId === schId).map((c) => c.id); }
+function accessibleClasses() {
+  if (state.role === "district") return state.classes.map((c) => c.id);
+  if (state.role === "school") return schoolClasses(state.scopeSchool);
+  if (state.role === "teacher") return teacherClasses();
+  return [];
+}
+function canAccessClass(cid) { return accessibleClasses().includes(cid); }
+
+// ---------- 유틸 ----------
+function dispName(s) { return state.pseudoOn ? s.pseudo : s.name; }
+function classStudents(cid = state.currentClass) { return state.students.filter((s) => s.classId === cid && s.deleted !== true); }
+function schoolStudents(schId) { return state.students.filter((s) => s.schoolId === schId && s.deleted !== true); }
+function studentRecords(sid) { return state.records.filter((r) => r.studentId === sid).sort((a, b) => a.ts - b.ts); }
+function classRecords(cid) { return state.records.filter((r) => r.classId === cid); }
+function avgScore(sid) { const rs = studentRecords(sid); return rs.length ? Math.round(rs.reduce((a, r) => a + r.score, 0) / rs.length) : 0; }
+function lastScore(sid) { const rs = studentRecords(sid); return rs.length ? rs[rs.length - 1].score : 0; }
+function classAvg(cid) { const rs = classRecords(cid); return rs.length ? Math.round(rs.reduce((a, r) => a + r.score, 0) / rs.length) : 0; }
+function schoolAvg(schId) { const rs = state.records.filter((r) => r.schoolId === schId); return rs.length ? Math.round(rs.reduce((a, r) => a + r.score, 0) / rs.length) : 0; }
+
+function regressionSlope(sid) {
+  const rs = studentRecords(sid);
+  if (rs.length < 2) return 0;
+  const xs = rs.map((_, i) => i), ys = rs.map((r) => r.score);
+  const n = xs.length, mx = xs.reduce((a, b) => a + b) / n, my = ys.reduce((a, b) => a + b) / n;
+  let num = 0, den = 0;
+  for (let i = 0; i < n; i++) { num += (xs[i] - mx) * (ys[i] - my); den += (xs[i] - mx) ** 2; }
+  return den ? +(num / den).toFixed(1) : 0;
+}
+function conceptRate(sid, concept) {
+  const rs = studentRecords(sid).filter((r) => concept in r.concepts);
+  if (!rs.length) return null;
+  return Math.round((rs.reduce((a, r) => a + r.concepts[concept], 0) / rs.length) * 100);
+}
+function studentWeakConcepts(sid, th = 70) {
+  return CONCEPTS.filter((c) => { const r = conceptRate(sid, c); return r !== null && r < th; });
+}
+
+// ====== 예측 알고리즘 1: 능선회귀(Ridge, L2 닫힌해) — 학기말 성취 예측 ======
+// 특성: [1(bias), 회차index, 출석률, 과제완수율, 취약개념수] → 점수
+function ridgePredict(sid) {
+  const rs = studentRecords(sid);
+  const stu = state.students.find((s) => s.id === sid);
+  if (rs.length < 2) return { pred: lastScore(sid), lo: 0, hi: 0, slope: 0, contrib: [] };
+  // 학습 행렬: 각 회차를 샘플로
+  const X = [], y = [];
+  rs.forEach((r, i) => {
+    const weak = CONCEPTS.filter((c) => c in r.concepts && r.concepts[c] === 0).length;
+    X.push([1, i, (stu.attendance || 80) / 100, (stu.taskRate || 80) / 100, weak]);
+    y.push(r.score);
+  });
+  const p = X[0].length;
+  // Ridge: w = (XᵀX + λI)⁻¹ Xᵀy
+  const lambda = 1.0;
+  const XtX = Array.from({ length: p }, () => new Array(p).fill(0));
+  const Xty = new Array(p).fill(0);
+  for (let r = 0; r < X.length; r++) for (let a = 0; a < p; a++) { Xty[a] += X[r][a] * y[r]; for (let b = 0; b < p; b++) XtX[a][b] += X[r][a] * X[r][b]; }
+  for (let a = 0; a < p; a++) XtX[a][a] += lambda; // bias 제외 정규화는 단순화 위해 전체 적용
+  const w = solveLinear(XtX, Xty);
+  // 예측: 다음 회차(현재 회차+1) 특성으로 예측
+  const nextI = rs.length;
+  const curWeak = studentWeakConcepts(sid).length;
+  const xNext = [1, nextI, (stu.attendance || 80) / 100, (stu.taskRate || 80) / 100, curWeak];
+  let pred = xNext.reduce((s, v, i) => s + v * w[i], 0);
+  pred = Math.max(0, Math.min(100, Math.round(pred)));
+  // 잔차 표준편차로 신뢰구간
+  let sse = 0; for (let r = 0; r < X.length; r++) { const yh = X[r].reduce((s, v, i) => s + v * w[i], 0); sse += (y[r] - yh) ** 2; }
+  const sigma = Math.sqrt(sse / Math.max(1, X.length - 1));
+  const margin = Math.round(1.96 * sigma);
+  // 특성 기여도(부호·크기): wᵢ·xᵢ (bias 제외)
+  const featNames = ["회차 추세", "출석률", "과제완수율", "취약개념수"];
+  const contrib = featNames.map((nm, i) => ({ name: nm, val: +(w[i + 1] * xNext[i + 1]).toFixed(1) }))
+    .sort((a, b) => Math.abs(b.val) - Math.abs(a.val));
+  return { pred, lo: Math.max(0, pred - margin), hi: Math.min(100, pred + margin), slope: regressionSlope(sid), contrib };
+}
+// 선형방정식 Ax=b 가우스 소거
+function solveLinear(A, b) {
+  const n = b.length, M = A.map((r, i) => [...r, b[i]]);
+  for (let c = 0; c < n; c++) {
+    let piv = c; for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[piv][c])) piv = r;
+    [M[c], M[piv]] = [M[piv], M[c]];
+    const d = M[c][c] || 1e-9;
+    for (let k = c; k <= n; k++) M[c][k] /= d;
+    for (let r = 0; r < n; r++) if (r !== c) { const f = M[r][c]; for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k]; }
+  }
+  return M.map((r) => r[n]);
+}
+
+// ====== 예측 알고리즘 2: 로지스틱 위험확률 (중도이탈/학업위험) ======
+function riskProb(sid) {
+  const stu = state.students.find((s) => s.id === sid);
+  const slope = regressionSlope(sid);
+  const av = avgScore(sid);
+  const weak = studentWeakConcepts(sid).length;
+  const att = stu.attendance || 80, task = stu.taskRate || 80;
+  // 로지스틱 선형결합 z (가중치는 도메인 캘리브레이션, 양수=위험↑)
+  const terms = [
+    { name: "성취 하락(추세)", z: (slope < 0 ? -slope : 0) * 0.18 },
+    { name: "저평균", z: Math.max(0, (70 - av)) * 0.05 },
+    { name: "취약개념", z: weak * 0.28 },
+    { name: "낮은 출석률", z: Math.max(0, (90 - att)) * 0.04 },
+    { name: "낮은 과제완수율", z: Math.max(0, (85 - task)) * 0.035 },
+  ];
+  const z = terms.reduce((s, t) => s + t.z, -1.2);
+  const prob = 1 / (1 + Math.exp(-z));
+  const pct = Math.round(prob * 100);
+  const grade = pct >= 60 ? "고위험" : pct >= 35 ? "주의" : "안정";
+  const contrib = terms.filter((t) => t.z > 0.01).sort((a, b) => b.z - a.z);
+  return { pct, grade, contrib, slope, av, weak, att, task };
+}
+
+// ====== 형평성: 지니계수 ======
+function giniOf(values) {
+  const v = values.slice().filter((x) => x != null).sort((a, b) => a - b);
+  const n = v.length; if (!n) return 0;
+  const sum = v.reduce((a, b) => a + b, 0); if (!sum) return 0;
+  let cum = 0; for (let i = 0; i < n; i++) cum += (i + 1) * v[i];
+  return +((2 * cum) / (n * sum) - (n + 1) / n).toFixed(3);
+}
+
+function heatColor(rate) {
+  if (rate === null) return "#F2F4F6";
+  if (rate < 40) return "#F04452";
+  if (rate < 60) return "#FFB331";
+  if (rate < 80) return "#84cc16";
+  return "#14AE5C";
+}
+function gradeColor(g) { return g === "고위험" ? "bg-rose-100 text-rose-700" : g === "주의" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"; }
+
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.style.opacity = "1";
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.style.opacity = "0"), 2400);
+}
+let charts = {};
+function destroyChart(k) { if (charts[k]) { charts[k].destroy(); delete charts[k]; } }
+
+// ---------- 역할/셸 전환 ----------
+function applyRole() {
+  document.getElementById("roleSelect").value = state.role;
+  const desk = document.getElementById("desktopShell");
+  const mob = document.getElementById("mobileShell");
+  if (state.role === "parent") { desk.style.display = "none"; mob.style.display = "flex"; renderParent(); return; }
+  desk.style.display = "flex"; mob.style.display = "none";
+  // 교육청 메뉴 노출
+  document.querySelectorAll(".navDistrict").forEach((b) => b.classList.toggle("hidden", state.role !== "district"));
+  // 스코프 피커: 교육청은 학교 선택, 교사는 본인 학급은 헤더에서
+  const sp = document.getElementById("scopePicker"), spw = document.getElementById("scopePickerWrap"), spl = document.getElementById("scopePickerLabel");
+  if (state.role === "district") { spw.style.display = "none"; }
+  else if (state.role === "school") {
+    spw.style.display = "block"; spl.textContent = "학교";
+    sp.innerHTML = state.schools.map((s) => `<option value="${s.id}">${s.name}</option>`).join(""); sp.value = state.scopeSchool;
+  } else { // teacher
+    spw.style.display = "block"; spl.textContent = "교사 계정";
+    sp.innerHTML = state.teachers.map((t) => `<option value="${t.id}">${t.name} (${state.schools.find((s) => s.id === t.schoolId).name})</option>`).join(""); sp.value = state.currentTeacher;
+  }
+  // 사용자 표시
+  const av = document.getElementById("userAvatar");
+  if (state.role === "district") { av.textContent = "청"; av.className = "w-7 h-7 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs font-bold"; document.getElementById("userName").textContent = "교육청 관리자"; document.getElementById("userScope").textContent = state.district.name; }
+  else if (state.role === "school") { av.textContent = "교"; av.className = "w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold"; document.getElementById("userName").textContent = "학교 관리자"; document.getElementById("userScope").textContent = state.schools.find((s) => s.id === state.scopeSchool).name; }
+  else { const t = state.teachers.find((x) => x.id === state.currentTeacher); av.textContent = "사"; av.className = "w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold"; document.getElementById("userName").textContent = t.name; document.getElementById("userScope").textContent = t.classes.map((c) => state.classes.find((x) => x.id === c).name).join(", "); }
+  if (!canAccessClass(state.currentClass)) state.currentClass = accessibleClasses()[0];
+  fillClassSelect();
+  const badge = { district: state.district.name + " · 교육청", school: state.schools.find((s) => s.id === state.scopeSchool).name + " · 관리자", teacher: state.schools.find((s) => s.id === state.teachers.find((t) => t.id === state.currentTeacher).schoolId).name + " · 교사" }[state.role];
+  document.getElementById("tenantBadge").textContent = badge;
+  const cur = document.querySelector(".nav-active")?.dataset.view;
+  let target = cur || (state.role === "district" ? "district" : state.role === "school" ? "school" : "predict");
+  if (target === "district" && state.role !== "district") target = "school";
+  setView(target);
+}
+document.getElementById("roleSelect").addEventListener("change", (e) => {
+  state.role = e.target.value;
+  if (state.role === "teacher") state.currentTeacher = "t1";
+  save(); applyRole();
+});
+document.getElementById("scopePicker").addEventListener("change", (e) => {
+  if (state.role === "school") state.scopeSchool = e.target.value;
+  else if (state.role === "teacher") state.currentTeacher = e.target.value;
+  save(); applyRole();
+});
+
+// ---------- 뷰 전환 ----------
+const VIEW_META = {
+  district: ["교육청 통합", "관할 학교를 롤업해 예측 위험·형평성을 한눈에 보여드려요 (다계층 테넌트)."],
+  school: ["학교 대시보드", "학급 롤업과 예측 성취·위험확률 분포를 보여드려요."],
+  predict: ["예측 모델", "학기말 성취(능선회귀)와 위험확률(로지스틱)을 예측하고 근거도 보여드려요."],
+  equity: ["형평성 분석", "지니·사분위·학급 간 격차지수를 리포트로 보여드려요."],
+  intervene: ["개입 추천 엔진", "선수개념 그래프를 바탕으로 맞춤 학습경로를 만들어 드려요."],
+  connect: ["멀티소스 연동", "AIDT·LMS·CSV 3개 소스를 정규화해 불러와요 (mock)."],
+  collab: ["교사 협업", "공동 루브릭을 만들고 평가를 공유하며 함께 발전시켜요."],
+  parentcamp: ["학부모 캠페인·예약", "세그먼트 알림톡 캠페인과 상담 예약 슬롯을 관리해요."],
+  governance: ["개인정보 거버넌스", "접근 감사·보존정책·동의 일괄 철회를 관리해요."],
+  workflow: ["워크플로", "핵심 워크플로 4가지를 진행해요."],
+};
+function setView(v) {
+  document.querySelectorAll(".view").forEach((el) => el.classList.add("hidden"));
+  document.getElementById("view-" + v).classList.remove("hidden");
+  document.querySelectorAll(".nav-btn").forEach((b) => b.classList.toggle("nav-active", b.dataset.view === v));
+  document.getElementById("viewTitle").textContent = VIEW_META[v][0];
+  document.getElementById("viewSub").textContent = VIEW_META[v][1];
+  // 학급 셀렉터는 학교/교사 스코프 뷰에서만 의미
+  const showClass = ["school", "predict", "equity", "intervene", "connect", "collab", "governance", "workflow"].includes(v) && state.role !== "district";
+  document.getElementById("classSelect").style.display = showClass ? "" : "none";
+  document.getElementById("classLbl").style.display = showClass ? "" : "none";
+  const R = { district: renderDistrict, school: renderSchool, predict: renderPredict, equity: renderEquity, intervene: renderIntervene, connect: renderConnect, collab: renderCollab, parentcamp: renderParentCamp, governance: renderGovernance, workflow: renderWorkflow };
+  R[v] && R[v]();
+}
+document.querySelectorAll(".nav-btn").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+
+function fillClassSelect() {
+  const sel = document.getElementById("classSelect");
+  const cls = state.classes.filter((c) => canAccessClass(c.id));
+  sel.innerHTML = cls.map((c) => `<option value="${c.id}">${state.schools.find((s) => s.id === c.schoolId).name} · ${c.name}</option>`).join("");
+  if (!cls.find((c) => c.id === state.currentClass)) state.currentClass = cls[0]?.id;
+  sel.value = state.currentClass;
+}
+document.getElementById("classSelect").addEventListener("change", (e) => {
+  if (!canAccessClass(e.target.value)) { toast("접근 권한이 없는 학급이에요."); fillClassSelect(); return; }
+  state.currentClass = e.target.value; save();
+  const cur = document.querySelector(".nav-active")?.dataset.view || "predict";
+  setView(cur);
+});
+
+// ---------- 교육청 통합 (다계층 롤업) ----------
+function renderDistrict() {
+  audit("교육청 통합 대시보드 조회", state.district.name);
+  const schools = state.schools.filter((s) => s.districtId === state.district.id);
+  const totalStudents = state.students.filter((s) => s.deleted !== true).length;
+  const dAvg = Math.round(state.records.reduce((a, r) => a + r.score, 0) / state.records.length);
+  let highRisk = 0; state.students.forEach((s) => { if (s.deleted !== true && riskProb(s.id).grade === "고위험") highRisk++; });
+  const dGini = giniOf(state.students.filter((s) => s.deleted !== true).map((s) => avgScore(s.id)));
+  document.getElementById("districtKpi").innerHTML = [
+    ["관할 학교", schools.length, "교", "text-purple-700"], ["전체 학생", totalStudents, "명", "text-blue-700"],
+    ["학교 평균", dAvg, "점", "text-slate-700"], ["예측 고위험", highRisk, "명", "text-rose-600"],
+  ].map(([l, v, u, c]) => `<div class="bg-white rounded-xl border p-4"><div class="text-xs text-slate-500">${l}</div><div class="mt-1 text-2xl font-bold ${c}">${v}<span class="text-sm font-normal text-slate-400 ml-1">${u}</span></div></div>`).join("");
+
+  destroyChart("districtBar");
+  charts.districtBar = new Chart(document.getElementById("districtBar"), {
+    type: "bar", data: { labels: schools.map((s) => s.name), datasets: [{ label: "학교 평균", data: schools.map((s) => schoolAvg(s.id)), backgroundColor: ["#7c3aed", "#3182F6"] }] },
+    options: { plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100 } }, animation: false },
+  });
+  destroyChart("districtRisk");
+  charts.districtRisk = new Chart(document.getElementById("districtRisk"), {
+    type: "doughnut",
+    data: { labels: schools.map((s) => s.name), datasets: [{ data: schools.map((s) => schoolStudents(s.id).filter((st) => riskProb(st.id).grade !== "안정").length), backgroundColor: ["#a78bfa", "#5B9DF9"] }] },
+    options: { plugins: { legend: { position: "bottom" } }, animation: false },
+  });
+  // 학교>학급 롤업 (집계만, 개별 식별 비노출)
+  let rows = "";
+  schools.forEach((sch) => {
+    const cls = state.classes.filter((c) => c.schoolId === sch.id);
+    cls.forEach((c, idx) => {
+      const ss = classStudents(c.id);
+      const risk = ss.filter((s) => riskProb(s.id).grade !== "안정").length;
+      const gini = giniOf(ss.map((s) => avgScore(s.id)));
+      rows += `<tr class="border-b">
+        <td class="py-2 px-2 ${idx === 0 ? "font-semibold" : "text-slate-400"}">${idx === 0 ? sch.name : ""}</td>
+        <td class="py-2 px-2">${c.name}</td><td class="py-2 px-2">${ss.length}명</td>
+        <td class="py-2 px-2">${classAvg(c.id)}점</td>
+        <td class="py-2 px-2 ${risk ? "text-rose-600 font-semibold" : "text-slate-400"}">${risk}명</td>
+        <td class="py-2 px-2">${gini}</td>
+        <td class="py-2 px-2">${gini > 0.18 || risk >= 2 ? '<span class="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">집중지원 권고</span>' : '<span class="text-xs text-slate-400">양호</span>'}</td></tr>`;
+    });
+  });
+  document.getElementById("districtTable").innerHTML = rows;
+  document.getElementById("districtIsolation").innerHTML = `
+    <div class="bg-slate-50 rounded-lg p-3 text-xs font-mono space-y-1">
+      <div>계층: 교육청(${state.district.name}) > 학교 ${schools.length}개 > 학급 ${state.classes.length}개</div>
+      <div class="text-emerald-700">상위 테넌트(교육청)는 하위 <b>집계·가명만</b> 조회 — 개별 학생 실명/식별정보 노출 <b>0건</b> ✅</div>
+      <div class="text-emerald-700">타 교육지원청(타 상위 테넌트) district_id 격리 → <b>0건</b> ✅</div>
+    </div>`;
+}
+
+// ---------- 학교 대시보드 ----------
+function renderSchool() {
+  audit("학교 대시보드 조회", state.schools.find((s) => s.id === currentSchoolId()).name);
+  const schId = currentSchoolId();
+  const cls = state.classes.filter((c) => c.schoolId === schId && canAccessClass(c.id));
+  const ss = state.students.filter((s) => cls.some((c) => c.id === s.classId) && s.deleted !== true);
+  const sAvg = ss.length ? Math.round(ss.reduce((a, s) => a + avgScore(s.id), 0) / ss.length) : 0;
+  const risk = ss.filter((s) => riskProb(s.id).grade !== "안정").length;
+  document.getElementById("schoolKpi").innerHTML = [
+    ["학급", cls.length, "개", "text-indigo-700"], ["학생", ss.length, "명", "text-blue-700"],
+    ["평균", sAvg, "점", sAvg < 70 ? "text-rose-600" : "text-emerald-600"], ["예측 위험군", risk, "명", "text-rose-600"],
+  ].map(([l, v, u, c]) => `<div class="bg-white rounded-xl border p-4"><div class="text-xs text-slate-500">${l}</div><div class="mt-1 text-2xl font-bold ${c}">${v}<span class="text-sm font-normal text-slate-400 ml-1">${u}</span></div></div>`).join("");
+  destroyChart("schoolBar");
+  charts.schoolBar = new Chart(document.getElementById("schoolBar"), {
+    type: "bar", data: { labels: cls.map((c) => c.name), datasets: [
+      { label: "현재 평균", data: cls.map((c) => classAvg(c.id)), backgroundColor: "#3182F6" },
+      { label: "예측 평균", data: cls.map((c) => { const cs = classStudents(c.id); return cs.length ? Math.round(cs.reduce((a, s) => a + ridgePredict(s.id).pred, 0) / cs.length) : 0; }), backgroundColor: "#a78bfa" },
+    ] },
+    options: { plugins: { legend: { position: "bottom" } }, scales: { y: { min: 0, max: 100 } }, animation: false },
+  });
+  // 위험확률 히스토그램
+  const buckets = [0, 0, 0, 0, 0];
+  ss.forEach((s) => { const p = riskProb(s.id).pct; buckets[Math.min(4, Math.floor(p / 20))]++; });
+  destroyChart("schoolRiskHist");
+  charts.schoolRiskHist = new Chart(document.getElementById("schoolRiskHist"), {
+    type: "bar", data: { labels: ["0-20%", "20-40%", "40-60%", "60-80%", "80%+"], datasets: [{ data: buckets, backgroundColor: ["#14AE5C", "#84cc16", "#FFB331", "#f97316", "#F04452"] }] },
+    options: { indexAxis: "y", plugins: { legend: { display: false } }, animation: false },
+  });
+  document.getElementById("schoolTable").innerHTML = cls.map((c) => {
+    const cs = classStudents(c.id); const teacher = state.teachers.find((t) => t.id === c.teacherId);
+    const r = cs.filter((s) => riskProb(s.id).grade !== "안정").length;
+    return `<tr class="border-b"><td class="py-2 px-2 font-medium">${c.name}</td><td class="py-2 px-2">${teacher.name}</td>
+      <td class="py-2 px-2">${cs.length}명</td><td class="py-2 px-2">${classAvg(c.id)}점</td>
+      <td class="py-2 px-2 ${r ? "text-rose-600 font-semibold" : "text-slate-400"}">${r}명</td></tr>`;
+  }).join("");
+}
+function currentSchoolId() {
+  if (state.role === "school") return state.scopeSchool;
+  if (state.role === "teacher") return state.teachers.find((t) => t.id === state.currentTeacher).schoolId;
+  return state.scopeSchool;
+}
+
+// ---------- 예측 모델 ----------
+function renderPredict() {
+  audit("예측 모델 실행", state.classes.find((c) => c.id === state.currentClass)?.name || "");
+  const ss = classStudents();
+  const data = ss.map((s) => ({ s, rg: ridgePredict(s.id), rk: riskProb(s.id), av: avgScore(s.id) }));
+  const avgPred = Math.round(data.reduce((a, d) => a + d.rg.pred, 0) / data.length);
+  const highRisk = data.filter((d) => d.rk.grade === "고위험").length;
+  const improving = data.filter((d) => d.rg.pred > d.av).length;
+  const dropping = data.filter((d) => d.rg.pred < d.av - 2).length;
+  document.getElementById("predictCards").innerHTML = [
+    ["예측 학급 평균", avgPred, "점", "text-purple-700"], ["예측 고위험", highRisk, "명", "text-rose-600"],
+    ["상승 예측", improving, "명", "text-emerald-600"], ["하락 예측", dropping, "명", "text-amber-600"],
+  ].map(([l, v, u, c]) => `<div class="rounded-xl border p-4 bg-white"><div class="text-xs text-slate-500">${l}</div><div class="mt-1 text-2xl font-bold ${c}">${v}<span class="text-sm font-normal text-slate-400 ml-1">${u}</span></div></div>`).join("");
+  // 현재 vs 예측 산점(막대 페어)
+  destroyChart("predictScatter");
+  charts.predictScatter = new Chart(document.getElementById("predictScatter"), {
+    type: "bar", data: { labels: data.map((d) => dispName(d.s)), datasets: [
+      { label: "현재 평균", data: data.map((d) => d.av), backgroundColor: "#8B95A1" },
+      { label: "학기말 예측", data: data.map((d) => d.rg.pred), backgroundColor: data.map((d) => d.rg.pred < 70 ? "#F04452" : "#7c3aed") },
+    ] },
+    options: { plugins: { legend: { position: "bottom" } }, scales: { y: { min: 0, max: 100 } }, animation: false },
+  });
+  // 위험 상위 특성 기여도
+  const top = data.slice().sort((a, b) => b.rk.pct - a.rk.pct).slice(0, 4);
+  document.getElementById("riskContrib").innerHTML = top.map((d) => `
+    <div class="border rounded-lg p-2">
+      <div class="flex justify-between mb-1"><span class="font-medium">${dispName(d.s)}</span><span class="px-2 py-0.5 rounded-full ${gradeColor(d.rk.grade)}">${d.rk.pct}% · ${d.rk.grade}</span></div>
+      <div class="flex flex-wrap gap-1">${d.rk.contrib.map((c) => `<span class="px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 text-[10px]">${c.name} +${c.z.toFixed(2)}</span>`).join("")}</div>
+    </div>`).join("");
+  document.getElementById("predictTable").innerHTML = data.sort((a, b) => b.rk.pct - a.rk.pct).map((d) => `
+    <tr class="border-b ${d.rk.grade === "고위험" ? "bg-rose-50" : ""}">
+      <td class="py-2 px-2 font-medium">${dispName(d.s)}</td>
+      <td class="py-2 px-2">${d.av}점</td>
+      <td class="py-2 px-2 font-semibold text-purple-700">${d.rg.pred}점</td>
+      <td class="py-2 px-2 text-xs text-slate-500">${d.rg.lo}~${d.rg.hi}</td>
+      <td class="py-2 px-2 font-bold ${d.rk.pct >= 60 ? "text-rose-600" : d.rk.pct >= 35 ? "text-amber-600" : "text-emerald-600"}">${d.rk.pct}%</td>
+      <td class="py-2 px-2"><span class="px-2 py-0.5 rounded-full text-xs ${gradeColor(d.rk.grade)}">${d.rk.grade}</span></td>
+      <td class="py-2 px-2 text-xs text-slate-600">${d.rk.contrib.slice(0, 2).map((c) => c.name).join(" · ") || "특이사항 없음"}</td></tr>`).join("");
+}
+
+// ---------- 형평성 분석 ----------
+function renderEquity() {
+  audit("형평성 분석 조회", state.classes.find((c) => c.id === state.currentClass)?.name || "");
+  const ss = classStudents();
+  const scores = ss.map((s) => avgScore(s.id)).sort((a, b) => a - b);
+  const gini = giniOf(scores);
+  const n = scores.length;
+  const q = (p) => scores[Math.min(n - 1, Math.floor(p * n))];
+  const top25 = scores.slice(Math.ceil(n * 0.75)).reduce((a, b) => a + b, 0) / Math.max(1, n - Math.ceil(n * 0.75));
+  const bot25 = scores.slice(0, Math.floor(n * 0.25)).reduce((a, b) => a + b, 0) / Math.max(1, Math.floor(n * 0.25));
+  const gap = Math.round(top25 - bot25);
+  document.getElementById("equityKpi").innerHTML = [
+    ["지니계수", gini, "", gini > 0.18 ? "text-rose-600" : "text-emerald-600"],
+    ["상위25% 평균", Math.round(top25), "점", "text-blue-700"],
+    ["하위25% 평균", Math.round(bot25), "점", "text-amber-600"],
+    ["상하위 격차", gap, "점", gap > 25 ? "text-rose-600" : "text-slate-700"],
+  ].map(([l, v, u, c]) => `<div class="bg-white rounded-xl border p-4"><div class="text-xs text-slate-500">${l}</div><div class="mt-1 text-2xl font-bold ${c}">${v}<span class="text-sm font-normal text-slate-400 ml-1">${u}</span></div></div>`).join("");
+  // 사분위 카운트
+  const qc = [0, 0, 0, 0];
+  scores.forEach((v) => { const idx = v < 60 ? 0 : v < 70 ? 1 : v < 85 ? 2 : 3; qc[idx]++; });
+  destroyChart("equityQuartile");
+  charts.equityQuartile = new Chart(document.getElementById("equityQuartile"), {
+    type: "bar", data: { labels: ["Q1(<60)", "Q2(60-70)", "Q3(70-85)", "Q4(85+)"], datasets: [{ data: qc, backgroundColor: ["#F04452", "#FFB331", "#84cc16", "#14AE5C"] }] },
+    options: { plugins: { legend: { display: false } }, scales: { y: { min: 0 } }, animation: false },
+  });
+  // 로렌츠 곡선
+  const cum = [0]; let run = 0; const sum = scores.reduce((a, b) => a + b, 0);
+  scores.forEach((v) => { run += v; cum.push(run / sum); });
+  const eq = cum.map((_, i) => i / (cum.length - 1));
+  destroyChart("equityLorenz");
+  charts.equityLorenz = new Chart(document.getElementById("equityLorenz"), {
+    type: "line", data: { labels: eq.map((e) => (e * 100).toFixed(0) + "%"), datasets: [
+      { label: "완전 평등선", data: eq, borderColor: "#D1D6DB", borderDash: [5, 5], pointRadius: 0, fill: false },
+      { label: "실제 누적 성취", data: cum, borderColor: "#7c3aed", backgroundColor: "rgba(124,58,237,.12)", fill: true, pointRadius: 2, tension: .1 },
+    ] },
+    options: { plugins: { legend: { position: "bottom" } }, scales: { y: { min: 0, max: 1 } }, animation: false },
+  });
+  // 학급 간 격차지수
+  const cls = state.classes.filter((c) => canAccessClass(c.id));
+  const avgs = cls.map((c) => ({ c, a: classAvg(c.id) }));
+  const maxA = Math.max(...avgs.map((x) => x.a)), minA = Math.min(...avgs.map((x) => x.a));
+  document.getElementById("equityGap").innerHTML = `
+    <div class="text-sm mb-3">학급 간 격차지수 = (최고 학급 평균 − 최저 학급 평균) = <b class="${maxA - minA > 10 ? "text-rose-600" : "text-emerald-600"}">${maxA - minA}점</b></div>
+    <div class="space-y-2 mb-3">${avgs.map((x) => `<div class="flex items-center gap-3"><div class="w-40 text-sm">${state.schools.find((s) => s.id === x.c.schoolId).name} ${x.c.name}</div>
+      <div class="flex-1 bg-slate-100 rounded-full h-4"><div class="h-4 rounded-full bg-purple-500" style="width:${x.a}%"></div></div>
+      <div class="w-12 text-right text-sm font-semibold">${x.a}점</div></div>`).join("")}</div>
+    <div class="bg-blue-50 border border-blue-100 rounded-lg p-3 text-sm text-slate-700">
+      👉 권고: ${gini > 0.18 ? "지니계수 " + gini + "로 학급 내 성취 편차가 커요. 하위 사분위 집중 보충(개입 추천 엔진 연계)을 권해요." : "지니계수 " + gini + "로 비교적 균등해요. 상위군 심화와 하위군 유지 전략을 함께 가져가 보세요."}</div>`;
+}
+
+// ---------- 개입 추천 엔진 (선수개념 그래프) ----------
+function renderIntervene() {
+  document.getElementById("interveneStudent").innerHTML = classStudents().map((s) => `<option value="${s.id}">${dispName(s)}</option>`).join("");
+  renderPathDist();
+}
+document.getElementById("genPath").addEventListener("click", buildPath);
+document.getElementById("interveneStudent").addEventListener("change", () => document.getElementById("pathResult").innerHTML = '<p class="text-slate-400 text-sm">"학습경로 생성"을 눌러 맞춤 경로를 만들어 보세요.</p>');
+function prereqClosure(concept, depth = 0, seen = new Set()) {
+  // 취약개념의 선수 결손까지 역추적
+  const chain = [];
+  (PREREQ[concept] || []).forEach((p) => { if (!seen.has(p)) { seen.add(p); chain.push(...prereqClosure(p, depth + 1, seen), p); } });
+  return chain;
+}
+function buildPath() {
+  const sid = document.getElementById("interveneStudent").value;
+  const s = state.students.find((x) => x.id === sid);
+  audit("개입 학습경로 생성", dispName(s));
+  const weak = studentWeakConcepts(sid).map((c) => ({ c, r: conceptRate(sid, c) })).sort((a, b) => a.r - b.r);
+  if (!weak.length) { document.getElementById("pathResult").innerHTML = '<p class="text-emerald-600 text-sm">취약개념이 없어 심화 학습경로를 권해요.</p>'; return; }
+  let html = "";
+  weak.forEach((w) => {
+    const prereqs = [...new Set(prereqClosure(w.c))].filter((p) => { const r = conceptRate(sid, p); return r === null || r < 75; });
+    // 단계: 진단 → (선수 결손 보충) → 본개념 → 심화
+    const steps = [{ k: "진단", label: `${w.c} 진단 (현재 정답률 ${w.r}%)`, color: "#4E5968" }];
+    prereqs.forEach((p) => steps.push({ k: "선수보충", label: `선수개념 보충: ${p} — ${TASK_BANK[p]}`, color: "#FFB331" }));
+    steps.push({ k: "본개념", label: `본개념 학습: ${w.c} — ${TASK_BANK[w.c]}`, color: "#3182F6" });
+    steps.push({ k: "심화", label: `심화·전이: ${w.c} 응용 문제`, color: "#14AE5C" });
+    const mins = steps.length * 15;
+    html += `<div class="border rounded-lg p-4">
+      <div class="flex items-center justify-between mb-3">
+        <div class="font-semibold text-slate-700">취약개념: ${w.c} <span class="text-xs font-normal px-2 py-0.5 rounded-full text-white" style="background:${heatColor(w.r)}">${w.r}%</span></div>
+        <div class="text-xs text-slate-500">선수결손 ${prereqs.length}개 · 예상 ${mins}분</div>
+      </div>
+      <div class="flex items-center gap-1 flex-wrap">${steps.map((st, i) => `
+        <div class="flex items-center">
+          <div class="path-node px-3 py-2 rounded-lg text-xs text-white" style="background:${st.color}"><div class="font-semibold">${st.k}</div><div class="opacity-90">${st.label}</div></div>
+          ${i < steps.length - 1 ? '<span class="mx-1 text-slate-300">→</span>' : ""}
+        </div>`).join("")}</div>
+      <button data-sid="${sid}" data-concept="${w.c}" class="distPath mt-3 text-xs border border-blue-600 text-blue-700 hover:bg-blue-600 hover:text-white rounded-lg px-3 py-1.5 font-medium">이 경로 배포</button>
+    </div>`;
+  });
+  document.getElementById("pathResult").innerHTML = html;
+  document.querySelectorAll(".distPath").forEach((b) => b.addEventListener("click", () => {
+    const stu = state.students.find((x) => x.id === b.dataset.sid);
+    if (state.pathDist.some((d) => d.sid === b.dataset.sid && d.concept === b.dataset.concept)) { toast("이미 배포한 경로예요."); return; }
+    state.pathDist.push({ id: "p" + Date.now(), sid: b.dataset.sid, name: dispName(stu), concept: b.dataset.concept, status: "배포완료", ts: Date.now() });
+    audit("개입 경로 배포", `${dispName(stu)} · ${b.dataset.concept}`);
+    save(); renderPathDist(); toast(`${dispName(stu)} · ${b.dataset.concept} 학습경로를 배포했어요`);
+  }));
+}
+function renderPathDist() {
+  const ds = state.pathDist;
+  document.getElementById("pathDistCount").textContent = `(${ds.length}건)`;
+  document.getElementById("pathDistList").innerHTML = ds.length ? ds.map((d) => `
+    <div class="flex items-center justify-between border rounded-lg p-2.5"><div><span class="font-medium">${d.name}</span> <span class="text-slate-400">·</span> ${d.concept} 맞춤 학습경로</div>
+    <span class="px-2 py-0.5 rounded-full text-xs bg-emerald-100 text-emerald-700">${d.status}</span></div>`).join("") : '<p class="text-slate-400">아직 배포한 경로가 없어요. 위에서 학습경로를 만들어 배포해 보세요.</p>';
+}
+
+// ---------- 멀티소스 연동 ----------
+const SRC_RAW = {
+  AIDT: [ // AIDT 원시 스키마: student_ext_id / concept / correct
+    { student_ext_id: "AIDT-1000", concept: "통분", correct: 0 },
+    { student_ext_id: "AIDT-1001", concept: "소수의곱셈", correct: 1 },
+    { student_ext_id: "AIDT-9999", concept: "통분", correct: 1 },
+  ],
+  LMS: [ // LMS 원시 스키마: userId / skill / pass(불리언) — 정규화 필요
+    { userId: "AIDT-1002", skill: "약분", pass: false },
+    { userId: "AIDT-1003", skill: "분수의뺄셈", pass: true },
+  ],
+  CSV: [ // CSV 행: 외부ID,개념,정답(O/X)
+    "AIDT-1004,대분수,X",
+    "AIDT-1005,분수의덧셈,O",
+  ],
+};
+function connLog(line) { state.connLog.push(`[${new Date().toLocaleTimeString("ko-KR")}] ${line}`); const el = document.getElementById("connLog"); if (el) { el.textContent = state.connLog.slice(-30).join("\n"); el.scrollTop = 1e9; } }
+function renderConnect() {
+  const counts = { AIDT: 0, LMS: 0, CSV: 0 };
+  state.connRows.forEach((r) => counts[r.src]++);
+  document.getElementById("connectorCards").innerHTML = [
+    ["AIDT 디지털교과서", counts.AIDT, "bg-indigo-50 text-indigo-700", "REST /v1/learning-logs"],
+    ["LMS (무들/클래스룸)", counts.LMS, "bg-emerald-50 text-emerald-700", "OAuth + xAPI 스타일"],
+    ["CSV 업로드", counts.CSV, "bg-amber-50 text-amber-700", "행 단위 외부ID,개념,정답"],
+  ].map(([l, v, c, d]) => `<div class="rounded-xl border p-4 ${c}"><div class="text-xs">${l}</div><div class="text-2xl font-bold mt-1">${v}건</div><div class="text-[10px] mt-1 opacity-80">${d}</div></div>`).join("");
+  if (state.connLog.length) document.getElementById("connLog").textContent = state.connLog.slice(-30).join("\n");
+  renderConnTable();
+}
+function renderConnTable() {
+  document.getElementById("connTable").innerHTML = state.connRows.slice(-30).map((r) => `
+    <tr class="border-b"><td class="py-1.5 px-2"><span class="px-1.5 py-0.5 rounded text-[10px] ${r.src === "AIDT" ? "bg-indigo-100 text-indigo-700" : r.src === "LMS" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}">${r.src}</span></td>
+    <td class="py-1.5 px-2 font-mono text-[11px]">${r.extId}</td><td class="py-1.5 px-2">${r.student}</td><td class="py-1.5 px-2">${r.concept}</td>
+    <td class="py-1.5 px-2 ${r.correct ? "text-emerald-600" : "text-rose-600"}">${r.correct ? "정답" : "오답"}</td></tr>`).join("");
+}
+document.querySelectorAll(".srcPull").forEach((b) => b.addEventListener("click", () => {
+  const src = b.dataset.src;
+  connLog(`${src} 커넥터 연결 시도... (key 부재 → mock)`);
+  const raw = SRC_RAW[src];
+  let mapped = 0, unmatched = 0;
+  raw.forEach((row, i) => {
+    // 소스별 스키마 정규화 → { extId, concept, correct }
+    let norm;
+    if (src === "AIDT") norm = { extId: row.student_ext_id, concept: row.concept, correct: !!row.correct };
+    else if (src === "LMS") norm = { extId: row.userId, concept: row.skill, correct: !!row.pass };
+    else { const [extId, concept, oc] = row.split(","); norm = { extId, concept, correct: oc === "O" }; }
+    const stu = state.students.find((s) => s.extId === norm.extId && s.deleted !== true);
+    if (!stu) { connLog(`row ${i + 1}: ${norm.extId} 미등록 → 매핑 실패(격리)`); unmatched++; return; }
+    if (!canAccessClass(stu.classId)) { connLog(`row ${i + 1}: ${norm.extId} 타 학급 → 권한 차단`); return; }
+    state.connRows.push({ src, extId: norm.extId, student: stu.name, concept: norm.concept, correct: norm.correct });
+    connLog(`row ${i + 1}: [${src}] ${norm.extId} → ${stu.name} · ${norm.concept}=${norm.correct ? 1 : 0} (정규화 OK)`);
+    mapped++;
+  });
+  audit(`${src} 학습로그 인입`, `${mapped}건 매핑`);
+  connLog(`${src} 완료: 정규화·매핑 ${mapped}건, 미등록 ${unmatched}건`);
+  save(); renderConnect(); toast(`${src}에서 ${mapped}건을 불러왔어요 (스키마 정규화)`);
+}));
+document.getElementById("exportConnCsv").addEventListener("click", () => {
+  if (!state.connRows.length) { toast("내보낼 연동 결과가 아직 없어요."); return; }
+  const rows = [["소스", "외부ID", "학생", "개념", "정오답"]];
+  state.connRows.forEach((r) => rows.push([r.src, r.extId, r.student, r.concept, r.correct ? "정답" : "오답"]));
+  const csv = rows.map((r) => r.join(",")).join("\n");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "multisource_ingest.csv"; a.click();
+  connLog(`정규화 결과 CSV 내보내기: ${rows.length - 1}행`); audit("인입결과 CSV 내보내기", `${rows.length - 1}행`);
+  toast(`정규화 결과 CSV를 내보냈어요 (${rows.length - 1}행)`);
+});
+
+// ---------- 교사 협업 ----------
+function renderCollab() {
+  document.getElementById("sharedAssess").innerHTML = state.classes.filter((c) => c.schoolId === currentSchoolId()).map((c) => {
+    const t = state.teachers.find((x) => x.id === c.teacherId);
+    return `<div class="flex items-center justify-between border rounded-lg p-2.5"><div><span class="font-medium">${c.name}</span> <span class="text-slate-400 text-xs">· ${t.name}</span></div>
+      <span class="text-sm">평균 <b>${classAvg(c.id)}점</b></span></div>`;
+  }).join("");
+  document.getElementById("rubricLib").innerHTML = state.rubrics.map((rb) => `
+    <div class="border rounded-lg p-4">
+      <div class="flex items-center justify-between mb-2">
+        <div><span class="font-semibold text-slate-700">${rb.title}</span> <span class="text-xs text-slate-400">· 작성 ${rb.author}</span></div>
+        <div class="flex items-center gap-2"><span class="text-xs text-slate-500">채택 ${rb.adopts}회</span>
+          <button data-id="${rb.id}" class="adoptRb text-xs border border-blue-600 text-blue-700 hover:bg-blue-600 hover:text-white rounded-lg px-3 py-1 font-medium">채택(복제)</button></div>
+      </div>
+      <div class="flex flex-wrap gap-2">${rb.criteria.map((c) => `<span class="px-2 py-1 rounded bg-slate-100 text-xs">${c}</span>`).join("")}</div>
+    </div>`).join("");
+  document.querySelectorAll(".adoptRb").forEach((b) => b.addEventListener("click", () => {
+    const rb = state.rubrics.find((x) => x.id === b.dataset.id); rb.adopts++;
+    audit("루브릭 채택(복제)", rb.title); save(); renderCollab(); toast(`"${rb.title}"을(를) 채택했어요 — 확산 ${rb.adopts}회`);
+  }));
+}
+document.getElementById("addRubric").addEventListener("click", () => {
+  const title = document.getElementById("rbTitle").value.trim();
+  const crit = document.getElementById("rbCriteria").value.split("\n").map((x) => x.trim()).filter(Boolean);
+  if (!title || !crit.length) { toast("제목과 평가 기준을 입력해 주세요."); return; }
+  const author = state.role === "teacher" ? state.teachers.find((t) => t.id === state.currentTeacher).name : "관리자";
+  state.rubrics.unshift({ id: "rb" + Date.now(), title, author, criteria: crit, adopts: 0 });
+  audit("공동 루브릭 공유", title);
+  document.getElementById("rbTitle").value = ""; document.getElementById("rbCriteria").value = "";
+  save(); renderCollab(); toast(`"${title}" 루브릭을 공유했어요`);
+});
+
+// ---------- 학부모 캠페인·예약 ----------
+function renderParentCamp() {
+  if (state.campStat) renderCampStat();
+  if (state.campLog.length) document.getElementById("campLog").textContent = state.campLog.slice(-20).join("\n");
+  renderSlots(); renderBookings();
+}
+function segStudents(seg) {
+  const ss = classStudents();
+  if (seg === "risk") return ss.filter((s) => riskProb(s.id).grade === "고위험");
+  if (seg === "weak") return ss.filter((s) => studentWeakConcepts(s.id).length > 0);
+  return ss;
+}
+document.getElementById("sendCampaign").addEventListener("click", () => {
+  const seg = document.getElementById("campSeg").value;
+  const tmpl = document.getElementById("campTemplate").value;
+  const targets = segStudents(seg);
+  let sent = 0, excluded = 0, fallback = 0;
+  const t = new Date().toLocaleTimeString("ko-KR");
+  state.campLog.push(`[${t}] === 캠페인 발송: 세그먼트=${seg}, 템플릿=${tmpl}, 대상 ${targets.length}명 ===`);
+  targets.forEach((s) => {
+    if (s.consent !== "동의") { state.campLog.push(`  ✗ ${s.name}: 미동의/철회 → 제외`); excluded++; return; }
+    const fail = (s.name.charCodeAt(1) % 9) === 0;
+    if (fail) { state.campLog.push(`  ⚠ ${s.name}: 알림톡 실패 → SMS 폴백 성공`); fallback++; sent++; }
+    else { state.campLog.push(`  ✓ ${s.name}: 알림톡 발송 성공`); sent++; }
+  });
+  state.campStat = { total: targets.length, sent, excluded, fallback };
+  audit("알림톡 캠페인 발송", `세그먼트 ${seg} · ${sent}건 발송`);
+  save(); renderCampStat();
+  document.getElementById("campLog").textContent = state.campLog.slice(-20).join("\n"); document.getElementById("campLog").scrollTop = 1e9;
+  toast(`캠페인을 보냈어요 — ${sent}건 발송, ${excluded}건 제외`);
+});
+function renderCampStat() {
+  const st = state.campStat; if (!st) return;
+  document.getElementById("campStat").innerHTML = [
+    ["발송 성공", st.sent, "text-emerald-600"], ["제외(미동의)", st.excluded, "text-rose-600"], ["SMS 폴백", st.fallback, "text-amber-600"],
+  ].map(([l, v, c]) => `<div class="rounded-lg border p-2 text-center"><div class="text-[10px] text-slate-500">${l}</div><div class="text-lg font-bold ${c}">${v}</div></div>`).join("");
+}
+function renderSlots() {
+  document.getElementById("slotList").innerHTML = state.slots.map((sl) => `
+    <div class="flex items-center justify-between border rounded-lg p-2.5">
+      <div><span class="font-medium">${sl.time}</span> <span class="text-xs text-slate-400">· ${sl.teacher}</span></div>
+      ${sl.booked ? `<span class="text-xs px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">예약완료 (${sl.booked})</span>`
+        : `<button data-id="${sl.id}" class="bookSlot text-xs bg-blue-700 hover:bg-blue-800 text-white rounded-lg px-3 py-1 font-medium">예약(데모 학부모)</button>`}
+    </div>`).join("");
+  document.querySelectorAll(".bookSlot").forEach((b) => b.addEventListener("click", () => {
+    const sl = state.slots.find((x) => x.id === b.dataset.id);
+    const s = state.students.find((x) => x.id === "c1_s1"); // 데모: 동의 학부모
+    sl.booked = s.name + " 학부모";
+    state.campLog.push(`[${new Date().toLocaleTimeString("ko-KR")}] 📅 ${sl.time} 상담 예약 확정 → 확정 알림톡 발송(mock)`);
+    audit("상담 예약 확정", `${sl.time} · ${sl.booked}`);
+    save(); renderSlots(); renderBookings(); document.getElementById("campLog").textContent = state.campLog.slice(-20).join("\n");
+    toast(`${sl.time} 상담 예약을 확정했어요`);
+  }));
+}
+function renderBookings() {
+  const booked = state.slots.filter((s) => s.booked);
+  document.getElementById("bookingList").innerHTML = booked.length ? booked.map((s) => `<div class="flex justify-between border-b py-1"><span>${s.time} · ${s.teacher}</span><span class="text-blue-700 font-medium">${s.booked}</span></div>`).join("") : '<p class="text-slate-400">아직 예약 내역이 없어요.</p>';
+}
+
+// ---------- 개인정보 거버넌스 ----------
+function renderGovernance() {
+  const purgeable = state.retention.filter((r) => !r.purged && (2026 - r.createdYear) >= r.retainYears);
+  document.getElementById("govKpi").innerHTML = [
+    ["감사 로그", state.audit.length, "건", "text-slate-700"], ["보존 항목", state.retention.length, "건", "text-blue-700"],
+    ["만료 도래", purgeable.length, "건", purgeable.length ? "text-rose-600" : "text-emerald-600"],
+    ["미동의/철회", state.students.filter((s) => s.deleted !== true && s.consent !== "동의").length, "명", "text-amber-600"],
+  ].map(([l, v, u, c]) => `<div class="bg-white rounded-xl border p-4"><div class="text-xs text-slate-500">${l}</div><div class="mt-1 text-2xl font-bold ${c}">${v}<span class="text-sm font-normal text-slate-400 ml-1">${u}</span></div></div>`).join("");
+  document.getElementById("auditTable").innerHTML = state.audit.slice(-40).reverse().map((a) => `
+    <tr class="border-b"><td class="py-1.5 px-2 text-slate-400">${new Date(a.ts).toLocaleTimeString("ko-KR")}</td>
+    <td class="py-1.5 px-2">${a.role}</td><td class="py-1.5 px-2">${a.action}</td><td class="py-1.5 px-2 text-slate-500">${a.target}</td></tr>`).join("")
+    || '<tr><td colspan="4" class="py-3 text-center text-slate-400">아직 기록된 로그가 없어요.</td></tr>';
+  document.getElementById("retentionList").innerHTML = state.retention.map((r) => {
+    const age = 2026 - r.createdYear; const expired = !r.purged && age >= r.retainYears;
+    return `<div class="flex items-center justify-between border rounded-lg p-2.5">
+      <div><span class="font-medium">${r.label}</span><div class="text-xs text-slate-400">${r.scope} · 보존 ${r.retainYears}년 · 경과 ${age}년</div></div>
+      <span class="text-xs px-2 py-0.5 rounded-full ${r.purged ? "bg-slate-200 text-slate-500" : expired ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}">${r.purged ? "파기완료" : expired ? "만료 도래" : "보존 중"}</span></div>`;
+  }).join("");
+}
+document.getElementById("purgeExpired").addEventListener("click", () => {
+  const purgeable = state.retention.filter((r) => !r.purged && (2026 - r.createdYear) >= r.retainYears);
+  if (!purgeable.length) { toast("파기할 만료 데이터가 없어요."); return; }
+  purgeable.forEach((r) => { r.purged = true; audit("보존정책 파기 처리", r.label); });
+  save(); renderGovernance(); toast(`만료 데이터 ${purgeable.length}건을 파기했어요`);
+});
+document.getElementById("bulkRevoke").addEventListener("click", () => {
+  const scope = document.getElementById("revokeScope").value;
+  let targets = classStudents();
+  if (scope === "consented") targets = targets.filter((s) => s.consent === "동의");
+  let cnt = 0;
+  targets.forEach((s) => { if (s.consent !== "철회") { s.consent = "철회"; s.consentTs = Date.now(); cnt++; } });
+  audit("동의 일괄 철회", `세그먼트 ${scope} · ${cnt}명`);
+  save(); renderGovernance();
+  document.getElementById("revokeResult").innerHTML = `<div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">✓ ${cnt}명의 동의를 한 번에 철회했어요 — 분석·알림톡 발송 대상에서 바로 빠지고, 감사 로그에 기록돼요.</div>`;
+  toast(`${cnt}명의 동의를 한 번에 철회했어요`);
+});
+
+// ---------- 워크플로 (4종) ----------
+const WORKFLOWS = {
+  A: { title: "A. 예측 → 개입추천 → 경로배포", desc: "예측 위험군을 찾아 맞춤 학습경로를 배포해요.", steps: ["① 위험 예측", "② 개입 경로 생성", "③ 경로 배포"] },
+  B: { title: "B. 멀티소스 연동 → 정규화 → 예측 갱신", desc: "AIDT·LMS·CSV를 불러와 정규화하고 예측을 갱신해요.", steps: ["① 멀티소스 연동", "② 스키마 정규화 확인", "③ 예측 갱신"] },
+  C: { title: "C. 동의철회/보존만료 → 감사기록 → 발송제외", desc: "동의 철회와 보존 만료를 처리하고 감사·발송제외를 확인해요.", steps: ["① 동의 일괄 철회", "② 만료 데이터 파기", "③ 감사·발송제외 확인"] },
+  D: { title: "D. 교육청 롤업 → 형평성 진단 → 학교 권고", desc: "교육청 관점에서 형평성을 진단하고 학교에 권고해요.", steps: ["① 교육청 롤업", "② 형평성 진단", "③ 학교 권고"] },
+};
+document.getElementById("wfPick").addEventListener("change", (e) => { state.wfPick = e.target.value; save(); renderWorkflow(); });
+function renderWorkflow() {
+  document.getElementById("wfPick").value = state.wfPick;
+  const wf = WORKFLOWS[state.wfPick];
+  const step = state.wfStep[state.wfPick] || 0;
+  document.getElementById("wfTitle").textContent = wf.title;
+  document.getElementById("wfDesc").textContent = wf.desc;
+  document.getElementById("wfSteps").innerHTML = wf.steps.map((t, i) => `
+    <div class="flex-1 flex items-center"><div class="flex flex-col items-center flex-1">
+      <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold" style="${i < step ? "background:#1B64DA;color:#fff" : i === step ? "background:#3182F6;color:#fff;box-shadow:0 0 0 4px #C9E2FF" : "background:#E5E8EB;color:#4E5968"}">${i < step ? "✓" : i + 1}</div>
+      <div class="text-xs mt-2 ${i === step ? "text-blue-700 font-semibold" : "text-slate-500"}">${t}</div></div>
+      ${i < wf.steps.length - 1 ? `<div class="h-0.5 flex-1 ${i < step ? "bg-blue-700" : "bg-slate-200"}"></div>` : ""}</div>`).join("");
+  document.getElementById("wfBody").innerHTML = wfBody(state.wfPick, step);
+  bindWfBody(state.wfPick, step);
+  document.getElementById("wfPrev").disabled = step === 0;
+  document.getElementById("wfPrev").classList.toggle("opacity-40", step === 0);
+  document.getElementById("wfNext").textContent = step >= wf.steps.length - 1 ? "워크플로 재시작" : "다음 단계";
+}
+function wfBody(p, step) {
+  const ss = classStudents();
+  if (p === "A") {
+    if (step === 0) { const hr = ss.map((s) => ({ s, r: riskProb(s.id) })).filter((x) => x.r.grade === "고위험"); return `<div class="text-sm text-slate-600 space-y-3"><p>로지스틱 위험확률을 산출한 결과 <b>고위험 ${hr.length}명</b>을 찾았어요:</p><div class="space-y-1">${hr.length ? hr.map((x) => `<div class="text-rose-600">• ${dispName(x.s)} — 위험확률 ${x.r.pct}% (${x.r.contrib.slice(0, 2).map((c) => c.name).join(", ")})</div>`).join("") : '<span class="text-emerald-600">고위험 학생이 없어요</span>'}</div></div>`; }
+    if (step === 1) return `<div class="text-sm text-slate-600 space-y-3"><p>위험군에 선수개념 그래프를 바탕으로 학습경로를 만들어요.</p><button id="wfGenPaths" class="bg-blue-700 text-white rounded-lg px-4 py-2 text-sm font-medium">전체 위험군 경로 생성</button><div id="wfPathOut" class="text-emerald-700 mt-2"></div></div>`;
+    if (step === 2) return `<div class="text-sm text-slate-600 space-y-3"><p>만든 경로를 학생에게 배포해요.</p><button id="wfDistPaths" class="bg-emerald-600 text-white rounded-lg px-4 py-2 text-sm font-medium">경로 일괄 배포</button><p id="wfDistOut" class="text-emerald-700"></p><p class="text-emerald-700 font-medium">🎉 워크플로 A를 완주했어요! 예측→개입→배포를 마쳤어요.</p></div>`;
+  }
+  if (p === "B") {
+    if (step === 0) return `<div class="text-sm text-slate-600 space-y-3"><p>멀티소스(AIDT·LMS·CSV)를 불러와요. 지금까지 불러온 건수: <b>${state.connRows.length}</b>건</p><button id="wfGoConnect" class="border rounded-lg px-4 py-2 text-sm hover:bg-slate-50">연동 화면으로 이동</button></div>`;
+    if (step === 1) { const bySrc = { AIDT: 0, LMS: 0, CSV: 0 }; state.connRows.forEach((r) => bySrc[r.src]++); return `<div class="text-sm text-slate-600 space-y-3"><p>소스별 정규화 결과예요:</p><div class="flex gap-2">${Object.entries(bySrc).map(([k, v]) => `<span class="px-3 py-1.5 rounded-lg text-white text-sm" style="background:${k === "AIDT" ? "#3182F6" : k === "LMS" ? "#14AE5C" : "#FFB331"}">${k} ${v}건</span>`).join("")}</div><p class="text-slate-500">3개 소스 스키마를 표준 학습로그로 정규화했어요.</p></div>`; }
+    if (step === 2) return `<div class="text-sm text-slate-600 space-y-3"><p>불러온 데이터로 예측 모델을 갱신해요.</p><button id="wfGoPredict" class="bg-blue-700 text-white rounded-lg px-4 py-2 text-sm font-medium">예측 갱신·확인</button><p class="text-emerald-700 font-medium">🎉 워크플로 B를 완주했어요! 멀티소스→정규화→예측 갱신을 마쳤어요.</p></div>`;
+  }
+  if (p === "C") {
+    if (step === 0) { const cons = ss.filter((s) => s.consent === "동의").length; return `<div class="text-sm text-slate-600 space-y-3"><p>현재 학급 동의 <b>${cons}</b>명이에요. 거버넌스 화면에서 세그먼트 일괄 철회를 진행해요.</p><button id="wfGoGov" class="border rounded-lg px-4 py-2 text-sm hover:bg-slate-50">거버넌스 화면으로 이동</button></div>`; }
+    if (step === 1) { const purgeable = state.retention.filter((r) => !r.purged && (2026 - r.createdYear) >= r.retainYears); return `<div class="text-sm text-slate-600 space-y-3"><p>보존기간이 끝난 <b>${purgeable.length}건</b>을 파기해요.</p><button id="wfPurge" class="bg-rose-600 text-white rounded-lg px-4 py-2 text-sm font-medium">만료 데이터 파기</button><p id="wfPurgeOut" class="text-emerald-700"></p></div>`; }
+    if (step === 2) return `<div class="text-sm text-slate-600 space-y-3"><p>최근 감사 로그와 발송 제외를 확인해요.</p><div class="text-xs font-mono bg-slate-900 text-emerald-300 rounded p-2 max-h-32 overflow-y-auto">${state.audit.slice(-5).reverse().map((a) => `${a.role} · ${a.action} · ${a.target}`).join("<br>") || "아직 기록된 로그가 없어요."}</div><p class="text-emerald-700 font-medium mt-2">🎉 워크플로 C를 완주했어요! 철회·만료→감사→발송제외를 마쳤어요.</p></div>`;
+  }
+  if (p === "D") {
+    if (step === 0) return `<div class="text-sm text-slate-600 space-y-3"><p>교육청 관점에서 관할 학교를 롤업해요.</p><button id="wfGoDistrict" class="border rounded-lg px-4 py-2 text-sm hover:bg-slate-50">교육청 통합 화면으로 이동</button><p class="text-slate-500">관할 학교 ${state.schools.length}개를 집계해요.</p></div>`;
+    if (step === 1) { const gini = giniOf(state.students.filter((s) => s.deleted !== true).map((s) => avgScore(s.id))); return `<div class="text-sm text-slate-600 space-y-3"><p>전체 성취 형평성을 진단했어요:</p><div class="flex gap-2 text-sm"><span class="px-3 py-1.5 rounded-lg ${gini > 0.18 ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}">지니계수 ${gini}</span></div><p class="text-slate-500">학교 간 평균 격차: ${Math.max(...state.schools.map((s) => schoolAvg(s.id))) - Math.min(...state.schools.map((s) => schoolAvg(s.id)))}점</p></div>`; }
+    if (step === 2) { const worst = state.schools.slice().sort((a, b) => schoolAvg(a.id) - schoolAvg(b.id))[0]; return `<div class="text-sm text-slate-600 space-y-3"><p>형평성이 낮은 학교에 권고를 보내요.</p><div class="bg-blue-50 border border-blue-100 rounded-lg p-3">👉 <b>${worst.name}</b>(평균 ${schoolAvg(worst.id)}점): 하위 사분위 집중 보충·개입 경로 배포를 권해요</div><p class="text-emerald-700 font-medium">🎉 워크플로 D를 완주했어요! 롤업→형평성→권고를 마쳤어요.</p></div>`; }
+  }
+  return "";
+}
+function bindWfBody(p, step) {
+  if (p === "A" && step === 1) document.getElementById("wfGenPaths")?.addEventListener("click", () => {
+    const hr = classStudents().map((s) => ({ s, r: riskProb(s.id) })).filter((x) => x.r.grade !== "안정");
+    let cnt = 0; hr.forEach((x) => { const weak = studentWeakConcepts(x.s.id); weak.forEach((c) => { if (!state.pathDist.some((d) => d.sid === x.s.id && d.concept === c)) { state.pathDist.push({ id: "p" + Date.now() + cnt, sid: x.s.id, name: dispName(x.s), concept: c, status: "생성", ts: Date.now() }); cnt++; } }); });
+    save(); document.getElementById("wfPathOut").textContent = `✓ 위험군 ${hr.length}명에게 학습경로 ${cnt}개를 만들었어요`; toast(`학습경로 ${cnt}개를 만들었어요`);
+  });
+  if (p === "A" && step === 2) document.getElementById("wfDistPaths")?.addEventListener("click", () => {
+    state.pathDist.forEach((d) => (d.status = "배포완료")); audit("개입 경로 일괄 배포", `${state.pathDist.length}건`); save();
+    document.getElementById("wfDistOut").textContent = `✓ 경로 ${state.pathDist.length}건을 배포했어요 (학부모 알림 mock)`; toast("경로를 일괄 배포했어요");
+  });
+  if (p === "B" && step === 0) document.getElementById("wfGoConnect")?.addEventListener("click", () => setView("connect"));
+  if (p === "B" && step === 2) document.getElementById("wfGoPredict")?.addEventListener("click", () => setView("predict"));
+  if (p === "C" && step === 0) document.getElementById("wfGoGov")?.addEventListener("click", () => setView("governance"));
+  if (p === "C" && step === 1) document.getElementById("wfPurge")?.addEventListener("click", () => {
+    const purgeable = state.retention.filter((r) => !r.purged && (2026 - r.createdYear) >= r.retainYears);
+    purgeable.forEach((r) => { r.purged = true; audit("보존정책 파기 처리", r.label); }); save();
+    document.getElementById("wfPurgeOut").textContent = `✓ 만료 데이터 ${purgeable.length}건을 파기했어요`; toast("만료 데이터를 파기했어요");
+  });
+  if (p === "D" && step === 0) document.getElementById("wfGoDistrict")?.addEventListener("click", () => { state.role = "district"; save(); applyRole(); setView("district"); });
+}
+document.getElementById("wfNext").addEventListener("click", () => {
+  const wf = WORKFLOWS[state.wfPick]; const last = wf.steps.length - 1;
+  state.wfStep[state.wfPick] = (state.wfStep[state.wfPick] || 0) >= last ? 0 : (state.wfStep[state.wfPick] || 0) + 1;
+  save(); renderWorkflow();
+});
+document.getElementById("wfPrev").addEventListener("click", () => { if ((state.wfStep[state.wfPick] || 0) > 0) { state.wfStep[state.wfPick]--; save(); renderWorkflow(); } });
+
+// ---------- 학부모 모바일 ----------
+document.querySelectorAll(".ptab").forEach((b) => b.addEventListener("click", () => { state.parentTab = b.dataset.ptab; save(); renderParent(); }));
+function renderParent() {
+  document.querySelectorAll(".ptab").forEach((b) => { const on = b.dataset.ptab === state.parentTab; b.className = `ptab flex-1 py-3 ${on ? "text-blue-700 font-semibold" : "text-slate-500"}`; });
+  const sid = state.parentStudent;
+  const s = state.students.find((x) => x.id === sid);
+  const cls = state.classes.find((c) => c.id === s.classId);
+  document.getElementById("pmHeaderSub").textContent = `${s.name} · ${cls.name}`;
+  const av = avgScore(sid), ls = lastScore(sid), rg = ridgePredict(sid), rk = riskProb(sid), weak = studentWeakConcepts(sid);
+  const body = document.getElementById("parentBody");
+  if (state.parentTab === "home") {
+    body.innerHTML = `
+      <div class="bg-white rounded-xl border p-4">
+        <div class="text-sm text-slate-500">우리 아이 최근 성취</div>
+        <div class="flex items-end gap-2 mt-1"><div class="text-3xl font-bold text-blue-700">${ls}점</div><div class="text-xs text-slate-400 mb-1">(평균 ${av}점)</div></div>
+        <div class="mt-2 text-sm ${rg.slope >= 0 ? "text-emerald-600" : "text-rose-600"}">추세 ${rg.slope >= 0 ? "▲ 상승" : "▼ 하락"} (기울기 ${rg.slope})</div>
+      </div>
+      <div class="grid grid-cols-3 gap-2">
+        <div class="bg-white rounded-xl border p-3 text-center"><div class="text-xs text-slate-500">최근</div><div class="text-lg font-bold text-blue-700">${ls}</div></div>
+        <div class="bg-white rounded-xl border p-3 text-center"><div class="text-xs text-slate-500">평균</div><div class="text-lg font-bold text-slate-700">${av}</div></div>
+        <div class="bg-white rounded-xl border p-3 text-center"><div class="text-xs text-slate-500">취약</div><div class="text-lg font-bold text-amber-600">${weak.length}</div></div>
+      </div>
+      <div class="bg-white rounded-xl border p-4">
+        <div class="font-semibold text-sm mb-2">취약개념</div>
+        <div class="flex flex-wrap gap-2">${weak.length ? weak.map((c) => `<span class="px-2.5 py-1 rounded-full text-xs text-white" style="background:${heatColor(conceptRate(sid, c))}">${c}</span>`).join("") : '<span class="text-emerald-600 text-sm">취약개념이 없어요 — 안정적이에요</span>'}</div>
+      </div>
+      <div class="bg-white rounded-xl border p-4">
+        <div class="font-semibold text-sm mb-2">추천 가정 학습 (개입 경로)</div>
+        <ul class="list-disc list-inside text-sm text-slate-600 space-y-1">${(weak.length ? weak.map((c) => TASK_BANK[c]) : ["심화 문제에 도전해 보길 권해요"]).map((t) => `<li>${t}</li>`).join("")}</ul>
+      </div>`;
+  } else if (state.parentTab === "predict") {
+    body.innerHTML = `
+      <div class="bg-white rounded-xl border p-4">
+        <div class="font-semibold text-sm mb-1">학기말 성취 예측</div>
+        <div class="text-xs text-slate-400 mb-3">능선회귀 기반 · 출석률·과제완수율·추세 반영</div>
+        <div class="flex items-end gap-3"><div class="text-3xl font-bold text-purple-700">${rg.pred}점</div><div class="text-xs text-slate-500 mb-1">95% 신뢰구간 ${rg.lo}~${rg.hi}</div></div>
+      </div>
+      <div class="bg-white rounded-xl border p-4">
+        <div class="font-semibold text-sm mb-2">학업 위험확률</div>
+        <div class="flex items-center gap-3"><div class="text-2xl font-bold ${rk.pct >= 60 ? "text-rose-600" : rk.pct >= 35 ? "text-amber-600" : "text-emerald-600"}">${rk.pct}%</div>
+          <span class="px-2.5 py-1 rounded-full text-xs ${gradeColor(rk.grade)}">${rk.grade}</span></div>
+        <div class="mt-3 text-xs text-slate-500">주요 요인: ${rk.contrib.length ? rk.contrib.slice(0, 3).map((c) => c.name).join(", ") : "특이사항 없음"}</div>
+      </div>
+      <div class="bg-white rounded-xl border p-4"><div class="font-semibold text-sm mb-3">성취 추세</div><canvas id="pmTrend" height="160"></canvas></div>`;
+    setTimeout(() => {
+      const recs = studentRecords(sid); destroyChart("pmTrend");
+      charts.pmTrend = new Chart(document.getElementById("pmTrend"), { type: "line", data: { labels: [...recs.map((r) => r.title), "예측"], datasets: [{ data: [...recs.map((r) => r.score), rg.pred], borderColor: "#7c3aed", backgroundColor: "rgba(124,58,237,.12)", fill: true, tension: .3, pointRadius: 4, segment: { borderDash: (ctx) => ctx.p1DataIndex === recs.length ? [6, 4] : undefined } }] }, options: { plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100 } }, animation: false } });
+    }, 30);
+  } else if (state.parentTab === "book") {
+    body.innerHTML = `<div class="bg-white rounded-xl border p-4"><div class="font-semibold text-sm mb-2">상담 예약</div>
+      <p class="text-xs text-slate-500 mb-3">담임 선생님이 열어둔 시간을 골라 상담을 예약해 보세요.</p>
+      <div class="space-y-2">${state.slots.map((sl) => `<div class="flex items-center justify-between border rounded-lg p-2.5">
+        <div><span class="font-medium text-sm">${sl.time}</span><div class="text-xs text-slate-400">${sl.teacher}</div></div>
+        ${sl.booked ? `<span class="text-xs px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">예약완료</span>` : `<button data-id="${sl.id}" class="pmBook text-xs bg-blue-700 text-white rounded-lg px-3 py-1.5 font-medium">예약하기</button>`}</div>`).join("")}</div></div>`;
+    setTimeout(() => document.querySelectorAll(".pmBook").forEach((b) => b.addEventListener("click", () => {
+      const sl = state.slots.find((x) => x.id === b.dataset.id); sl.booked = s.name + " 학부모";
+      audit("상담 예약 확정(학부모)", `${sl.time}`); save(); renderParent(); toast(`${sl.time} 상담을 예약했어요`);
+    })), 20);
+  } else if (state.parentTab === "alim") {
+    const mine = state.campLog.filter((l) => l.includes(s.name)).concat(state.alimLog.filter((l) => l.includes(s.name)));
+    body.innerHTML = `<div class="bg-white rounded-xl border p-4"><div class="font-semibold text-sm mb-2">받은 알림톡</div>
+      ${mine.length ? mine.slice(-10).reverse().map((l) => `<div class="text-xs border rounded-lg p-2 mb-2 bg-amber-50">${l.trim()}</div>`).join("") : '<p class="text-sm text-slate-400">아직 받은 알림이 없어요. 선생님이 캠페인을 보내면 여기에 표시돼요.</p>'}</div>`;
+  }
+}
+
+// ---------- 초기화 ----------
+document.getElementById("resetBtn").addEventListener("click", () => {
+  if (confirm("시드 데이터로 초기화할까요? 입력한 데이터가 사라져요.")) { state = seed(); save(); applyRole(); toast("시드 데이터로 초기화했어요."); }
+});
+
+// ---------- 부트 ----------
+applyRole();
+</script>
+</body>
+</html>

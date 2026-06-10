@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1440,initial-scale=1" />
+<title>CDP-KR — D2C 통합 ROAS·세그먼트·코호트</title>
+<script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<script>
+  // 디자인 토큰 재매핑 (Apple × Toss) — design-guide/디자인_애플_토스.md
+  tailwind.config = { theme: { extend: {
+    fontFamily: { sans: ['Pretendard','-apple-system','BlinkMacSystemFont','Apple SD Gothic Neo','sans-serif'] },
+    colors: {
+      brand:   { DEFAULT:'#3182F6', hover:'#1B64DA', light:'#E8F3FF' },
+      blue:    {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      indigo:  {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      sky:     {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      slate:   {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      gray:    {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      zinc:    {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      neutral: {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      emerald: {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      green:   {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      teal:    {50:'#E7F8EF',100:'#D2F2E0',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      amber:   {50:'#FFF6E5',100:'#FFE9C2',300:'#FFB331',400:'#FFB331',500:'#FFB331',600:'#E2991C',700:'#C77F12'},
+      yellow:  {50:'#FFF6E5',100:'#FFE9C2',300:'#FFB331',400:'#FFB331',500:'#FFB331',600:'#E2991C'},
+      orange:  {50:'#FFF6E5',100:'#FFE9C2',400:'#FFB331',500:'#FFB331',600:'#E2991C'},
+      rose:    {50:'#FEECEE',100:'#FCD9DD',300:'#F8A4AC',400:'#F04452',500:'#F04452',600:'#F04452',700:'#D6303D'},
+      red:     {50:'#FEECEE',100:'#FCD9DD',300:'#F8A4AC',400:'#F04452',500:'#F04452',600:'#F04452',700:'#D6303D'},
+    }
+  } } }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-funnel@4.0.0/dist/chartjs-chart-funnel.min.js"></script>
+<style>
+  .nav-active { background:#191F28; color:white; }
+  .ring-fade { box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 1px 3px rgba(0,0,0,.06); }
+
+  /* ===== design-tone-components (guide §6·§7) ===== */
+  button, [role="button"], a.w-full, input[type="submit"], input[type="button"] {
+    transition: transform .12s cubic-bezier(.3,0,0,1), opacity .15s ease, box-shadow .15s ease, background-color .15s ease;
+  }
+  button:active:not(:disabled), [role="button"]:active, a.w-full:active,
+  input[type="submit"]:active, input[type="button"]:active { transform: scale(.97); }
+  button:disabled, button[disabled], [role="button"][aria-disabled="true"] { opacity: .35; cursor: not-allowed; }
+  input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: none; border-color: #3182F6; box-shadow: 0 0 0 1.5px #3182F6;
+  }
+  button.w-full, button[type="submit"].w-full, a.w-full[class*="bg-"] {
+    min-height: 52px; border-radius: 12px;
+  }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+<div class="min-h-screen flex">
+  <aside class="w-56 bg-slate-900 text-white p-5 shrink-0">
+    <div class="text-lg font-semibold">CDP <span class="text-emerald-400">·KR</span></div>
+    <div class="text-xs text-slate-400 mt-1">통합 ROAS · 어트리뷰션</div>
+    <nav id="nav" class="mt-8 space-y-1 text-sm"></nav>
+    <div class="mt-10 text-xs text-slate-400">
+      <div class="font-semibold text-slate-200">연결 매체</div>
+      <div class="mt-2 space-y-1">
+        <div>● 네이버 광고</div>
+        <div>● 카카오모먼트</div>
+        <div>● 메타</div>
+        <div>● 구글</div>
+        <div>● 쿠팡애즈</div>
+      </div>
+    </div>
+    <div class="mt-8 text-xs text-slate-500">v1.0 · demo</div>
+  </aside>
+  <main id="main" class="flex-1 p-6 space-y-6"></main>
+</div>
+<div id="toast" class="fixed bottom-6 right-6 hidden bg-slate-900 text-white px-4 py-2 rounded-lg shadow-lg text-sm z-50"></div>
+
+<script>
+// ============== 데이터 (mock seed, localStorage 유지) ==============
+const STORE_KEY = 'cdp_kr_state_v1_2';
+const seedJourneys = () => {
+  // 30일 3,600건 사용자 여정 (touchpoint sequence → conversion)
+  // 광고비 합계(약 1.2억) 대비 매출 기여가 합리적으로 상회하도록(전체 ROAS ≈ 3x) 전환율·AOV·터치포인트 빈도 보정.
+  // 채널별 출현 빈도를 광고비 규모와 정합하게 가중해 매체 ROAS가 1.5x~5x 범위에서 분산되도록 함.
+  const weighted = [];
+  const chanWeight = { '네이버검색':30, '메타IG':24, '카카오모먼트':14, '구글PMax':16, '쿠팡애즈':9, organic:11, direct:11 };
+  for (const [c,n] of Object.entries(chanWeight)) for (let i=0;i<n;i++) weighted.push(c);
+  // 매체별 전환 기여 가중치 — 고관여(검색·PMax) 대 저관여(디스플레이) ROAS 편차 형성.
+  const convBoost = { '네이버검색':0.26, '구글PMax':0.30, '메타IG':0.10, '쿠팡애즈':0.20, '카카오모먼트':0.06, organic:0.04, direct:0.04 };
+  const pick = () => weighted[Math.floor(Math.random()*weighted.length)];
+  const out = [];
+  for (let i=0;i<3600;i++){
+    const len = 1 + Math.floor(Math.random()*4);
+    const seq = [];
+    for (let k=0;k<len;k++) seq.push(pick());
+    const boost = seq.reduce((s,c)=>Math.max(s, convBoost[c]||0), 0);
+    const converted = Math.random() < (0.30 + boost);
+    // D2C 자사몰 평균 객단가(AOV) 약 11만~27만원대.
+    const value = converted ? 115_000 + Math.round(Math.random()*160_000) : 0;
+    const day = Math.floor(Math.random()*30);
+    out.push({ id:i, seq, converted, value, day, segment: ['신규','재구매','VIP','이탈위험'][Math.floor(Math.random()*4)] });
+  }
+  return out;
+};
+const seedAdspend = () => {
+  const ch = [
+    { name:'네이버검색', color:'#14AE5C', cost: 38_200_000 },
+    { name:'카카오모먼트', color:'#FFB331', cost: 21_500_000 },
+    { name:'메타IG',     color:'#3182F6', cost: 32_700_000 },
+    { name:'구글PMax',   color:'#F04452', cost: 18_600_000 },
+    { name:'쿠팡애즈',   color:'#8b5cf6', cost:  8_840_000 },
+  ];
+  return ch;
+};
+let state = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
+if (!state) { state = { journeys: seedJourneys(), spend: seedAdspend(), model:'last_click', range: 30, segments:{} }; persist(); }
+function persist(){ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+
+// ============== 어트리뷰션 알고리즘 (실 계산) ==============
+function attribute(model){
+  const totals = {};
+  state.spend.forEach(c=> totals[c.name]=0);
+  for (const j of state.journeys){
+    if (!j.converted) continue;
+    const seq = j.seq.filter(c=>totals[c]!==undefined);
+    if (!seq.length) continue;
+    if (model==='last_click') totals[seq[seq.length-1]] += j.value;
+    else if (model==='first_click') totals[seq[0]] += j.value;
+    else if (model==='linear'){ const w=j.value/seq.length; seq.forEach(c=>totals[c]+=w); }
+    else if (model==='time_decay'){
+      const weights = seq.map((_,i)=>Math.pow(2, i/seq.length)); const s = weights.reduce((a,b)=>a+b,0);
+      seq.forEach((c,i)=> totals[c] += j.value * weights[i]/s);
+    } else if (model==='markov'){
+      // simplified Markov chain removal-effect attribution
+      const credit = markovCredit(seq, j.value);
+      Object.entries(credit).forEach(([c,v])=> totals[c] += v);
+    }
+  }
+  return totals;
+}
+function markovCredit(seq, value){
+  // Build transition matrix from this single journey + smoothing
+  const states = ['START', ...seq, 'CONV'];
+  const T = {};
+  for (let i=0;i<states.length-1;i++){
+    const a=states[i], b=states[i+1];
+    T[a] = T[a] || {};
+    T[a][b] = (T[a][b]||0)+1;
+  }
+  // Removal effect: for each channel, remove and check conversion probability drop
+  const baseProb = pathProb(seq, T);
+  const credit = {};
+  for (const c of [...new Set(seq)]){
+    const reduced = seq.filter(x=>x!==c);
+    const p = pathProb(reduced, T);
+    credit[c] = (credit[c]||0) + Math.max(0, baseProb - p);
+  }
+  // Normalize and assign value
+  const sum = Object.values(credit).reduce((a,b)=>a+b,0) || 1;
+  const out = {};
+  Object.entries(credit).forEach(([c,v])=> out[c] = (v/sum) * value);
+  return out;
+}
+function pathProb(seq, T){
+  if (!seq.length) return 0;
+  let p = 1;
+  let prev = 'START';
+  for (const s of [...seq, 'CONV']){
+    const row = T[prev] || {}; const tot = Object.values(row).reduce((a,b)=>a+b,0) || 1;
+    p *= (row[s]||0.1) / (tot+1);
+    prev = s;
+  }
+  return p;
+}
+
+// ============== 화면 ==============
+const VIEWS = ['dashboard','attribution','funnel','segments','cohort','journeys'];
+const NAV = [
+  ['dashboard','📊 대시보드'], ['attribution','🎯 어트리뷰션'], ['funnel','🔻 전환 깔때기'],
+  ['segments','👥 고객 세그먼트'], ['cohort','📈 코호트 리텐션'], ['journeys','🛤️ 여정 탐색'],
+];
+let view = location.hash.slice(1) || 'dashboard';
+if (!VIEWS.includes(view)) view='dashboard';
+const KRW = n => '₩ ' + Math.round(n).toLocaleString('ko-KR');
+const fmt = n => Math.round(n).toLocaleString('ko-KR');
+
+function renderNav(){
+  const el = document.getElementById('nav');
+  el.innerHTML = NAV.map(([k,n])=>`<a href="#${k}" data-k="${k}" class="block px-3 py-2 rounded text-sm ${k===view?'nav-active':'text-slate-300'}">${n}</a>`).join('');
+}
+
+// Dashboard
+function vDashboard(){
+  const totalSpend = state.spend.reduce((a,b)=>a+b.cost,0);
+  const conv = state.journeys.filter(j=>j.converted);
+  const totalRev = conv.reduce((a,b)=>a+b.value,0);
+  const roas = (totalRev/totalSpend).toFixed(2);
+  const cac = totalSpend / conv.length;
+  return `
+  <header><div class="text-sm text-slate-500">D2C 브랜드: <b>오늘의 무드</b></div><h1 class="text-2xl font-bold">통합 ROAS 대시보드</h1></header>
+  <section class="grid grid-cols-4 gap-4">
+    ${kpi('매출 (자사몰)', KRW(totalRev), '+12.4% vs 이전 30일','emerald-600')}
+    ${kpi('광고비 합계', KRW(totalSpend), `${state.spend.length}개 매체 통합`,'slate-500')}
+    ${kpi('전체 ROAS', roas+'x', '+0.31 vs 이전','emerald-600')}
+    ${kpi('CAC (신규)', KRW(cac), `전환 ${conv.length.toLocaleString()}건`,'slate-500')}
+  </section>
+  <section class="grid grid-cols-3 gap-4">
+    <div class="bg-white rounded-2xl p-5 ring-fade col-span-2">
+      <div class="flex items-center justify-between mb-3"><div class="font-semibold">일자별 매출 vs 광고비</div><div class="text-xs text-slate-500">최근 30일</div></div>
+      <canvas id="trend" height="120"></canvas>
+    </div>
+    <div class="bg-white rounded-2xl p-5 ring-fade">
+      <div class="font-semibold mb-3">매체별 광고비 분포</div>
+      <canvas id="donut" height="200"></canvas>
+    </div>
+  </section>
+  <section class="bg-white rounded-2xl ring-fade overflow-hidden">
+    <div class="p-5 flex items-center justify-between"><div class="font-semibold">매체별 효율 (현재 어트리뷰션: <span id="curm">${labelOf(state.model)}</span>)</div><button id="csv" class="text-xs text-blue-600">CSV 내보내기</button></div>
+    <table class="w-full text-sm" id="ch-table">${channelTable(attribute(state.model))}</table>
+  </section>`;
+}
+function channelTable(att){
+  const rows = state.spend.map(c=>{
+    const rev = att[c.name]||0; const roas = rev/c.cost;
+    return `<tr class="border-t">
+      <td class="p-3 flex items-center gap-2"><span class="w-2 h-2 rounded-full" style="background:${c.color}"></span>${c.name}</td>
+      <td class="p-3 text-right">${KRW(c.cost)}</td>
+      <td class="p-3 text-right">${KRW(rev)}</td>
+      <td class="p-3 text-right font-semibold ${roas>=4?'text-emerald-600':roas>=2?'text-amber-600':'text-red-600'}">${roas.toFixed(2)}x</td>
+    </tr>`;
+  }).join('');
+  return `<thead class="bg-slate-50 text-slate-600"><tr><th class="text-left p-3">매체</th><th class="text-right p-3">광고비</th><th class="text-right p-3">매출 기여</th><th class="text-right p-3">ROAS</th></tr></thead><tbody>${rows}</tbody>`;
+}
+function kpi(label,val,sub,subColor){
+  return `<div class="bg-white rounded-2xl p-5 ring-fade"><div class="text-xs text-slate-500">${label}</div><div class="text-2xl font-bold mt-1">${val}</div><div class="text-xs text-${subColor} mt-1">${sub}</div></div>`;
+}
+
+// Attribution
+function labelOf(m){ return ({last_click:'Last Click',first_click:'First Click',linear:'Linear',time_decay:'Time Decay',markov:'Markov Chain'})[m]; }
+function vAttribution(){
+  const att = attribute(state.model);
+  const totals = state.spend.map(c=>({name:c.name, color:c.color, cost:c.cost, rev:att[c.name]||0, roas:(att[c.name]||0)/c.cost}));
+  return `
+  <header class="flex items-end justify-between"><div><h1 class="text-2xl font-bold">어트리뷰션 분석</h1><div class="text-sm text-slate-500">사용자 여정 ${state.journeys.length}건 · 전환 ${state.journeys.filter(j=>j.converted).length}건을 바탕으로 직접 계산했어요</div></div>
+  <select id="model-sel" class="border rounded-lg px-3 py-2 text-sm bg-white">
+    ${['last_click','first_click','linear','time_decay','markov'].map(m=>`<option value="${m}" ${state.model===m?'selected':''}>${labelOf(m)}</option>`).join('')}
+  </select></header>
+  <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900">고른 모델은 자동으로 저장돼요. 매체표·세그먼트·코호트 화면에 바로 반영돼요.</div>
+  <section class="grid grid-cols-3 gap-4">
+    <div class="bg-white rounded-2xl p-5 ring-fade col-span-2"><div class="font-semibold mb-3">매체별 매출 기여 (모델: ${labelOf(state.model)})</div><div class="relative h-[260px]"><canvas id="bar"></canvas></div></div>
+    <div class="bg-white rounded-2xl p-5 ring-fade"><div class="font-semibold mb-3">기여도 비중</div><div class="relative h-[260px]"><canvas id="att-donut"></canvas></div></div>
+  </section>
+  <section class="grid grid-cols-2 gap-4">
+    <div class="bg-white rounded-2xl p-5 ring-fade"><div class="font-semibold mb-3">모델 비교 — Last Click vs Markov</div><div class="relative h-[260px]"><canvas id="cmp"></canvas></div></div>
+    <div class="bg-white rounded-2xl p-5 ring-fade">
+      <div class="font-semibold mb-3">모델별 의사결정 차이</div>
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-slate-600"><tr><th class="text-left p-2">매체</th><th class="text-right p-2">Last Click</th><th class="text-right p-2">Markov</th><th class="text-right p-2">차이</th></tr></thead>
+        <tbody id="diff"></tbody>
+      </table>
+    </div>
+  </section>`;
+}
+
+// Funnel
+function vFunnel(){
+  const sessions = 41_800, viewed=27_600, addedToCart=7_450, checkedOut=3_180, purchased=1_880;
+  return `
+  <header><h1 class="text-2xl font-bold">전환 깔때기</h1><div class="text-sm text-slate-500">최근 30일 자사몰 트래킹</div></header>
+  <section class="grid grid-cols-3 gap-4">
+    <div class="bg-white rounded-2xl p-5 ring-fade col-span-2"><div class="font-semibold mb-3">단계별 이탈</div><canvas id="funnel" height="120"></canvas></div>
+    <div class="bg-white rounded-2xl p-5 ring-fade space-y-3 text-sm">
+      ${funnelStep('세션', sessions, sessions)}
+      ${funnelStep('상품 조회', viewed, sessions)}
+      ${funnelStep('장바구니', addedToCart, viewed)}
+      ${funnelStep('체크아웃', checkedOut, addedToCart)}
+      ${funnelStep('구매 완료', purchased, checkedOut)}
+      <div class="pt-3 border-t mt-3"><div class="text-xs text-slate-500">전체 전환율</div><div class="text-2xl font-bold text-emerald-600">${(purchased/sessions*100).toFixed(2)}%</div></div>
+    </div>
+  </section>
+  <section class="bg-white rounded-2xl p-5 ring-fade"><div class="font-semibold mb-3">매체 진입별 깔때기 비교</div>
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-slate-600"><tr><th class="text-left p-2">진입 매체</th><th class="text-right p-2">세션</th><th class="text-right p-2">상품 조회</th><th class="text-right p-2">장바구니</th><th class="text-right p-2">구매</th><th class="text-right p-2">전환율</th></tr></thead>
+      <tbody>${funnelByChannel()}</tbody>
+    </table>
+  </section>`;
+}
+function funnelStep(label, n, base){
+  const pct = (n/base*100).toFixed(1);
+  return `<div><div class="flex justify-between text-xs"><span>${label}</span><span class="text-slate-500">${pct}% 잔존</span></div><div class="h-2 bg-slate-100 rounded mt-1 overflow-hidden"><div class="h-full bg-emerald-500" style="width:${pct}%"></div></div><div class="text-xs text-slate-500 mt-1">${fmt(n)}명</div></div>`;
+}
+function funnelByChannel(){
+  return state.spend.map(c=>{
+    const sess = 3000 + Math.round(Math.random()*4000); const view=Math.round(sess*0.7); const cart=Math.round(view*0.28); const buy=Math.round(cart*0.5);
+    return `<tr class="border-t"><td class="p-2 flex items-center gap-2"><span class="w-2 h-2 rounded-full" style="background:${c.color}"></span>${c.name}</td><td class="p-2 text-right">${fmt(sess)}</td><td class="p-2 text-right">${fmt(view)}</td><td class="p-2 text-right">${fmt(cart)}</td><td class="p-2 text-right">${fmt(buy)}</td><td class="p-2 text-right font-semibold">${(buy/sess*100).toFixed(2)}%</td></tr>`;
+  }).join('');
+}
+
+// Segments
+function vSegments(){
+  const segs = ['신규','재구매','VIP','이탈위험'];
+  const stats = segs.map(s=>{
+    const ppl = state.journeys.filter(j=>j.segment===s);
+    const conv = ppl.filter(j=>j.converted);
+    return { name:s, count:ppl.length, conv:conv.length, rev:conv.reduce((a,b)=>a+b.value,0), avg: conv.length? conv.reduce((a,b)=>a+b.value,0)/conv.length : 0 };
+  });
+  return `
+  <header class="flex items-end justify-between"><div><h1 class="text-2xl font-bold">고객 세그먼트</h1><div class="text-sm text-slate-500">RFM·행동 기반 4개 세그먼트</div></div>
+    <button id="add-seg" class="text-sm px-3 py-2 rounded-lg bg-blue-600 text-white">+ 세그먼트 빌더</button>
+  </header>
+  <section class="grid grid-cols-4 gap-4">
+    ${stats.map(s=>`<div class="bg-white rounded-2xl p-5 ring-fade"><div class="text-xs text-slate-500">${s.name}</div><div class="text-2xl font-bold mt-1">${fmt(s.count)}명</div><div class="text-xs text-emerald-600 mt-1">전환 ${fmt(s.conv)} · 평균 ${KRW(s.avg)}</div></div>`).join('')}
+  </section>
+  <section class="bg-white rounded-2xl p-5 ring-fade"><div class="font-semibold mb-3">세그먼트별 매출 기여</div><canvas id="seg-bar" height="100"></canvas></section>
+  <section class="bg-white rounded-2xl ring-fade overflow-hidden">
+    <div class="p-5 font-semibold">사용자 정의 세그먼트</div>
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-slate-600"><tr><th class="p-3 text-left">이름</th><th class="p-3 text-left">조건</th><th class="p-3 text-right">예상 모집단</th><th class="p-3"></th></tr></thead>
+      <tbody id="user-segs"></tbody>
+    </table>
+  </section>
+  <dialog id="seg-dlg" class="rounded-2xl p-0 backdrop:bg-black/40 w-[480px]">
+    <form method="dialog" class="p-6 space-y-4">
+      <h3 class="text-lg font-semibold">세그먼트 빌더</h3>
+      <input id="seg-name" required placeholder="세그먼트 이름 (예: 메타 유입 VIP)" class="w-full border rounded-lg p-3 text-sm">
+      <div class="grid grid-cols-2 gap-2 text-sm">
+        <select id="seg-channel" class="border rounded-lg p-3"><option value="">진입 매체 (전체)</option>${state.spend.map(c=>`<option>${c.name}</option>`).join('')}</select>
+        <select id="seg-tier" class="border rounded-lg p-3"><option value="">고객 티어 (전체)</option><option>신규</option><option>재구매</option><option>VIP</option><option>이탈위험</option></select>
+        <input id="seg-min" type="number" placeholder="최소 구매액 KRW" class="border rounded-lg p-3">
+        <input id="seg-min-cnt" type="number" placeholder="최소 전환 횟수" class="border rounded-lg p-3">
+      </div>
+      <div class="flex justify-end gap-2"><button value="cancel" class="px-4 py-2 rounded-lg border">취소</button><button id="seg-save" value="ok" class="px-4 py-2 rounded-lg bg-blue-600 text-white">저장</button></div>
+    </form>
+  </dialog>`;
+}
+
+// Cohort
+function vCohort(){
+  return `
+  <header><h1 class="text-2xl font-bold">코호트 리텐션</h1><div class="text-sm text-slate-500">월별 신규 가입 코호트 × 이후 N개월 잔존</div></header>
+  <div class="bg-white rounded-2xl p-5 ring-fade overflow-x-auto"><table class="w-full text-sm" id="cohort-tbl"></table></div>
+  <div class="bg-white rounded-2xl p-5 ring-fade"><div class="font-semibold mb-3">평균 잔존 곡선</div><canvas id="ret" height="100"></canvas></div>`;
+}
+
+// Journeys
+function vJourneys(){
+  return `
+  <header><h1 class="text-2xl font-bold">여정 탐색</h1><div class="text-sm text-slate-500">${state.journeys.length}건 중 전환 여정을 무작위로 뽑아 보여드려요 · 매체로 검색해 보세요</div></header>
+  <div class="bg-white rounded-2xl p-5 ring-fade flex gap-2 items-center text-sm">
+    <span>매체 포함:</span>
+    ${state.spend.map(c=>`<label class="inline-flex items-center gap-1"><input type="checkbox" data-ch="${c.name}" class="jf"> ${c.name}</label>`).join('')}
+    <label class="inline-flex items-center gap-1 ml-4"><input type="checkbox" id="conv-only" checked> 전환만</label>
+    <button id="re-sample" class="ml-auto px-3 py-1.5 rounded-lg bg-slate-900 text-white">샘플 다시 뽑기</button>
+  </div>
+  <div class="bg-white rounded-2xl ring-fade overflow-hidden"><table class="w-full text-sm" id="jrn-tbl"><thead class="bg-slate-50 text-slate-600"><tr><th class="p-3 text-left">ID</th><th class="p-3 text-left">여정 (touchpoints)</th><th class="p-3 text-right">매출</th><th class="p-3 text-left">세그먼트</th></tr></thead><tbody></tbody></table></div>`;
+}
+
+// ============== 라우팅 + 차트 ==============
+function render(){
+  view = location.hash.slice(1) || 'dashboard'; if (!VIEWS.includes(view)) view='dashboard';
+  renderNav();
+  const el = document.getElementById('main');
+  el.innerHTML = ({dashboard:vDashboard, attribution:vAttribution, funnel:vFunnel, segments:vSegments, cohort:vCohort, journeys:vJourneys})[view]();
+  if (view==='dashboard') drawDashboard();
+  if (view==='attribution') drawAttribution();
+  if (view==='funnel') drawFunnel();
+  if (view==='segments') drawSegments();
+  if (view==='cohort') drawCohort();
+  if (view==='journeys') drawJourneys();
+}
+
+function drawDashboard(){
+  const days = [...Array(30).keys()].map(i=>String(i+1));
+  const rev = days.map((_,i)=> state.journeys.filter(j=>j.day===i && j.converted).reduce((a,b)=>a+b.value,0));
+  const ad = days.map((_,i)=> Math.round(state.spend.reduce((s,c)=>s+c.cost,0)/30 + Math.sin(i/4)*900_000 + Math.random()*500_000));
+  new Chart(document.getElementById('trend'),{type:'line',data:{labels:days,datasets:[
+    {label:'매출',data:rev,borderColor:'#14AE5C',backgroundColor:'rgba(16,185,129,.1)',tension:.3,fill:true},
+    {label:'광고비',data:ad,borderColor:'#F04452',backgroundColor:'rgba(239,68,68,.05)',tension:.3,fill:true},
+  ]},options:{plugins:{legend:{position:'bottom'}},scales:{y:{ticks:{callback:v=>(v/1_000_000).toFixed(0)+'M'}}}}});
+  new Chart(document.getElementById('donut'),{type:'doughnut',data:{labels:state.spend.map(c=>c.name),datasets:[{data:state.spend.map(c=>c.cost),backgroundColor:state.spend.map(c=>c.color),borderWidth:0}]},options:{cutout:'60%',plugins:{legend:{position:'bottom',labels:{font:{size:11}}}}}});
+  document.getElementById('csv').onclick = () => exportCSV(attribute(state.model));
+}
+
+function drawAttribution(){
+  const sel = document.getElementById('model-sel');
+  sel.onchange = e => { state.model = e.target.value; persist(); render(); toast(labelOf(state.model)+' 모델을 적용했어요'); };
+  const att = attribute(state.model);
+  const last = attribute('last_click'); const markov = attribute('markov');
+  new Chart(document.getElementById('bar'),{type:'bar',data:{labels:state.spend.map(c=>c.name),datasets:[{data:state.spend.map(c=>att[c.name]||0),backgroundColor:state.spend.map(c=>c.color)}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>(v/1_000_000).toFixed(0)+'M'}}}}});
+  new Chart(document.getElementById('att-donut'),{type:'doughnut',data:{labels:state.spend.map(c=>c.name),datasets:[{data:state.spend.map(c=>att[c.name]||0),backgroundColor:state.spend.map(c=>c.color),borderWidth:0}]},options:{maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'bottom',labels:{font:{size:11}}}}}});
+  new Chart(document.getElementById('cmp'),{type:'bar',data:{labels:state.spend.map(c=>c.name),datasets:[
+    {label:'Last Click',data:state.spend.map(c=>last[c.name]||0),backgroundColor:'#8B95A1'},
+    {label:'Markov',    data:state.spend.map(c=>markov[c.name]||0),backgroundColor:'#14AE5C'},
+  ]},options:{maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},scales:{y:{ticks:{callback:v=>(v/1_000_000).toFixed(0)+'M'}}}}});
+  document.getElementById('diff').innerHTML = state.spend.map(c=>{
+    const a=last[c.name]||0, b=markov[c.name]||0; const d=b-a;
+    return `<tr class="border-t"><td class="p-2">${c.name}</td><td class="p-2 text-right">${KRW(a)}</td><td class="p-2 text-right">${KRW(b)}</td><td class="p-2 text-right ${d>=0?'text-emerald-600':'text-red-600'}">${d>=0?'+':''}${KRW(d)}</td></tr>`;
+  }).join('');
+}
+
+function drawFunnel(){
+  const data = [41800, 27600, 7450, 3180, 1880];
+  new Chart(document.getElementById('funnel'),{type:'bar',data:{labels:['세션','조회','장바구니','체크아웃','구매'],datasets:[{data,backgroundColor:['#0ea5e9','#06b6d4','#14AE5C','#FFB331','#F04452']}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>(v/1000).toFixed(0)+'k'}}}}});
+}
+
+function drawSegments(){
+  const segs=['신규','재구매','VIP','이탈위험'];
+  const rev = segs.map(s=>state.journeys.filter(j=>j.segment===s && j.converted).reduce((a,b)=>a+b.value,0));
+  new Chart(document.getElementById('seg-bar'),{type:'bar',data:{labels:segs,datasets:[{data:rev,backgroundColor:['#0ea5e9','#14AE5C','#FFB331','#F04452']}]},options:{plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>(v/1_000_000).toFixed(0)+'M'}}}}});
+  // user segments table
+  state.segments = state.segments || {};
+  refreshUserSegs();
+  document.getElementById('add-seg').onclick = () => document.getElementById('seg-dlg').showModal();
+  document.getElementById('seg-save').onclick = (e) => {
+    e.preventDefault();
+    const name = document.getElementById('seg-name').value;
+    if (!name) return;
+    const cond = {
+      ch: document.getElementById('seg-channel').value,
+      tier: document.getElementById('seg-tier').value,
+      min: +document.getElementById('seg-min').value || 0,
+      mc: +document.getElementById('seg-min-cnt').value || 0,
+    };
+    state.segments[name] = cond; persist(); document.getElementById('seg-dlg').close(); refreshUserSegs(); toast(name+' 세그먼트를 저장했어요');
+  };
+}
+function refreshUserSegs(){
+  const tb = document.getElementById('user-segs');
+  const entries = Object.entries(state.segments||{});
+  if (!entries.length){ tb.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-400">아직 만든 세그먼트가 없어요. 오른쪽 위 빌더로 첫 세그먼트를 만들어 보세요</td></tr>`; return; }
+  tb.innerHTML = entries.map(([n,c])=>{
+    const cnt = state.journeys.filter(j=>(!c.ch || j.seq.includes(c.ch)) && (!c.tier || j.segment===c.tier) && (!c.min || j.value>=c.min)).length;
+    return `<tr class="border-t"><td class="p-3 font-medium">${n}</td><td class="p-3 text-slate-500">${[c.ch&&'매체='+c.ch, c.tier&&'티어='+c.tier, c.min&&'최소금액 ≥'+KRW(c.min)].filter(Boolean).join(' · ')||'(전체)'}</td><td class="p-3 text-right">${fmt(cnt)}</td><td class="p-3 text-right"><button data-del="${n}" class="text-xs text-red-600">삭제</button></td></tr>`;
+  }).join('');
+  tb.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ delete state.segments[b.dataset.del]; persist(); refreshUserSegs(); });
+}
+
+function drawCohort(){
+  const tbl = document.getElementById('cohort-tbl');
+  const months = ['25-11','25-12','26-01','26-02','26-03','26-04'];
+  let rows = `<tr class="bg-slate-50 text-slate-600"><th class="p-2 text-left">코호트</th><th class="p-2 text-right">신규</th>${months.map((_,i)=>`<th class="p-2 text-right">M${i}</th>`).join('')}</tr>`;
+  const matrix = [];
+  for (let i=0;i<months.length;i++){
+    const newU = 800 + Math.round(Math.random()*400);
+    const r = [newU];
+    for (let m=1; m+i<months.length+1; m++){
+      r.push(Math.round(newU * Math.pow(0.78 - 0.02*i, m)));
+    }
+    matrix.push(r);
+    rows += `<tr class="border-t"><td class="p-2 font-medium">${months[i]}</td>${r.map((v,j)=>{const pct = j===0?100:(v/r[0]*100); const bg = j===0?'':`background:rgba(16,185,129,${pct/120})`; return `<td class="p-2 text-right" style="${bg}">${j===0?fmt(v):pct.toFixed(0)+'%'}</td>`;}).join('')}</tr>`;
+  }
+  tbl.innerHTML = rows;
+  // Avg curve
+  const maxLen = Math.max(...matrix.map(r=>r.length));
+  const avg=[];
+  for (let m=0;m<maxLen;m++){
+    const vals = matrix.filter(r=>r[m]!==undefined).map(r=>r[m]/r[0]*100);
+    avg.push(vals.reduce((a,b)=>a+b,0)/vals.length);
+  }
+  new Chart(document.getElementById('ret'),{type:'line',data:{labels:avg.map((_,i)=>'M'+i),datasets:[{label:'평균 잔존율(%)',data:avg,borderColor:'#14AE5C',tension:.3,fill:true,backgroundColor:'rgba(16,185,129,.1)'}]},options:{scales:{y:{max:100,beginAtZero:true,ticks:{callback:v=>v+'%'}}}}});
+}
+
+function drawJourneys(){
+  const tb = document.querySelector('#jrn-tbl tbody');
+  const filters = () => Array.from(document.querySelectorAll('.jf:checked')).map(c=>c.dataset.ch);
+  const convOnly = () => document.getElementById('conv-only').checked;
+  function refresh(){
+    const ch = filters();
+    const samples = state.journeys.filter(j=> (!convOnly()||j.converted) && (!ch.length || ch.every(c=>j.seq.includes(c)))).slice(0,30);
+    tb.innerHTML = samples.length ? samples.map(j=>`<tr class="border-t"><td class="p-3 text-slate-500">#${j.id}</td><td class="p-3">${j.seq.map(c=>{const col = state.spend.find(x=>x.name===c)?.color || '#8B95A1'; return `<span class="inline-block px-2 py-0.5 rounded text-white text-xs mr-1" style="background:${col}">${c}</span>`;}).join('→ ')}</td><td class="p-3 text-right">${KRW(j.value)}</td><td class="p-3">${j.segment}</td></tr>`).join('') : `<tr><td colspan="4" class="p-6 text-center text-slate-400">조건에 맞는 여정이 없어요. 필터를 바꿔 보세요</td></tr>`;
+  }
+  document.querySelectorAll('.jf').forEach(c=>c.onchange=refresh);
+  document.getElementById('conv-only').onchange = refresh;
+  document.getElementById('re-sample').onclick = () => { state.journeys = state.journeys.sort(()=>Math.random()-0.5); refresh(); };
+  refresh();
+}
+
+function exportCSV(att){
+  const rows = [['매체','광고비_KRW','매출기여_KRW','ROAS']].concat(state.spend.map(c=>{
+    const r = att[c.name]||0; return [c.name, c.cost, Math.round(r), (r/c.cost).toFixed(3)];
+  }));
+  const csv = rows.map(r=>r.join(',')).join('\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download = `roas_${state.model}.csv`; a.click();
+  toast('CSV를 내려받았어요!');
+}
+
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.remove('hidden'); setTimeout(()=>t.classList.add('hidden'),1700); }
+
+window.addEventListener('hashchange', render);
+render();
+</script>
+</body>
+</html>

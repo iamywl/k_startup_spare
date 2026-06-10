@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>클레임브릿지 — 멀티테넌트 청구 자동화 플랫폼 (v2 Beta)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<script>
+  // 디자인 토큰 재매핑 (Apple × Toss) — design-guide/디자인_애플_토스.md
+  tailwind.config = { theme: { extend: {
+    fontFamily: { sans: ['Pretendard','-apple-system','BlinkMacSystemFont','Apple SD Gothic Neo','sans-serif'] },
+    colors: {
+      brand:   { DEFAULT:'#3182F6', hover:'#1B64DA', light:'#E8F3FF' },
+      blue:    {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      indigo:  {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      sky:     {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      slate:   {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      gray:    {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      zinc:    {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      neutral: {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      emerald: {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      green:   {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      teal:    {50:'#E7F8EF',100:'#D2F2E0',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      amber:   {50:'#FFF6E5',100:'#FFE9C2',300:'#FFB331',400:'#FFB331',500:'#FFB331',600:'#E2991C',700:'#C77F12'},
+      yellow:  {50:'#FFF6E5',100:'#FFE9C2',300:'#FFB331',400:'#FFB331',500:'#FFB331',600:'#E2991C'},
+      orange:  {50:'#FFF6E5',100:'#FFE9C2',400:'#FFB331',500:'#FFB331',600:'#E2991C'},
+      rose:    {50:'#FEECEE',100:'#FCD9DD',300:'#F8A4AC',400:'#F04452',500:'#F04452',600:'#F04452',700:'#D6303D'},
+      red:     {50:'#FEECEE',100:'#FCD9DD',300:'#F8A4AC',400:'#F04452',500:'#F04452',600:'#F04452',700:'#D6303D'},
+    }
+  } } }
+</script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; }
+    .fade-in { animation: fadeIn .25s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px);} to {opacity:1; transform:none;} }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-thumb { background: #D1D6DB; border-radius: 4px; }
+    .sig-canvas { touch-action: none; }
+  
+  /* ===== design-tone-components (guide §6·§7) ===== */
+  button, [role="button"], a.w-full, input[type="submit"], input[type="button"] {
+    transition: transform .12s cubic-bezier(.3,0,0,1), opacity .15s ease, box-shadow .15s ease, background-color .15s ease;
+  }
+  button:active:not(:disabled), [role="button"]:active, a.w-full:active,
+  input[type="submit"]:active, input[type="button"]:active { transform: scale(.97); }
+  button:disabled, button[disabled], [role="button"][aria-disabled="true"] { opacity: .35; cursor: not-allowed; }
+  input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: none; border-color: #3182F6; box-shadow: 0 0 0 1.5px #3182F6;
+  }
+  button.w-full, button[type="submit"].w-full, a.w-full[class*="bg-"] {
+    min-height: 52px; border-radius: 12px;
+  }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800">
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+// ===========================================================================
+// 청구코드 자동매핑 알고리즘 — 처방 자유텍스트 → 수가/급여/EDI 코드
+//   v1: 단순 키워드 포함 매핑.
+//   v2: 가중 토큰 스코어링 + 정규화 + EDI 코드 부여 + 검증 룰 엔진.
+// ===========================================================================
+const CODE_BOOK = [
+  { code: "AA154", edi: "AA154", name: "진찰료(초진)", category: "급여", unitPrice: 17610, keywords: ["초진","외래초진","first"], weight: 1.0 },
+  { code: "AA254", edi: "AA254", name: "진찰료(재진)", category: "급여", unitPrice: 12590, keywords: ["재진","외래재진"], weight: 1.0 },
+  { code: "B6010", edi: "B6010000", name: "혈액검사(일반)", category: "급여", unitPrice: 8200, keywords: ["혈액","cbc","혈구","혈액검사"], weight: 0.9 },
+  { code: "C5901", edi: "C5901000", name: "단순흉부촬영", category: "급여", unitPrice: 14300, keywords: ["엑스레이","흉부","x-ray","xray","촬영","방사선"], weight: 0.9 },
+  { code: "D2210", edi: "D2210000", name: "물리치료(표층열)", category: "급여", unitPrice: 6700, keywords: ["물리치료","온열","표층열","재활"], weight: 0.8 },
+  { code: "M0040", edi: "M0040000", name: "근육주사", category: "급여", unitPrice: 4100, keywords: ["근육주사","근주","im주사"], weight: 0.8 },
+  { code: "NV011", edi: "NV011000", name: "도수치료", category: "비급여", unitPrice: 80000, keywords: ["도수","도수치료","수기"], weight: 0.95 },
+  { code: "NV220", edi: "NV220000", name: "체외충격파", category: "비급여", unitPrice: 60000, keywords: ["충격파","체외충격파","eswt"], weight: 0.95 },
+  { code: "RX100", edi: "RX1000000", name: "처방조제(원외)", category: "급여", unitPrice: 0, keywords: ["처방","조제","원외","투약","약"], weight: 0.6 },
+  { code: "G3010", edi: "G3010000", name: "초음파(복부)", category: "급여", unitPrice: 52000, keywords: ["초음파","복부초음파","sono"], weight: 0.9 },
+  { code: "E7070", edi: "E7070000", name: "심전도검사", category: "급여", unitPrice: 9300, keywords: ["심전도","ecg","ekg"], weight: 0.85 },
+];
+
+// 단일 주사 키워드도 잡도록 보강
+CODE_BOOK.find(c=>c.code==="M0040").keywords.push("주사");
+
+function tokenize(text) {
+  return text.toLowerCase().replace(/[(),.\/]/g, " ").split(/\s+/).filter(Boolean);
+}
+
+// 자동매핑: 토큰별 키워드 매칭 점수 합산 → 임계치 이상 코드 채택, 매칭 근거 기록
+function autoMapPrescription(text) {
+  const tokens = tokenize(text);
+  const results = [];
+  for (const c of CODE_BOOK) {
+    let score = 0; const matched = [];
+    for (const kw of c.keywords) {
+      const k = kw.toLowerCase();
+      if (tokens.some((t) => t === k || t.includes(k) || k.includes(t) && t.length >= 2)) {
+        score += c.weight; matched.push(kw);
+      }
+    }
+    if (score > 0) results.push({ ...c, qty: 1, score: +score.toFixed(2), matched });
+  }
+  // 진료가 있으면 진찰료 1건 기본 보장(초진/재진 명시 없으면 재진 가정)
+  if (results.length && !results.some((r) => r.code.startsWith("AA"))) {
+    const aa = CODE_BOOK.find((c) => c.code === "AA254");
+    results.unshift({ ...aa, qty: 1, score: 0.5, matched: ["진료 기본 가정"] });
+  }
+  return results.sort((a, b) => b.score - a.score);
+}
+
+// 청구 검증 룰 엔진 — 매핑 결과의 정합성 점검 (pass/warn/error)
+function validateClaim(items, diagnosis) {
+  const rules = [];
+  const codes = items.map((i) => i.code);
+  rules.push({
+    id: "R1", label: "진찰료 1건 이상 존재",
+    level: codes.some((c) => c.startsWith("AA")) ? "pass" : "error",
+    detail: codes.some((c) => c.startsWith("AA")) ? "진찰료 코드 확인됨" : "진찰료(AA*) 누락 — 청구 반려 위험",
+  });
+  const dupAA = codes.filter((c) => c.startsWith("AA")).length;
+  rules.push({
+    id: "R2", label: "초진/재진 중복 청구 없음",
+    level: dupAA <= 1 ? "pass" : "error",
+    detail: dupAA <= 1 ? "진찰료 중복 없음" : "초진·재진 동시 청구 불가",
+  });
+  rules.push({
+    id: "R3", label: "상병(진단명) 기재",
+    level: diagnosis && diagnosis.trim() ? "pass" : "warn",
+    detail: diagnosis && diagnosis.trim() ? "상병 기재 확인" : "상병 미기재 — 심사 보류 가능",
+  });
+  const total = items.reduce((a, it) => a + it.unitPrice * it.qty, 0);
+  rules.push({
+    id: "R4", label: "청구 금액 정상 범위",
+    level: total > 0 && total <= 2000000 ? "pass" : (total === 0 ? "warn" : "warn"),
+    detail: total === 0 ? "총액 0원 — 비용 항목 확인" : `총액 ${total.toLocaleString("ko-KR")}원`,
+  });
+  rules.push({
+    id: "R5", label: "비급여 항목 환자 동의 필요 여부",
+    level: items.some((i) => i.category === "비급여") ? "warn" : "pass",
+    detail: items.some((i) => i.category === "비급여") ? "비급여 포함 — 사전 동의서 권고" : "비급여 없음",
+  });
+  const errors = rules.filter((r) => r.level === "error").length;
+  return { rules, ok: errors === 0, errors };
+}
+
+// ===========================================================================
+// 멀티테넌트 / RBAC
+// ===========================================================================
+const TENANTS = [
+  { id: "T-SEOUL", name: "서울365의원", code: "11010001", color: "blue", logo: "S", insurerDefault: "국민건강보험" },
+  { id: "T-BUSAN", name: "부산항운정형외과", code: "21030045", color: "emerald", logo: "B", insurerDefault: "국민건강보험" },
+];
+
+const ROLES = {
+  doctor:  { key: "doctor",  label: "의료진",   icon: "🩺", desc: "처방 입력·환자 진료", can: ["workflow","patients","dashboard"] },
+  biller:  { key: "biller",  label: "청구담당", icon: "💼", desc: "청구 제출·심사·정산", can: ["dashboard","claims","workflow","patients","review","tenants"] },
+  patient: { key: "patient", label: "환자",     icon: "🙍", desc: "동의·실손 청구 조회", can: ["portal"] },
+};
+const ROLE_KEYS = Object.keys(ROLES);
+
+const STATUS_FLOW = ["작성", "제출", "접수", "심사", "지급완료"];
+const STATUS_COLOR = {
+  "작성": "bg-slate-200 text-slate-700",
+  "제출": "bg-amber-100 text-amber-700",
+  "접수": "bg-blue-100 text-blue-700",
+  "심사": "bg-violet-100 text-violet-700",
+  "지급완료": "bg-emerald-100 text-emerald-700",
+  "반려": "bg-rose-100 text-rose-700",
+};
+const REJECT_REASONS = ["코드 불일치", "상병 누락", "중복 청구", "급여기준 미충족", "서류 미비"];
+
+const STORE_KEY = "claimbridge_v2";
+
+// ===========================================================================
+// 상태 지속 (테넌트별 분리 저장)
+// ===========================================================================
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return seed();
+}
+function saveState(s) { try { localStorage.setItem(STORE_KEY, JSON.stringify(s)); } catch (e) {} }
+
+function mkHist(statuses) {
+  return statuses.map((s, i) => ({ status: s, ts: `2026-06-0${i + 1} 09:0${i}`, by: "system" }));
+}
+
+function seed() {
+  return {
+    tenants: {
+      "T-SEOUL": {
+        patients: [
+          { id: "P-0001", name: "김민수", rrn: "850312-1******", phone: "010-1234-5678", insurer: "국민건강보험", note: "고혈압 관리", consent: { agreed: true, ts: "2026-06-01 09:00", sig: null } },
+          { id: "P-0002", name: "이서연", rrn: "920718-2******", phone: "010-2222-3333", insurer: "삼성화재(실손)", note: "실손 가입", consent: { agreed: false, ts: null, sig: null } },
+        ],
+        claims: [
+          { id: "CLM-SEOUL-20260601-001", patientId: "P-0001", patientName: "김민수", date: "2026-06-01", diagnosis: "본태성 고혈압(I10)",
+            items: [{ code: "AA254", edi: "AA254", name: "진찰료(재진)", category: "급여", unitPrice: 12590, qty: 1 }, { code: "RX100", edi: "RX1000000", name: "처방조제(원외)", category: "급여", unitPrice: 0, qty: 1 }],
+            status: "지급완료", channel: "심평원", isReimburse: false, paidRate: 100, rejectReason: null, ediLog: [], history: mkHist(["작성","제출","접수","심사","지급완료"]) },
+        ],
+        seq: 1,
+      },
+      "T-BUSAN": {
+        patients: [
+          { id: "P-0001", name: "정해린", rrn: "900804-2******", phone: "010-5555-6666", insurer: "현대해상(실손)", note: "어깨 통증", consent: { agreed: true, ts: "2026-06-03 10:20", sig: null } },
+        ],
+        claims: [
+          { id: "CLM-BUSAN-20260603-001", patientId: "P-0001", patientName: "정해린", date: "2026-06-03", diagnosis: "회전근개 증후군(M75.1)",
+            items: [{ code: "AA154", edi: "AA154", name: "진찰료(초진)", category: "급여", unitPrice: 17610, qty: 1 }, { code: "NV011", edi: "NV011000", name: "도수치료", category: "비급여", unitPrice: 80000, qty: 1 }],
+            status: "지급완료", channel: "심평원", isReimburse: false, paidRate: 100, rejectReason: null, ediLog: [], history: mkHist(["작성","제출","접수","심사","지급완료"]) },
+        ],
+        seq: 1,
+      },
+    },
+  };
+}
+
+// 유틸
+const won = (n) => (n || 0).toLocaleString("ko-KR") + "원";
+const today = () => new Date().toISOString().slice(0, 10);
+const nowTs = () => new Date().toISOString().slice(0, 16).replace("T", " ");
+function claimTotal(c) { return c.items.reduce((a, it) => a + it.unitPrice * it.qty, 0); }
+function coveredTotal(c) { return c.items.filter((i) => i.category === "급여").reduce((a, it) => a + it.unitPrice * it.qty, 0); }
+
+// QR 매트릭스 (식별 시각화)
+function pseudoMatrix(seedStr, n = 21) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < seedStr.length; i++) { h ^= seedStr.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  const cells = [];
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    h ^= (x * 73856093) ^ (y * 19349663); h = Math.imul(h, 2654435761) >>> 0;
+    cells.push((h & 1) === 1);
+  }
+  return cells;
+}
+
+// EDI 청구 API mock — 제출→접수→심사→지급/반려 흐름 + 응답 로그
+function ediSubmit(claim, tenant) {
+  const ts = nowTs();
+  const ref = "EDI-" + Math.random().toString(36).slice(2, 8).toUpperCase();
+  return {
+    ref, ts,
+    request: { endpoint: claim.isReimburse ? "POST /v1/insurer/claims" : "POST /hira/edi/claims",
+      tenant: tenant.code, claimId: claim.id, lines: claim.items.length, amount: claimTotal(claim) },
+    response: { code: "200", status: "RECEIVED", receiptNo: ref, message: claim.isReimburse ? "보험사 접수 완료" : "심평원 EDI 접수 완료" },
+  };
+}
+function ediAdjudicate(claim) {
+  // mock 심사: 검증 통과 + 급여 비율로 지급률 산정, 일정 확률로 반려
+  const total = claimTotal(claim);
+  const covered = coveredTotal(claim);
+  const v = validateClaim(claim.items, claim.diagnosis);
+  let reject = !v.ok;
+  // 비급여 100% 청구건은 실손이 아니면 부분 반려 시뮬레이션
+  let paidRate;
+  if (reject) paidRate = 0;
+  else if (claim.isReimburse) paidRate = 90; // 실손 자기부담 10%
+  else paidRate = total ? Math.round(covered / total * 100) : 100; // 급여분만 지급
+  const reason = reject ? (v.rules.find((r) => r.level === "error")?.label || REJECT_REASONS[0]) : null;
+  return {
+    ts: nowTs(), code: reject ? "422" : "200",
+    status: reject ? "REJECTED" : "ADJUDICATED",
+    paidRate, paidAmount: Math.round(total * paidRate / 100), reason,
+    message: reject ? `심사 반려: ${reason}` : `심사 완료 · 지급률 ${paidRate}%`,
+  };
+}
+
+// CSV 유틸 — 청구 내보내기/가져오기
+function claimsToCsv(claims) {
+  const head = ["청구번호","환자","청구일","상병","총액","급여액","상태","지급률","채널","실손"];
+  const rows = claims.map((c) => [c.id, c.patientName, c.date, c.diagnosis, claimTotal(c), coveredTotal(c), c.status, c.paidRate ?? 0, c.channel || "-", c.isReimburse ? "Y" : "N"]);
+  return [head, ...rows].map((r) => r.map((x) => `"${String(x).replace(/"/g, '""')}"`).join(",")).join("\n");
+}
+function download(name, text, mime = "text/csv;charset=utf-8") {
+  const blob = new Blob(["﻿" + text], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ===========================================================================
+// 루트 앱
+// ===========================================================================
+function App() {
+  const [state, setState] = useState(loadState);
+  const [tenantId, setTenantId] = useState("T-SEOUL");
+  const [role, setRole] = useState("biller");
+  const [view, setView] = useState("dashboard");
+  const [toast, setToast] = useState(null);
+  const [mobile, setMobile] = useState(false); // 환자 포털 모바일 모드
+
+  useEffect(() => { saveState(state); }, [state]);
+  useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 2800); return () => clearTimeout(t); }, [toast]);
+
+  const notify = (msg) => setToast(msg);
+  const tenant = TENANTS.find((t) => t.id === tenantId);
+  const tdata = state.tenants[tenantId];
+  const roleObj = ROLES[role];
+
+  // 테넌트 데이터 갱신 헬퍼 (격리: 현재 테넌트만 수정)
+  const updateTenant = useCallback((fn) => {
+    setState((s) => ({ ...s, tenants: { ...s.tenants, [tenantId]: fn(s.tenants[tenantId]) } }));
+  }, [tenantId]);
+
+  // 역할 전환 시 접근 가능한 뷰로 보정
+  useEffect(() => {
+    if (role === "patient") { setView("portal"); return; }
+    if (!roleObj.can.includes(view)) setView(roleObj.can[0]);
+  }, [role]);
+
+  const NAV = [
+    { key: "dashboard", label: "청구 대시보드", icon: "📊" },
+    { key: "workflow", label: "신규 청구", icon: "🧭" },
+    { key: "claims", label: "청구 목록", icon: "🧾" },
+    { key: "review", label: "심사·정산 콘솔", icon: "🔎" },
+    { key: "patients", label: "환자 관리", icon: "👥" },
+    { key: "tenants", label: "기관 관리", icon: "🏥" },
+  ].filter((n) => roleObj.can.includes(n.key));
+
+  // 환자 역할: 모바일 포털 전용 레이아웃
+  if (role === "patient") {
+    return <PatientPortal state={state} tenant={tenant} tdata={tdata} setRole={setRole}
+      tenantId={tenantId} setTenantId={setTenantId} updateTenant={updateTenant} notify={notify} toast={toast} />;
+  }
+
+  return (
+    <div className="min-h-screen flex">
+      {/* Sidebar */}
+      <aside className="w-64 bg-slate-900 text-slate-100 flex flex-col shrink-0">
+        <div className="px-5 py-4 border-b border-slate-700">
+          <div className="text-xl font-bold tracking-tight">클레임브릿지</div>
+          <div className="text-[11px] text-slate-400 mt-0.5">멀티테넌트 청구 자동화 · v2 Beta</div>
+        </div>
+
+        {/* 테넌트 선택 */}
+        <div className="px-3 pt-3">
+          <div className="text-[10px] uppercase text-slate-500 px-2 mb-1">소속 의료기관 (테넌트)</div>
+          <select value={tenantId} onChange={(e) => setTenantId(e.target.value)}
+            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100">
+            {TENANTS.map((t) => <option key={t.id} value={t.id}>{t.name} ({t.code})</option>)}
+          </select>
+        </div>
+
+        {/* 역할 전환 */}
+        <div className="px-3 pt-3">
+          <div className="text-[10px] uppercase text-slate-500 px-2 mb-1">역할 전환 (RBAC)</div>
+          <div className="flex gap-1">
+            {ROLE_KEYS.map((rk) => (
+              <button key={rk} onClick={() => setRole(rk)}
+                className={"flex-1 text-[11px] py-1.5 rounded-md font-medium " + (role === rk ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-300")}>
+                {ROLES[rk].icon}<br />{ROLES[rk].label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <nav className="flex-1 p-3 space-y-1 mt-2">
+          {NAV.map((n) => (
+            <button key={n.key} onClick={() => setView(n.key)}
+              className={"w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition flex items-center gap-2.5 " +
+                (view === n.key ? "bg-blue-600 text-white" : "hover:bg-slate-800 text-slate-300")}>
+              <span>{n.icon}</span>{n.label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="p-3 border-t border-slate-700 text-[11px] text-slate-400">
+          <div className="flex items-center gap-2">
+            <span className={"w-7 h-7 rounded-full text-white flex items-center justify-center text-xs font-bold " + (tenant.color === "blue" ? "bg-blue-500" : "bg-emerald-500")}>{tenant.logo}</span>
+            <div>
+              <div className="text-slate-200 font-medium">{roleObj.icon} {roleObj.label} (demo)</div>
+              <div>{roleObj.desc}</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main */}
+      <main className="flex-1 overflow-auto min-w-0">
+        <header className="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between sticky top-0 z-10">
+          <div>
+            <h1 className="text-lg font-semibold text-slate-800">{NAV.find((n) => n.key === view)?.label}</h1>
+            <div className="text-[11px] text-slate-400">{tenant.name} · {roleObj.label} 권한</div>
+          </div>
+          <div className="flex items-center gap-3 text-xs text-slate-500">
+            <span>오늘 {today()}</span>
+            <span className="px-2 py-1 bg-slate-100 rounded">청구 {tdata.claims.length}건</span>
+            <span className="px-2 py-1 bg-slate-100 rounded">환자 {tdata.patients.length}명</span>
+          </div>
+        </header>
+
+        <div className="p-8 fade-in" key={view + tenantId + role}>
+          {!roleObj.can.includes(view) ? (
+            <AccessDenied role={roleObj} />
+          ) : (
+            <>
+              {view === "dashboard" && <Dashboard tdata={tdata} tenant={tenant} setView={setView} role={role} />}
+              {view === "workflow" && <Workflow tdata={tdata} tenant={tenant} updateTenant={updateTenant} notify={notify} setView={setView} role={role} />}
+              {view === "claims" && <ClaimList tdata={tdata} tenant={tenant} updateTenant={updateTenant} notify={notify} role={role} />}
+              {view === "review" && <ReviewConsole tdata={tdata} tenant={tenant} updateTenant={updateTenant} notify={notify} />}
+              {view === "patients" && <PatientList tdata={tdata} updateTenant={updateTenant} notify={notify} role={role} />}
+              {view === "tenants" && <TenantAdmin state={state} tenantId={tenantId} setTenantId={setTenantId} />}
+            </>
+          )}
+        </div>
+      </main>
+
+      {toast && (
+        <div className="fixed bottom-6 right-6 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl text-sm fade-in z-50">✅ {toast}</div>
+      )}
+    </div>
+  );
+}
+
+function AccessDenied({ role }) {
+  return (
+    <div className="max-w-md mx-auto mt-20 bg-white border border-rose-200 rounded-xl p-8 text-center">
+      <div className="text-4xl mb-3">🔒</div>
+      <h3 className="font-bold text-rose-600 text-lg">접근 권한이 없어요</h3>
+      <p className="text-sm text-slate-500 mt-2">현재 역할 <b>{role.label}</b>은(는) 이 화면에 접근할 수 없어요. 권한이 있는 계정으로 전환해 주세요. (RBAC 차단)</p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 대시보드 — 상태/지급률/반려사유 집계
+// ---------------------------------------------------------------------------
+function Dashboard({ tdata, tenant, setView, role }) {
+  const stats = useMemo(() => {
+    const by = {}; STATUS_FLOW.concat(["반려"]).forEach((s) => by[s] = 0);
+    let total = 0, paid = 0; const rejects = {};
+    for (const c of tdata.claims) {
+      by[c.status] = (by[c.status] || 0) + 1;
+      total += claimTotal(c);
+      if (c.status === "지급완료") paid += Math.round(claimTotal(c) * (c.paidRate ?? 100) / 100);
+      if (c.status === "반려" && c.rejectReason) rejects[c.rejectReason] = (rejects[c.rejectReason] || 0) + 1;
+    }
+    return { by, total, paid, rejects };
+  }, [tdata.claims]);
+
+  const cards = [
+    { label: "총 청구 건수", value: tdata.claims.length + "건", color: "bg-blue-50 text-blue-700" },
+    { label: "총 청구액", value: won(stats.total), color: "bg-indigo-50 text-indigo-700" },
+    { label: "지급 완료액", value: won(stats.paid), color: "bg-emerald-50 text-emerald-700" },
+    { label: "지급률", value: stats.total ? Math.round(stats.paid / stats.total * 100) + "%" : "0%", color: "bg-amber-50 text-amber-700" },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {cards.map((c) => (
+          <div key={c.label} className="bg-white rounded-xl border border-slate-200 p-5">
+            <div className="text-xs text-slate-500">{c.label}</div>
+            <div className="text-2xl font-bold mt-1 text-slate-800">{c.value}</div>
+            <div className={"inline-block mt-2 px-2 py-0.5 rounded text-[11px] " + c.color}>{tenant.name}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="bg-white rounded-xl border border-slate-200 p-6 lg:col-span-2">
+          <h3 className="font-semibold mb-4 text-slate-700">청구 상태별 분포</h3>
+          <div className="space-y-3">
+            {STATUS_FLOW.concat(["반려"]).map((s) => {
+              const n = stats.by[s] || 0;
+              const pct = tdata.claims.length ? Math.round(n / tdata.claims.length * 100) : 0;
+              return (
+                <div key={s}>
+                  <div className="flex justify-between text-sm mb-1"><span className="font-medium">{s}</span><span className="text-slate-500">{n}건 · {pct}%</span></div>
+                  <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden"><div className={"h-full rounded-full transition-all " + (s === "반려" ? "bg-rose-500" : "bg-blue-500")} style={{ width: pct + "%" }}></div></div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 p-6">
+          <h3 className="font-semibold mb-3 text-slate-700">반려 사유 분석</h3>
+          {Object.keys(stats.rejects).length === 0 ? (
+            <p className="text-sm text-slate-400">반려 청구 없음 (정상)</p>
+          ) : (
+            <ul className="space-y-2 text-sm">
+              {Object.entries(stats.rejects).map(([r, n]) => (
+                <li key={r} className="flex justify-between items-center border-b border-slate-100 pb-1.5">
+                  <span className="text-rose-600">⚠ {r}</span><span className="font-medium">{n}건</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {role !== "patient" && (
+            <button onClick={() => setView("workflow")} className="w-full mt-5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2.5 text-sm font-medium">+ 신규 청구 시작</button>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <h3 className="font-semibold mb-3 text-slate-700">최근 청구</h3>
+        <div className="space-y-1.5 text-sm">
+          {tdata.claims.slice(-5).reverse().map((c) => (
+            <div key={c.id} className="flex justify-between items-center py-1.5 border-b border-slate-100">
+              <span className="text-slate-700">{c.patientName} · <span className="font-mono text-xs">{c.id}</span></span>
+              <span className="flex items-center gap-2">
+                <span className="text-slate-500 text-xs">지급률 {c.paidRate ?? 0}%</span>
+                <span className={"px-2 py-0.5 rounded text-[11px] " + (STATUS_COLOR[c.status] || "")}>{c.status}</span>
+              </span>
+            </div>
+          ))}
+          {tdata.claims.length === 0 && <p className="text-slate-400 text-xs">아직 청구 내역이 없어요.</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 신규 청구 워크플로 (자동매핑 + 검증 + 청구서)
+// ---------------------------------------------------------------------------
+function Workflow({ tdata, tenant, updateTenant, notify, setView, role }) {
+  const [step, setStep] = useState(1);
+  const [rx, setRx] = useState("");
+  const [diagnosis, setDiagnosis] = useState("");
+  const [selPatient, setSelPatient] = useState(tdata.patients[0]?.id || "");
+  const [items, setItems] = useState([]);
+  const [isReimburse, setIsReimburse] = useState(false);
+
+  const steps = ["처방 입력", "자동매핑·검증", "청구서 확인", "제출"];
+
+  function runMapping() {
+    const mapped = autoMapPrescription(rx);
+    setItems(mapped);
+    setStep(2);
+  }
+
+  const total = items.reduce((a, it) => a + it.unitPrice * it.qty, 0);
+  const validation = useMemo(() => validateClaim(items, diagnosis), [items, diagnosis]);
+
+  function createAndSubmit() {
+    const patient = tdata.patients.find((p) => p.id === selPatient);
+    if (!patient) { notify("환자를 먼저 선택해 주세요"); return; }
+    if (!validation.ok) { notify("검증 오류가 있어 제출할 수 없어요. 오류를 먼저 해결해 주세요"); return; }
+    const seqN = tdata.seq + 1;
+    const id = `CLM-${tenant.id.replace("T-", "")}-${today().replace(/-/g, "")}-${String(seqN).padStart(3, "0")}`;
+    const channel = isReimburse ? patient.insurer : "심평원";
+    let claim = {
+      id, patientId: patient.id, patientName: patient.name, date: today(), diagnosis: diagnosis || "(미입력)",
+      items: items.map(({ score, matched, ...rest }) => rest), status: "작성",
+      channel, isReimburse, paidRate: 0, rejectReason: null, ediLog: [],
+      history: [{ status: "작성", ts: nowTs(), by: role }],
+    };
+    // EDI 제출 mock → 접수
+    const sub = ediSubmit(claim, tenant);
+    claim.status = "제출"; claim.history.push({ status: "제출", ts: nowTs(), by: role });
+    claim.ediLog.push({ phase: "submit", ...sub });
+    claim.status = "접수"; claim.history.push({ status: "접수", ts: nowTs(), by: "EDI" });
+    updateTenant((t) => ({ ...t, claims: [...t.claims, claim], seq: seqN }));
+    notify(`청구를 제출했어요 · ${id} (${channel} 접수)`);
+    setView("claims");
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <div className="flex items-center mb-8">
+        {steps.map((s, i) => {
+          const n = i + 1; const active = step === n, done = step > n;
+          return (
+            <React.Fragment key={s}>
+              <div className="flex flex-col items-center">
+                <div className={"w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold " + (done ? "bg-emerald-500 text-white" : active ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-500")}>{done ? "✓" : n}</div>
+                <div className={"text-[11px] mt-1.5 " + (active ? "text-blue-600 font-medium" : "text-slate-500")}>{s}</div>
+              </div>
+              {i < steps.length - 1 && <div className={"flex-1 h-0.5 mx-1 " + (step > n ? "bg-emerald-400" : "bg-slate-200")}></div>}
+            </React.Fragment>
+          );
+        })}
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 p-7">
+        {step === 1 && (
+          <div className="space-y-4">
+            <h3 className="font-semibold text-slate-700">1. 처방·진료 내역 입력</h3>
+            <div>
+              <label className="text-sm font-medium text-slate-600">환자</label>
+              <select value={selPatient} onChange={(e) => setSelPatient(e.target.value)} className="w-full mt-1 border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                {tdata.patients.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.id}) · {p.insurer}{p.consent?.agreed ? " · 동의완료" : " · 동의필요"}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-600">진단명(상병)</label>
+              <input value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} placeholder="예: 급성 상기도 감염(J06.9)" className="w-full mt-1 border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-600">처방·진료 내역 (자유 입력)</label>
+              <textarea value={rx} onChange={(e) => setRx(e.target.value)} rows={4} placeholder="예: 재진 진찰, 혈액검사 시행, 흉부 엑스레이, 심전도, 근육주사, 물리치료, 처방 조제" className="w-full mt-1 border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono"></textarea>
+              <p className="text-[11px] text-slate-400 mt-1">v2 자동매핑 엔진이 토큰 스코어링으로 수가/급여/EDI 코드를 산출하고 검증 룰을 적용해요.</p>
+            </div>
+            <label className="flex items-center gap-2 text-sm text-slate-600">
+              <input type="checkbox" checked={isReimburse} onChange={(e) => setIsReimburse(e.target.checked)} /> 실손보험 청구 (보험사 제출)
+            </label>
+            <div className="flex justify-end">
+              <button disabled={!rx.trim()} onClick={runMapping} className="bg-blue-600 disabled:bg-slate-300 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-medium">자동매핑 실행 →</button>
+            </div>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="space-y-4">
+            <h3 className="font-semibold text-slate-700">2. 자동매핑 결과 · 검증</h3>
+            <p className="text-xs text-slate-500">토큰 스코어링 매핑 결과예요. 점수·매칭 근거를 함께 보여드려요. 수량 조정·삭제할 수 있어요.</p>
+            <div className="border border-slate-200 rounded-lg overflow-hidden overflow-x-auto">
+              <table className="w-full text-sm min-w-[640px]">
+                <thead className="bg-slate-50 text-slate-600">
+                  <tr><th className="text-left px-3 py-2">EDI코드</th><th className="text-left px-3 py-2">항목</th><th className="px-3 py-2">구분</th><th className="text-right px-3 py-2">수가</th><th className="px-3 py-2">수량</th><th className="px-3 py-2">매핑점수</th><th className="text-left px-3 py-2">근거</th><th className="px-3 py-2"></th></tr>
+                </thead>
+                <tbody>
+                  {items.map((it, i) => (
+                    <tr key={i} className="border-t border-slate-100">
+                      <td className="px-3 py-2 font-mono text-xs">{it.edi}</td>
+                      <td className="px-3 py-2">{it.name}</td>
+                      <td className="px-3 py-2 text-center"><span className={"px-2 py-0.5 rounded text-[11px] " + (it.category === "급여" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700")}>{it.category}</span></td>
+                      <td className="px-3 py-2 text-right">{won(it.unitPrice)}</td>
+                      <td className="px-3 py-2 text-center"><input type="number" min="1" value={it.qty} onChange={(e) => setItems(items.map((x, j) => j === i ? { ...x, qty: Math.max(1, +e.target.value) } : x))} className="w-14 border border-slate-300 rounded px-2 py-1 text-center" /></td>
+                      <td className="px-3 py-2 text-center"><span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[11px] font-mono">{it.score ?? "-"}</span></td>
+                      <td className="px-3 py-2 text-[11px] text-slate-400">{(it.matched || []).join(", ")}</td>
+                      <td className="px-3 py-2 text-center"><button onClick={() => setItems(items.filter((_, j) => j !== i))} className="text-rose-500 text-xs">삭제</button></td>
+                    </tr>
+                  ))}
+                  {items.length === 0 && <tr><td colSpan="8" className="px-3 py-6 text-center text-slate-400">아직 매핑된 코드가 없어요.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="border border-slate-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-semibold text-slate-700">검증 룰 엔진 결과</p>
+                <span className={"text-xs font-bold px-2 py-1 rounded " + (validation.ok ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700")}>{validation.ok ? "검증 통과" : `검증 오류 ${validation.errors}건`}</span>
+              </div>
+              <ul className="space-y-1.5 text-sm">
+                {validation.rules.map((r) => (
+                  <li key={r.id} className="flex items-start gap-2">
+                    <span>{r.level === "pass" ? "✅" : r.level === "warn" ? "⚠️" : "❌"}</span>
+                    <span><b>{r.label}</b> <span className="text-slate-400">— {r.detail}</span></span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="text-right font-semibold text-slate-700">합계: {won(total)}</div>
+            <div className="flex justify-between">
+              <button onClick={() => setStep(1)} className="text-slate-500 px-4 py-2.5 text-sm">← 이전</button>
+              <button onClick={() => setStep(3)} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-medium">다음: 청구서 →</button>
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="space-y-4">
+            <h3 className="font-semibold text-slate-700">3. 청구서 확인</h3>
+            <ClaimPreview tenant={tenant} claim={{ id: "(미리보기)", date: today(), diagnosis, patientName: tdata.patients.find((p) => p.id === selPatient)?.name || "-", items, isReimburse }} />
+            <div className="flex justify-between">
+              <button onClick={() => setStep(2)} className="text-slate-500 px-4 py-2.5 text-sm">← 이전</button>
+              <button onClick={() => setStep(4)} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-medium">다음: 제출 →</button>
+            </div>
+          </div>
+        )}
+
+        {step === 4 && (
+          <div className="space-y-4">
+            <h3 className="font-semibold text-slate-700">4. {isReimburse ? "보험사" : "심평원"} EDI 제출</h3>
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm space-y-2">
+              <div className="flex justify-between"><span className="text-slate-500">제출 채널</span><span className="font-medium">{isReimburse ? tdata.patients.find((p) => p.id === selPatient)?.insurer : "건강보험심사평가원(심평원)"}</span></div>
+              <div className="flex justify-between"><span className="text-slate-500">청구 항목</span><span className="font-medium">{items.length}건</span></div>
+              <div className="flex justify-between"><span className="text-slate-500">청구 총액</span><span className="font-medium">{won(total)}</span></div>
+              <div className="flex justify-between"><span className="text-slate-500">검증 상태</span><span className={validation.ok ? "text-emerald-600 font-medium" : "text-rose-600 font-medium"}>{validation.ok ? "통과 (제출 가능)" : "오류 (제출 불가)"}</span></div>
+            </div>
+            <p className="text-[11px] text-slate-400">제출하면 EDI API mock으로 즉시 접수(RECEIVED) 응답을 받고 청구 목록에 등록돼요. 이후 심사·정산 콘솔에서 심사→지급/반려를 진행해요.</p>
+            <div className="flex justify-between">
+              <button onClick={() => setStep(3)} className="text-slate-500 px-4 py-2.5 text-sm">← 이전</button>
+              <button onClick={createAndSubmit} disabled={!validation.ok} className="bg-emerald-600 disabled:bg-slate-300 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg font-medium">EDI 제출 →</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// 청구서 미리보기 (기관 양식 분기 + 실손)
+function ClaimPreview({ claim, tenant }) {
+  const total = claim.items.reduce((a, it) => a + it.unitPrice * it.qty, 0);
+  const covered = claim.items.filter((i) => i.category === "급여").reduce((a, it) => a + it.unitPrice * it.qty, 0);
+  const nonCovered = total - covered;
+  const matrix = pseudoMatrix(claim.id || "x"); const n = 21;
+  const accent = tenant?.color === "emerald" ? "#14AE5C" : "#191F28";
+
+  return (
+    <div className="border-2 rounded-lg p-6 bg-white" style={{ borderColor: accent + "33" }} id="claim-doc">
+      <div className="flex justify-between items-start pb-3 mb-4" style={{ borderBottom: `2px solid ${accent}` }}>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg text-white flex items-center justify-center font-bold text-lg" style={{ background: accent }}>{tenant?.logo || "C"}</div>
+          <div>
+            <div className="text-xl font-bold text-slate-800">{claim.isReimburse ? "실손의료비 청구서" : "진료비 청구서"}</div>
+            <div className="text-xs text-slate-500 mt-0.5">{tenant?.name || "클레임브릿지 의원"} · 요양기관기호 {tenant?.code || "-"}</div>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="grid border border-slate-300" style={{ gridTemplateColumns: `repeat(${n}, 3px)`, width: n * 3 }}>
+            {matrix.map((on, i) => <div key={i} style={{ width: 3, height: 3, background: on ? accent : "#fff" }}></div>)}
+          </div>
+          <div className="text-[9px] text-slate-400 mt-0.5">검증코드: {claim.id}</div>
+        </div>
+      </div>
+
+      {claim.isReimburse && <div className="mb-3 text-xs bg-violet-50 text-violet-700 px-3 py-2 rounded">실손보험 청구 양식 · 보험사 제출용 (자기부담 적용)</div>}
+
+      <table className="w-full text-sm mb-4">
+        <tbody>
+          <tr><td className="py-1 text-slate-500 w-28">청구번호</td><td className="font-medium">{claim.id}</td><td className="py-1 text-slate-500 w-20">청구일자</td><td>{claim.date}</td></tr>
+          <tr><td className="py-1 text-slate-500">환자명</td><td className="font-medium">{claim.patientName}</td><td className="py-1 text-slate-500">상병</td><td>{claim.diagnosis || "-"}</td></tr>
+        </tbody>
+      </table>
+
+      <div className="overflow-x-auto">
+      <table className="w-full text-sm border-collapse min-w-[480px]">
+        <thead><tr className="bg-slate-100">
+          <th className="border border-slate-300 px-2 py-1.5 text-left">EDI코드</th>
+          <th className="border border-slate-300 px-2 py-1.5 text-left">진료/처방 항목</th>
+          <th className="border border-slate-300 px-2 py-1.5">구분</th>
+          <th className="border border-slate-300 px-2 py-1.5 text-right">수가</th>
+          <th className="border border-slate-300 px-2 py-1.5">수량</th>
+          <th className="border border-slate-300 px-2 py-1.5 text-right">금액</th>
+        </tr></thead>
+        <tbody>
+          {claim.items.map((it, i) => (
+            <tr key={i}>
+              <td className="border border-slate-300 px-2 py-1.5 font-mono text-xs">{it.edi || it.code}</td>
+              <td className="border border-slate-300 px-2 py-1.5">{it.name}</td>
+              <td className="border border-slate-300 px-2 py-1.5 text-center text-xs">{it.category}</td>
+              <td className="border border-slate-300 px-2 py-1.5 text-right">{won(it.unitPrice)}</td>
+              <td className="border border-slate-300 px-2 py-1.5 text-center">{it.qty}</td>
+              <td className="border border-slate-300 px-2 py-1.5 text-right">{won(it.unitPrice * it.qty)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      </div>
+
+      <div className="flex justify-end mt-4">
+        <table className="text-sm">
+          <tbody>
+            <tr><td className="py-0.5 pr-6 text-slate-500">급여 합계</td><td className="text-right font-medium">{won(covered)}</td></tr>
+            <tr><td className="py-0.5 pr-6 text-slate-500">비급여 합계</td><td className="text-right font-medium">{won(nonCovered)}</td></tr>
+            <tr className="border-t-2" style={{ borderColor: accent }}><td className="py-1 pr-6 font-bold">청구 총액</td><td className="text-right font-bold text-lg">{won(total)}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 청구 목록 + 상세 모달 + CSV 입출력
+// ---------------------------------------------------------------------------
+function ClaimList({ tdata, tenant, updateTenant, notify, role }) {
+  const [filter, setFilter] = useState("전체");
+  const [detail, setDetail] = useState(null);
+  const fileRef = useRef(null);
+
+  const filtered = tdata.claims.filter((c) => filter === "전체" || c.status === filter);
+
+  function exportCsv() {
+    download(`claims_${tenant.id}_${today()}.csv`, claimsToCsv(tdata.claims));
+    notify(`CSV로 내보냈어요 · ${tdata.claims.length}건`);
+  }
+  function importCsv(e) {
+    const f = e.target.files?.[0]; if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const lines = String(reader.result).split(/\r?\n/).filter(Boolean).slice(1);
+      let added = 0;
+      const news = [];
+      for (const ln of lines) {
+        const cols = ln.match(/("([^"]|"")*"|[^,]*)/g)?.filter((_, i) => i % 2 === 0).map((x) => x.replace(/^"|"$/g, "").replace(/""/g, '"')) || [];
+        if (cols.length < 4 || !cols[0]) continue;
+        const amount = +cols[4] || 0;
+        news.push({ id: cols[0] + "-IMP", patientId: "-", patientName: cols[1] || "(가져옴)", date: cols[2] || today(), diagnosis: cols[3] || "-",
+          items: [{ code: "IMP", edi: "IMPORT", name: "CSV 가져온 청구", category: "급여", unitPrice: amount, qty: 1 }],
+          status: cols[6] || "접수", channel: cols[8] || "심평원", isReimburse: cols[9] === "Y", paidRate: +cols[7] || 0, rejectReason: null, ediLog: [], history: [{ status: "접수", ts: nowTs(), by: "CSV-import" }] });
+        added++;
+      }
+      if (added) { updateTenant((t) => ({ ...t, claims: [...t.claims, ...news] })); notify(`CSV를 가져왔어요 · ${added}건 추가`); }
+      else notify("가져올 행이 없어요. 파일을 확인해 주세요");
+      e.target.value = "";
+    };
+    reader.readAsText(f);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2 items-center justify-between">
+        <div className="flex flex-wrap gap-2">
+          {["전체"].concat(STATUS_FLOW).concat(["반려"]).map((s) => (
+            <button key={s} onClick={() => setFilter(s)} className={"px-3 py-1.5 rounded-lg text-sm font-medium border " + (filter === s ? "bg-blue-600 text-white border-blue-600" : "border-slate-300 text-slate-600 hover:bg-slate-50")}>{s}</button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <button onClick={exportCsv} className="border border-slate-300 px-3 py-1.5 rounded-lg text-sm hover:bg-slate-50">⬇ CSV 내보내기</button>
+          <button onClick={() => fileRef.current?.click()} className="border border-slate-300 px-3 py-1.5 rounded-lg text-sm hover:bg-slate-50">⬆ CSV 가져오기</button>
+          <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={importCsv} />
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+        <table className="w-full text-sm min-w-[760px]">
+          <thead className="bg-slate-50 text-slate-600"><tr><th className="text-left px-4 py-3">청구번호</th><th className="text-left px-4 py-3">환자</th><th className="text-left px-4 py-3">청구일</th><th className="text-left px-4 py-3">채널</th><th className="text-right px-4 py-3">금액</th><th className="px-4 py-3">지급률</th><th className="px-4 py-3">상태</th><th className="px-4 py-3"></th></tr></thead>
+          <tbody>
+            {filtered.map((c) => (
+              <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50">
+                <td className="px-4 py-3 font-mono text-xs">{c.id}</td>
+                <td className="px-4 py-3">{c.patientName}</td>
+                <td className="px-4 py-3 text-slate-500">{c.date}</td>
+                <td className="px-4 py-3 text-slate-500 text-xs">{c.channel}{c.isReimburse && <span className="ml-1 px-1.5 py-0.5 bg-violet-100 text-violet-700 rounded text-[10px]">실손</span>}</td>
+                <td className="px-4 py-3 text-right font-medium">{won(claimTotal(c))}</td>
+                <td className="px-4 py-3 text-center">{c.paidRate ?? 0}%</td>
+                <td className="px-4 py-3 text-center"><span className={"px-2 py-0.5 rounded text-[11px] " + (STATUS_COLOR[c.status] || "")}>{c.status}</span></td>
+                <td className="px-4 py-3 text-center"><button onClick={() => setDetail(c)} className="text-blue-600 text-xs font-medium">상세</button></td>
+              </tr>
+            ))}
+            {filtered.length === 0 && <tr><td colSpan="8" className="px-4 py-8 text-center text-slate-400">해당 청구가 아직 없어요.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      {detail && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-6" onClick={() => setDetail(null)}>
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[88vh] overflow-auto p-6 fade-in" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4"><h3 className="font-semibold text-slate-700">청구 상세 · {detail.id}</h3><button onClick={() => setDetail(null)} className="text-slate-400 text-xl">×</button></div>
+            <ClaimPreview claim={detail} tenant={tenant} />
+            {detail.ediLog?.length > 0 && (
+              <div className="mt-4 border border-slate-200 rounded-lg p-3 bg-slate-900 text-slate-100 text-[11px] font-mono overflow-x-auto">
+                <div className="text-emerald-400 mb-1">// EDI API 통신 로그 (mock)</div>
+                {detail.ediLog.map((l, i) => (
+                  <div key={i} className="mb-1">
+                    <div>[{l.ts}] {l.phase.toUpperCase()} ref={l.ref}</div>
+                    <div className="text-slate-400">→ REQ {JSON.stringify(l.request)}</div>
+                    <div className="text-blue-300">← RES {JSON.stringify(l.response)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="mt-3 text-xs text-slate-500 space-y-1">
+              {detail.history.map((h, i) => <div key={i}>{h.ts} — {h.status} <span className="text-slate-400">({h.by})</span></div>)}
+            </div>
+            {detail.rejectReason && <div className="mt-2 text-xs text-rose-600">반려 사유: {detail.rejectReason}</div>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 심사·정산 콘솔 — EDI 심사 mock (지급/반려), 청구담당 전용
+// ---------------------------------------------------------------------------
+function ReviewConsole({ tdata, tenant, updateTenant, notify }) {
+  const pending = tdata.claims.filter((c) => ["접수", "심사"].includes(c.status));
+
+  function adjudicate(claim) {
+    const result = ediAdjudicate(claim);
+    updateTenant((t) => ({
+      ...t, claims: t.claims.map((c) => {
+        if (c.id !== claim.id) return c;
+        const reject = result.status === "REJECTED";
+        const hist = [...c.history, { status: "심사", ts: nowTs(), by: "EDI-심사" }, { status: reject ? "반려" : "지급완료", ts: nowTs(), by: "EDI-심사" }];
+        return { ...c, status: reject ? "반려" : "지급완료", paidRate: result.paidRate, rejectReason: result.reason, ediLog: [...(c.ediLog || []), { phase: "adjudicate", ref: "ADJ-" + claim.id.slice(-3), ts: result.ts, request: { claimId: claim.id }, response: { code: result.code, status: result.status, paidRate: result.paidRate, message: result.message } }], history: hist };
+      }),
+    }));
+    notify(result.message + " · " + claim.id);
+  }
+  function forceReject(claim) {
+    updateTenant((t) => ({ ...t, claims: t.claims.map((c) => c.id === claim.id ? { ...c, status: "반려", rejectReason: "수기 반려(서류 미비)", paidRate: 0, history: [...c.history, { status: "반려", ts: nowTs(), by: "biller" }] } : c) }));
+    notify("수기로 반려했어요 · " + claim.id);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-violet-50 border border-violet-200 rounded-lg p-4 text-sm text-violet-800">
+        <b>심사·정산 콘솔</b> — 청구담당 권한 전용. 접수/심사 상태 청구를 EDI 심사 mock으로 처리해요. 급여비율 기반 지급률 산정·검증 룰 위반 시 자동 반려.
+      </div>
+      <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+        <table className="w-full text-sm min-w-[720px]">
+          <thead className="bg-slate-50 text-slate-600"><tr><th className="text-left px-4 py-3">청구번호</th><th className="text-left px-4 py-3">환자</th><th className="text-right px-4 py-3">총액</th><th className="text-right px-4 py-3">급여액</th><th className="px-4 py-3">채널</th><th className="px-4 py-3">상태</th><th className="px-4 py-3">처리</th></tr></thead>
+          <tbody>
+            {pending.map((c) => (
+              <tr key={c.id} className="border-t border-slate-100">
+                <td className="px-4 py-3 font-mono text-xs">{c.id}</td>
+                <td className="px-4 py-3">{c.patientName}</td>
+                <td className="px-4 py-3 text-right font-medium">{won(claimTotal(c))}</td>
+                <td className="px-4 py-3 text-right text-slate-500">{won(coveredTotal(c))}</td>
+                <td className="px-4 py-3 text-xs text-slate-500">{c.channel}</td>
+                <td className="px-4 py-3 text-center"><span className={"px-2 py-0.5 rounded text-[11px] " + (STATUS_COLOR[c.status] || "")}>{c.status}</span></td>
+                <td className="px-4 py-3 text-center whitespace-nowrap">
+                  <button onClick={() => adjudicate(c)} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 rounded-lg mr-1">EDI 심사 실행</button>
+                  <button onClick={() => forceReject(c)} className="border border-rose-300 text-rose-600 text-xs px-3 py-1.5 rounded-lg">수기 반려</button>
+                </td>
+              </tr>
+            ))}
+            {pending.length === 0 && <tr><td colSpan="7" className="px-4 py-8 text-center text-slate-400">심사 대기 중인 청구가 없어요.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <h3 className="font-semibold text-slate-700 mb-3">정산 처리 현황</h3>
+          <div className="space-y-2 text-sm">
+            {["지급완료", "반려"].map((st) => {
+              const arr = tdata.claims.filter((c) => c.status === st);
+              return <div key={st} className="flex justify-between border-b border-slate-100 py-1.5"><span className={"px-2 py-0.5 rounded text-[11px] " + STATUS_COLOR[st]}>{st}</span><span className="font-medium">{arr.length}건 · {won(arr.reduce((a, c) => a + Math.round(claimTotal(c) * (c.paidRate ?? 0) / 100), 0))}</span></div>;
+            })}
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <h3 className="font-semibold text-slate-700 mb-3">반려 사유 집계</h3>
+          {(() => {
+            const rj = {}; tdata.claims.filter((c) => c.status === "반려").forEach((c) => { if (c.rejectReason) rj[c.rejectReason] = (rj[c.rejectReason] || 0) + 1; });
+            const ent = Object.entries(rj);
+            return ent.length ? <ul className="text-sm space-y-1.5">{ent.map(([r, n]) => <li key={r} className="flex justify-between border-b border-slate-100 py-1"><span className="text-rose-600">⚠ {r}</span><span>{n}건</span></li>)}</ul> : <p className="text-sm text-slate-400">반려 없음</p>;
+          })()}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 환자 관리 (CRUD + 동의/전자서명)
+// ---------------------------------------------------------------------------
+function PatientList({ tdata, updateTenant, notify, role }) {
+  const [q, setQ] = useState("");
+  const [form, setForm] = useState(null);
+  const [consentFor, setConsentFor] = useState(null);
+
+  const canEdit = ROLES[role].can.includes("patients") && role !== "patient";
+  const filtered = tdata.patients.filter((p) => !q || p.name.includes(q) || p.id.includes(q) || (p.insurer || "").includes(q));
+
+  function save() {
+    if (!form.name.trim()) { notify("성명을 입력해 주세요"); return; }
+    if (form.id) { updateTenant((t) => ({ ...t, patients: t.patients.map((p) => p.id === form.id ? form : p) })); notify("환자 정보를 수정했어요: " + form.name); }
+    else { const id = "P-" + String(tdata.patients.length + 1).padStart(4, "0"); updateTenant((t) => ({ ...t, patients: [...t.patients, { ...form, id, consent: { agreed: false, ts: null, sig: null } }] })); notify("환자를 등록했어요: " + form.name); }
+    setForm(null);
+  }
+  function del(p) { updateTenant((t) => ({ ...t, patients: t.patients.filter((x) => x.id !== p.id) })); notify("환자를 삭제했어요: " + p.name); }
+
+  function saveConsent(p, sigDataUrl) {
+    updateTenant((t) => ({ ...t, patients: t.patients.map((x) => x.id === p.id ? { ...x, consent: { agreed: true, ts: nowTs(), sig: sigDataUrl } } : x) }));
+    notify("동의·전자서명을 저장했어요: " + p.name);
+    setConsentFor(null);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between gap-3">
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="환자명·ID·보험자 검색" className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm max-w-sm" />
+        {canEdit && <button onClick={() => setForm({ name: "", rrn: "", phone: "", insurer: "국민건강보험", note: "" })} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-medium">+ 신규 환자</button>}
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+        <table className="w-full text-sm min-w-[760px]">
+          <thead className="bg-slate-50 text-slate-600"><tr><th className="text-left px-4 py-3">ID</th><th className="text-left px-4 py-3">성명</th><th className="text-left px-4 py-3">연락처</th><th className="text-left px-4 py-3">보험자</th><th className="px-4 py-3">동의/서명</th><th className="px-4 py-3"></th></tr></thead>
+          <tbody>
+            {filtered.map((p) => (
+              <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50">
+                <td className="px-4 py-3 font-mono text-xs">{p.id}</td>
+                <td className="px-4 py-3 font-medium">{p.name}</td>
+                <td className="px-4 py-3 text-slate-500">{p.phone}</td>
+                <td className="px-4 py-3">{p.insurer}</td>
+                <td className="px-4 py-3 text-center">
+                  {p.consent?.agreed
+                    ? <span className="inline-flex items-center gap-1 text-emerald-600 text-xs">✅ 동의완료{p.consent.sig && <img src={p.consent.sig} alt="서명" className="h-5 border border-slate-200 rounded bg-white" />}</span>
+                    : <button onClick={() => setConsentFor(p)} className="text-amber-600 text-xs font-medium underline">동의 받기</button>}
+                </td>
+                <td className="px-4 py-3 text-center whitespace-nowrap">
+                  {canEdit ? <><button onClick={() => setForm(p)} className="text-blue-600 text-xs font-medium mr-2">수정</button><button onClick={() => del(p)} className="text-rose-500 text-xs font-medium">삭제</button></> : <span className="text-slate-300 text-xs">읽기전용</span>}
+                </td>
+              </tr>
+            ))}
+            {filtered.length === 0 && <tr><td colSpan="6" className="px-4 py-8 text-center text-slate-400">검색 결과가 없어요.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      {form && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-6" onClick={() => setForm(null)}>
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 fade-in" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold text-slate-700 mb-4">{form.id ? "환자 정보 수정" : "신규 환자 등록"}</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <input placeholder="성명" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+              <input placeholder="주민번호(마스킹)" value={form.rrn} onChange={(e) => setForm({ ...form, rrn: e.target.value })} className="border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+              <input placeholder="연락처" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+              <input placeholder="보험자" value={form.insurer} onChange={(e) => setForm({ ...form, insurer: e.target.value })} className="border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+              <input placeholder="비고" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} className="border border-slate-300 rounded-lg px-3 py-2 text-sm col-span-2" />
+            </div>
+            <div className="flex justify-end gap-2 mt-5"><button onClick={() => setForm(null)} className="text-slate-500 px-4 py-2 text-sm">취소</button><button onClick={save} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-medium">저장</button></div>
+          </div>
+        </div>
+      )}
+
+      {consentFor && <ConsentModal patient={consentFor} onCancel={() => setConsentFor(null)} onSave={saveConsent} />}
+    </div>
+  );
+}
+
+// 동의 + 전자서명 모달 (캔버스)
+function ConsentModal({ patient, onSave, onCancel }) {
+  const canvasRef = useRef(null);
+  const drawing = useRef(false);
+  const [agreed, setAgreed] = useState(false);
+  const [hasSig, setHasSig] = useState(false);
+
+  useEffect(() => {
+    const cv = canvasRef.current; const ctx = cv.getContext("2d");
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.strokeStyle = "#191F28"; ctx.lineWidth = 2.2; ctx.lineCap = "round";
+  }, []);
+
+  function pos(e) {
+    const cv = canvasRef.current; const r = cv.getBoundingClientRect();
+    const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+    const cy = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+    return { x: cx * (cv.width / r.width), y: cy * (cv.height / r.height) };
+  }
+  function start(e) { drawing.current = true; const ctx = canvasRef.current.getContext("2d"); const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }
+  function move(e) { if (!drawing.current) return; e.preventDefault(); const ctx = canvasRef.current.getContext("2d"); const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); setHasSig(true); }
+  function end() { drawing.current = false; }
+  function clear() { const cv = canvasRef.current; const ctx = cv.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cv.width, cv.height); setHasSig(false); }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-6" onClick={onCancel}>
+      <div className="bg-white rounded-xl max-w-lg w-full p-6 fade-in" onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-semibold text-slate-700 mb-2">개인정보·청구 위임 동의 — {patient.name}</h3>
+        <div className="text-xs text-slate-500 border border-slate-200 rounded-lg p-3 h-28 overflow-auto leading-relaxed">
+          본인은 진료비·실손보험 청구 대행을 위하여 의료기관이 본인의 진료내역·청구정보를 심사평가원 및 보험사에 전송하는 것에 동의합니다. 수집·이용 항목: 성명, 진료내역, 청구코드, 보험자 정보. 보유기간: 청구 완료 후 5년. 동의 거부 시 자동 청구 대행 서비스 이용이 제한됩니다.
+        </div>
+        <label className="flex items-center gap-2 text-sm mt-3"><input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} /> 위 내용에 동의합니다.</label>
+
+        <div className="mt-3">
+          <div className="text-sm font-medium text-slate-600 mb-1">전자 서명 (아래 영역에 서명)</div>
+          <canvas ref={canvasRef} width={440} height={140} className="sig-canvas border border-slate-300 rounded-lg w-full bg-white cursor-crosshair"
+            onMouseDown={start} onMouseMove={move} onMouseUp={end} onMouseLeave={end}
+            onTouchStart={start} onTouchMove={move} onTouchEnd={end}></canvas>
+          <button onClick={clear} className="text-xs text-slate-500 mt-1 underline">서명 지우기</button>
+        </div>
+
+        <div className="flex justify-end gap-2 mt-4">
+          <button onClick={onCancel} className="text-slate-500 px-4 py-2 text-sm">취소</button>
+          <button disabled={!agreed || !hasSig} onClick={() => onSave(patient, canvasRef.current.toDataURL("image/png"))}
+            className="bg-emerald-600 disabled:bg-slate-300 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg text-sm font-medium">동의·서명 저장</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 기관(테넌트) 관리 — 격리 검증
+// ---------------------------------------------------------------------------
+function TenantAdmin({ state, tenantId, setTenantId }) {
+  return (
+    <div className="space-y-5">
+      <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <h3 className="font-semibold text-slate-700 mb-1">멀티테넌트 데이터 격리</h3>
+        <p className="text-xs text-slate-500 mb-4">각 의료기관(테넌트)의 환자·청구 데이터는 <b>tenant_id</b>로 격리돼요. 현재 활성 테넌트만 조회/수정되고, 다른 테넌트 데이터는 노출되지 않아요.</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {TENANTS.map((t) => {
+            const d = state.tenants[t.id];
+            const total = d.claims.reduce((a, c) => a + claimTotal(c), 0);
+            const active = t.id === tenantId;
+            return (
+              <div key={t.id} className={"rounded-xl border p-5 " + (active ? "border-blue-400 ring-2 ring-blue-100" : "border-slate-200")}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className={"w-10 h-10 rounded-lg text-white flex items-center justify-center font-bold " + (t.color === "blue" ? "bg-blue-500" : "bg-emerald-500")}>{t.logo}</div>
+                  <div><div className="font-semibold text-slate-800">{t.name}</div><div className="text-xs text-slate-400">요양기관기호 {t.code} · {t.id}</div></div>
+                  {active && <span className="ml-auto text-[11px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded">활성</span>}
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                  <div className="bg-slate-50 rounded-lg py-2"><div className="text-lg font-bold">{d.patients.length}</div><div className="text-[11px] text-slate-400">환자</div></div>
+                  <div className="bg-slate-50 rounded-lg py-2"><div className="text-lg font-bold">{d.claims.length}</div><div className="text-[11px] text-slate-400">청구</div></div>
+                  <div className="bg-slate-50 rounded-lg py-2"><div className="text-lg font-bold">{(total/10000).toFixed(0)}만</div><div className="text-[11px] text-slate-400">청구액</div></div>
+                </div>
+                {!active && <button onClick={() => setTenantId(t.id)} className="w-full mt-3 border border-slate-300 rounded-lg py-2 text-sm hover:bg-slate-50">이 기관으로 전환</button>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
+        <b>격리 검증:</b> 현재 활성 테넌트 <b>{TENANTS.find(t=>t.id===tenantId)?.name}</b>의 데이터만 다른 화면(대시보드·청구·환자)에 표시돼요. 기관을 전환하면 곧바로 해당 테넌트 데이터로 바뀌고, 다른 테넌트 청구는 조회되지 않아요(타 테넌트 조회 0건).
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 환자 포털 (모바일 전용 반응형) — 환자 역할
+// ---------------------------------------------------------------------------
+function PatientPortal({ state, tenant, tdata, tenantId, setTenantId, setRole, updateTenant, notify, toast }) {
+  const [pid, setPid] = useState(tdata.patients[0]?.id || "");
+  const [consentOpen, setConsentOpen] = useState(false);
+  const patient = tdata.patients.find((p) => p.id === pid) || tdata.patients[0];
+  const myClaims = tdata.claims.filter((c) => c.patientId === patient?.id);
+
+  function saveConsent(p, sig) {
+    updateTenant((t) => ({ ...t, patients: t.patients.map((x) => x.id === p.id ? { ...x, consent: { agreed: true, ts: nowTs(), sig } } : x) }));
+    notify("동의·서명을 저장했어요");
+    setConsentOpen(false);
+  }
+  function fileReimburse(c) {
+    updateTenant((t) => ({ ...t, claims: t.claims.map((x) => x.id === c.id ? { ...x, isReimburse: true, channel: patient.insurer, ediLog: [...(x.ediLog || []), { phase: "reimburse", ref: "RMB-" + c.id.slice(-3), ts: nowTs(), request: { claimId: c.id, insurer: patient.insurer }, response: { code: "200", status: "RECEIVED", message: "실손 청구 접수" } }] } : x) }));
+    notify("실손 청구를 제출했어요 (보험사 mock 접수)");
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-100 flex flex-col items-center py-6 px-3">
+      {/* 모바일 프레임 */}
+      <div className="w-full max-w-[420px] bg-white rounded-[28px] shadow-2xl border-8 border-slate-900 overflow-hidden" style={{ minHeight: 760 }}>
+        <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white px-5 py-4">
+          <div className="flex justify-between items-center">
+            <div><div className="font-bold text-lg">내 진료비·실손</div><div className="text-[11px] text-blue-100">{tenant.name}</div></div>
+            <button onClick={() => setRole("biller")} className="text-[11px] bg-white/20 px-2 py-1 rounded">관리자 모드</button>
+          </div>
+          <select value={pid} onChange={(e) => setPid(e.target.value)} className="mt-3 w-full bg-white/15 text-white rounded-lg px-3 py-2 text-sm">
+            {tdata.patients.map((p) => <option className="text-slate-800" key={p.id} value={p.id}>{p.name} ({p.id})</option>)}
+          </select>
+        </div>
+
+        <div className="p-4 space-y-4">
+          {/* 동의 상태 */}
+          <div className={"rounded-xl p-4 " + (patient?.consent?.agreed ? "bg-emerald-50 border border-emerald-200" : "bg-amber-50 border border-amber-200")}>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-semibold text-sm">{patient?.consent?.agreed ? "동의·서명 완료" : "청구 위임 동의 필요"}</div>
+                <div className="text-[11px] text-slate-500">{patient?.consent?.agreed ? `${patient.consent.ts} 서명` : "자동 청구를 시작하려면 동의가 필요해요"}</div>
+              </div>
+              {patient?.consent?.agreed
+                ? (patient.consent.sig ? <img src={patient.consent.sig} className="h-8 border border-slate-200 rounded bg-white" alt="서명" /> : <span className="text-emerald-600 text-xl">✅</span>)
+                : <button onClick={() => setConsentOpen(true)} className="bg-amber-500 text-white text-xs px-3 py-1.5 rounded-lg font-medium">동의하기</button>}
+            </div>
+          </div>
+
+          {/* 내 청구 */}
+          <div>
+            <div className="font-semibold text-sm text-slate-700 mb-2">내 청구 내역 ({myClaims.length})</div>
+            <div className="space-y-2">
+              {myClaims.map((c) => {
+                const paid = Math.round(claimTotal(c) * (c.paidRate ?? 0) / 100);
+                return (
+                  <div key={c.id} className="border border-slate-200 rounded-xl p-3">
+                    <div className="flex justify-between items-start">
+                      <div><div className="text-sm font-medium">{c.diagnosis}</div><div className="text-[11px] text-slate-400 font-mono">{c.id}</div></div>
+                      <span className={"px-2 py-0.5 rounded text-[11px] " + (STATUS_COLOR[c.status] || "")}>{c.status}</span>
+                    </div>
+                    <div className="flex justify-between text-xs mt-2 text-slate-500">
+                      <span>청구 {won(claimTotal(c))}</span><span>지급 {won(paid)} ({c.paidRate ?? 0}%)</span>
+                    </div>
+                    {!c.isReimburse && patient?.insurer?.includes("실손") && (
+                      <button onClick={() => fileReimburse(c)} className="w-full mt-2 bg-violet-600 text-white text-xs py-2 rounded-lg font-medium">실손보험 청구하기</button>
+                    )}
+                    {c.isReimburse && <div className="mt-2 text-[11px] text-violet-600">실손 청구 제출됨 · {c.channel}</div>}
+                  </div>
+                );
+              })}
+              {myClaims.length === 0 && <div className="text-center text-slate-400 text-sm py-6">아직 청구 내역이 없어요.</div>}
+            </div>
+          </div>
+
+          <div className="text-center text-[10px] text-slate-300 pt-2">클레임브릿지 환자 포털 · v2 모바일 반응형</div>
+        </div>
+      </div>
+
+      {consentOpen && patient && <ConsentModal patient={patient} onCancel={() => setConsentOpen(false)} onSave={saveConsent} />}
+      {toast && <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl text-sm z-50">✅ {toast}</div>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

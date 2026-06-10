@@ -1,0 +1,1092 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>현장톡 v3 — 현장 협업 · 안전 인텔리전스 플랫폼</title>
+<meta name="theme-color" content="#3182f6" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="현장톡" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // 디자인 토큰 재매핑 (Apple × Toss) — design-guide/디자인_애플_토스.md
+  tailwind.config = { theme: { extend: {
+    fontFamily: { sans: ['Pretendard','-apple-system','BlinkMacSystemFont','Apple SD Gothic Neo','sans-serif'] },
+    colors: {
+      brand:   { DEFAULT:'#3182F6', hover:'#1B64DA', light:'#E8F3FF' },
+      blue:    {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      indigo:  {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      sky:     {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      slate:   {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      gray:    {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      zinc:    {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      neutral: {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      emerald: {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      green:   {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      teal:    {50:'#E7F8EF',100:'#D2F2E0',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      amber:   {50:'#FFF6E5',100:'#FFE9C2',300:'#FFB331',400:'#FFB331',500:'#FFB331',600:'#E2991C',700:'#C77F12'},
+      yellow:  {50:'#FFF6E5',100:'#FFE9C2',300:'#FFB331',400:'#FFB331',500:'#FFB331',600:'#E2991C'},
+      orange:  {50:'#FFF6E5',100:'#FFE9C2',400:'#FFB331',500:'#FFB331',600:'#E2991C'},
+      rose:    {50:'#FEECEE',100:'#FCD9DD',300:'#F8A4AC',400:'#F04452',500:'#F04452',600:'#F04452',700:'#D6303D'},
+      red:     {50:'#FEECEE',100:'#FCD9DD',300:'#F8A4AC',400:'#F04452',500:'#F04452',600:'#F04452',700:'#D6303D'},
+    }
+  } } }
+</script>
+<script>
+  // PWA manifest via blob (file:// 호환). install 요건: manifest + SW + start_url + icons.
+  (function(){
+    const icon = (n)=> 'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="'+n+'" height="'+n+'"><rect width="'+n+'" height="'+n+'" rx="'+(n*0.21)+'" fill="#3182f6"/><text x="50%" y="62%" font-size="'+(n*0.42)+'" text-anchor="middle" fill="#fff" font-family="sans-serif">현</text></svg>');
+    const manifest = {
+      name: '현장톡 — 현장 작업자 협업·안전', short_name: '현장톡', start_url: '.', scope: '.', display: 'standalone',
+      background_color: '#F9FAFB', theme_color: '#3182f6', orientation: 'portrait', categories:['productivity','business'],
+      description: '현장 작업자 모바일 협업 · 산업별 체크리스트 · 보험사 위험분석 · 안전 KPI',
+      icons: [
+        { src: icon(192), sizes:'192x192', type:'image/svg+xml', purpose:'any maskable' },
+        { src: icon(512), sizes:'512x512', type:'image/svg+xml', purpose:'any maskable' }
+      ],
+      shortcuts: [
+        { name:'이상 보고', short_name:'이상', url:'.?view=report' },
+        { name:'안전 KPI', short_name:'KPI', url:'.?view=kpi' }
+      ]
+    };
+    const blob = new Blob([JSON.stringify(manifest)], {type:'application/manifest+json'});
+    const link = document.createElement('link'); link.rel='manifest'; link.href=URL.createObjectURL(blob);
+    document.head.appendChild(link);
+    window.__manifestReady = true;
+  })();
+</script>
+<style>
+  :root { --brand:#3182f6; --brand-dark:#1b64da; --ink:#191f28; --ink-2:#4e5968; --ink-3:#8b95a1; --bg:#F9FAFB; --line:#e5e8eb; --green:#14AE5C; --red:#F04452; --amber:#FFB331; }
+  body { background:var(--bg); color:var(--ink); -webkit-tap-highlight-color: transparent; font-family: "Pretendard", -apple-system, "Pretendard", "Apple SD Gothic Neo", system-ui, sans-serif; }
+  .toss-card { background:#fff; border-radius:20px; box-shadow:0 1px 2px rgba(0,0,0,.04), 0 4px 14px rgba(17,24,39,.04); }
+  .btn-primary { background:var(--brand); color:#fff; border-radius:14px; min-height:54px; font-weight:700; font-size:16px; }
+  .btn-secondary { background:#f1f3f5; color:var(--ink); border-radius:14px; min-height:54px; font-weight:600; }
+  .pill { padding:3px 9px; border-radius:999px; font-size:11px; font-weight:700; letter-spacing:-0.2px; }
+  .thumb { width:64px; height:64px; object-fit:cover; border-radius:14px; }
+  .nav-side a.active { background:#eef3ff; color:var(--brand); font-weight:700; }
+  .focus-ring:focus-visible { outline:3px solid #c5d8ff; outline-offset:2px; }
+  .sheet { transform: translateY(100%); transition: transform .28s cubic-bezier(.32,.72,0,1); }
+  .sheet.open { transform: translateY(0); }
+  @keyframes shimmer { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
+  .skel { background: linear-gradient(90deg,#eee 8%,#f5f5f5 18%,#eee 33%); background-size:800px 100px; animation: shimmer 1.4s infinite; border-radius:8px; }
+  .spark { display:flex; align-items:flex-end; gap:3px; height:48px; }
+  .spark > div { flex:1; background:var(--brand); border-radius:3px 3px 0 0; min-height:3px; opacity:.85; }
+
+  /* ===== design-tone-components (guide §6·§7) ===== */
+  button, [role="button"], a.w-full, input[type="submit"], input[type="button"] {
+    transition: transform .12s cubic-bezier(.3,0,0,1), opacity .15s ease, box-shadow .15s ease, background-color .15s ease;
+  }
+  button:active:not(:disabled), [role="button"]:active, a.w-full:active,
+  input[type="submit"]:active, input[type="button"]:active { transform: scale(.97); }
+  button:disabled, button[disabled], [role="button"][aria-disabled="true"] { opacity: .35; cursor: not-allowed; }
+  input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: none; border-color: #3182F6; box-shadow: 0 0 0 1.5px #3182F6;
+  }
+  button.w-full, button[type="submit"].w-full, a.w-full[class*="bg-"] {
+    min-height: 52px; border-radius: 12px;
+  }
+  </style>
+</head>
+<body>
+
+<div class="lg:flex lg:max-w-[1320px] lg:mx-auto">
+  <aside class="hidden lg:block w-64 p-6 sticky top-0 h-screen overflow-y-auto">
+    <div class="text-2xl font-bold">현장톡 <span class="text-blue-600">v3</span></div>
+    <div class="text-xs text-slate-500 mt-1">현장 협업 · 안전 인텔리전스</div>
+    <nav id="nav-side" class="nav-side mt-7 space-y-1 text-sm"></nav>
+    <div class="mt-8 text-xs text-slate-400">
+      <div id="status-pwa" class="space-y-1"></div>
+    </div>
+  </aside>
+
+  <main id="main" class="lg:flex-1 lg:p-8 pb-24 lg:pb-8 max-w-md mx-auto lg:max-w-none lg:mx-0 bg-white lg:bg-transparent min-h-screen lg:min-h-0"></main>
+</div>
+
+<nav id="nav-bottom" class="lg:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur border-t border-slate-200 z-30"></nav>
+
+<div id="toast" class="fixed bottom-24 lg:bottom-6 left-1/2 -translate-x-1/2 hidden bg-slate-900 text-white px-5 py-3 rounded-full text-sm shadow-2xl z-50 max-w-[90%]"></div>
+
+<div id="sheet-mask" class="hidden fixed inset-0 bg-black/40 z-40"></div>
+<div id="sheet" class="sheet fixed bottom-0 inset-x-0 bg-white rounded-t-3xl shadow-2xl z-50 max-h-[88vh] overflow-y-auto"></div>
+
+<script>
+// ============================================================================
+// 현장톡 v3 — 시리즈A 데모. 단일 파일 PWA (HTML + Tailwind CDN + 순수 JS).
+// 자체완결 · 키 부재 시 mock fallback (CLAUDE.md §3.1). file:// 제약 기능은
+// (a) 실 API 시도 → (b) 미지원/거부 시 graceful mock 경로로 우회.
+// ============================================================================
+const KEY = 'fw_v3_state';
+
+// --- 역할 4종 + 권한 매트릭스 (기능 7) ---
+const ROLES = ['worker','foreman','pm','safety'];
+const ROLE_LABEL = { worker:'작업자', foreman:'반장', pm:'PM', safety:'안전관리자' };
+const ROLE_ICON  = { worker:'👷', foreman:'👨‍🔧', pm:'🧑‍💼', safety:'🦺' };
+// 권한: 어떤 뷰/액션이 허용되는가
+const PERM = {
+  worker:  { views:['list','report','history','mypage'],                 can:['complete','report','geo','camera'] },
+  foreman: { views:['list','compose','inbox','lines','sla'],             can:['publish','resolve','escalate','assign'] },
+  pm:      { views:['admin','kpi','campaign','report-mgr','team','settings'], can:['campaign','export','sla_rule','escalate'] },
+  safety:  { views:['kpi','risk','checklists','inbox','audit'],          can:['risk_run','audit','resolve','checklist_publish'] },
+};
+function defaultView(role){ return PERM[role].views[0]; }
+function allowedView(role, view){ return PERM[role].views.includes(view) ? view : defaultView(role); }
+function can(action){ return PERM[state.role].can.includes(action); }
+
+// ============================================================================
+// 산업별 체크리스트 라이브러리 (기능 1) — 제조·F&B·물류 각 다수 항목
+// ============================================================================
+const CHECKLIST_LIBRARY = {
+  '제조': {
+    icon:'🏭', color:'blue',
+    sets: {
+      '설비 LOTO(잠금/표지)': ['전원 차단·차단기 잠금','잔류 에너지 방출 확인','LOTO 표지 부착','관계자 통보','시운전 전 잠금 해제 기록'],
+      '컨베이어 청소·점검':   ['전원 차단 확인','보안경·면장갑 착용','벨트 잔여물 제거','롤러 이물질 제거','마무리 청소 사진'],
+      '프레스/사출 작업 전':  ['양수 조작 버튼 동작','안전 플러그 체결','금형 고정 확인','비상정지 시험','방호울 닫힘 확인'],
+      '화학물질 취급':        ['MSDS 확인','국소배기 가동','보호구(장갑·마스크) 착용','누출 대비 흡착재 비치','폐액 분리 보관'],
+    }
+  },
+  'F&B': {
+    icon:'🍱', color:'amber',
+    sets: {
+      'HACCP 개점 점검':      ['위생 장갑·앞치마 착용','냉장 0~5℃ / 냉동 -18℃ 확인','식자재 유통기한 확인','칼·도마 교차오염 분리','손 소독 완료'],
+      '조리 중 온도 관리':    ['가열 중심온도 75℃ 이상','보관 온도 기록','재가열 1회 한정 확인','튀김유 산가 점검','시식·기록'],
+      '마감 위생':            ['싱크·배수구 청소','튀김기 기름 폐기','쓰레기 분리 배출','바닥 미끄럼 제거','냉장고 문 닫힘'],
+    }
+  },
+  '물류': {
+    icon:'📦', color:'emerald',
+    sets: {
+      '입고 검수':            ['화물 라벨·수량 대조','파손 여부 육안 검사','온도 민감 화물 분리','운송장 사진','입고 사인'],
+      '지게차 운행 전':       ['타이어·유압 점검','경광등·후진 경보 동작','적재 하중 한도 확인','보행자 통로 확보','안전벨트 착용'],
+      '상차·고박':            ['적재 무게 균형','고박끈 장력 확인','문 잠금·봉인','운송장 발급','고객 사인'],
+    }
+  },
+};
+// 라이브러리를 평탄화한 "템플릿" (작업 적용용): {key, industry, items[]}
+function libraryTemplates(){
+  const out = [];
+  for (const ind of Object.keys(CHECKLIST_LIBRARY)){
+    for (const setName of Object.keys(CHECKLIST_LIBRARY[ind].sets)){
+      out.push({ key: ind+' · '+setName, industry: ind, name: setName,
+                 items: CHECKLIST_LIBRARY[ind].sets[setName].map(l=>({l, d:false})) });
+    }
+  }
+  return out;
+}
+
+// ============================================================================
+// Seed
+// ============================================================================
+const seedLines = () => ['A-라인','B-라인','C-라인','D-물류'];
+const seedShifts = () => ['주간(09-18)','오후(13-22)','야간(22-07)'];
+const nowStr = () => new Date().toLocaleString('ko-KR');
+
+const seedOrders = () => ([
+  { id:'WO-2606-01', title:'컨베이어 벨트 청소', priority:'HIGH', due:'14:00', status:'todo', from:'반장 박', line:'A-라인', shift:'주간(09-18)', detail:['위치: A-라인 측면','보안경·면장갑 필수','예상 30분'], photos:[], log:[], geo:null, checks:[], createdAt: Date.now()-1000*60*200, slaMin:120 },
+  { id:'WO-2606-02', title:'안전 펜스 8구역 점검', priority:'NORMAL', due:'15:30', status:'todo', from:'반장 박', line:'A-라인', shift:'주간(09-18)', detail:['8개 구역 육안 점검'], photos:[], log:[], geo:null, checks:[], createdAt: Date.now()-1000*60*40, slaMin:180 },
+  { id:'WO-2606-03', title:'원료 투입 5톤 (ABS-K2)', priority:'NORMAL', due:'16:00', status:'in_progress', from:'PM 이', line:'A-라인', shift:'주간(09-18)', detail:['호퍼 잠금 확인'], photos:[], log:[{t:'13:42',msg:'시작'}], geo:null, checks:[], createdAt: Date.now()-1000*60*90, slaMin:60 },
+  { id:'WO-2606-04', title:'품질 샘플 채취', priority:'LOW', due:'17:00', status:'done', from:'QA 윤', line:'B-라인', shift:'주간(09-18)', detail:['3봉지 라벨링·QC팀 전달'], photos:[], log:[{t:'12:10',msg:'완료'}], geo:{lat:37.5012,lng:127.039}, checks:[], createdAt: Date.now()-1000*60*300, slaMin:240 },
+  { id:'WO-2606-05', title:'지게차 일일 점검', priority:'HIGH', due:'10:00', status:'todo', from:'반장 정', line:'D-물류', shift:'주간(09-18)', detail:['운행 전 점검표 필수'], photos:[], log:[], geo:null, checks:[], createdAt: Date.now()-1000*60*260, slaMin:90 },
+  { id:'WO-2606-06', title:'B-라인 사출기 금형 교체', priority:'NORMAL', due:'18:00', status:'in_progress', from:'반장 박', line:'B-라인', shift:'오후(13-22)', detail:['금형 K-7 → K-9'], photos:[], log:[], geo:null, checks:[], createdAt: Date.now()-1000*60*30, slaMin:120 },
+]);
+
+const seedReports = () => ([
+  {id:'IR-301',time:'13:50',cat:'설비 고장',memo:'2호기 베어링 소음 — 진동 증가',photos:[],by:'김현장',line:'A-라인',resolved:false,severity:'중대',ts:Date.now()-1000*60*60},
+  {id:'IR-302',time:'11:20',cat:'안전 위험',memo:'B-라인 통로 적재물 방치 — 보행 위험',photos:[],by:'최주임',line:'B-라인',resolved:false,severity:'경미',ts:Date.now()-1000*60*180},
+  {id:'IR-303',time:'09:05',cat:'아차사고',memo:'지게차 후진 중 보행자 근접 (충돌 직전 정지)',photos:[],by:'정기사',line:'D-물류',resolved:true,severity:'중대',ts:Date.now()-1000*60*420},
+]);
+
+// 안전 KPI 추세용 라인별 7일 시계열 (기능 3)
+const seedKpiSeries = () => {
+  const lines = ['A-라인','B-라인','C-라인','D-물류'];
+  const r = {};
+  const base = { 'A-라인':[2,1,3,0,2,1,1], 'B-라인':[0,1,0,2,1,0,3], 'C-라인':[1,0,0,1,0,1,0], 'D-물류':[3,2,1,2,4,1,2] };
+  for (const l of lines){
+    r[l] = base[l].map((incidents,i)=>({
+      day:['월','화','수','목','금','토','일'][i],
+      incidents,
+      anomalies: Math.max(0, incidents + (i%3)),       // 이상보고 건수
+      completion: 60 + ((i*7 + l.length*5) % 38),        // 완료율 %
+    }));
+  }
+  return r;
+};
+
+const seedCampaigns = () => ([
+  { id:'PC-01', title:'폭염 대비 수분 섭취·휴식 안내', audience:'전사', when:'예약 (오늘 11:00)', status:'sent', sentAt:'11:00', reach:42 },
+]);
+
+let state = JSON.parse(localStorage.getItem(KEY) || 'null');
+if (!state) {
+  state = {
+    role:'worker', user:'김현장', lines:seedLines(), shifts:seedShifts(),
+    currentLine:'A-라인', currentShift:'주간(09-18)',
+    orders:seedOrders(), reports:seedReports(), history:[],
+    kpiSeries: seedKpiSeries(), campaigns: seedCampaigns(),
+    riskResults: [],            // 보험사 위험분석 결과 누적 (기능 2)
+    slaRule: { highMin:60, normalMin:180, lowMin:480, escalateTo:'foreman' }, // 기능 6
+    view:'list', selected:null, online:true, queue:[],
+    syncLog:[],                  // 오프라인 큐 동기화 상세 (기능 8)
+    pushSubscribed:false, pushMode:null, pushEndpoint:null,
+  };
+  persist();
+}
+function persist(){ localStorage.setItem(KEY, JSON.stringify(state)); }
+
+// ============================================================================
+// IndexedDB 오프라인 큐 + 충돌 해결/동기화 상세 (기능 8 + 외부통합 IndexedDB)
+// ============================================================================
+const DB = (()=>{
+  const req = indexedDB.open('fw_v3_queue', 1); let db;
+  req.onupgradeneeded = e=>{ e.target.result.createObjectStore('q', {keyPath:'id', autoIncrement:true}); };
+  req.onsuccess = e=>{ db=e.target.result; trySync(); };
+  req.onerror = ()=>{};
+  return {
+    put(item){ if(!db) return; const tx=db.transaction('q','readwrite'); tx.objectStore('q').add(item); },
+    drain(cb){ if(!db){ cb([]); return; } const tx=db.transaction('q','readwrite'); const s=tx.objectStore('q'); const all=s.getAll(); all.onsuccess=()=>{ cb(all.result||[]); s.clear(); }; }
+  };
+})();
+
+// 충돌 해결: 같은 작업에 대해 큐 항목과 서버(=현재 state) 버전이 충돌하면
+// updatedAt(최신 우선, LWW: last-write-wins)로 결정하고 충돌 로그를 남긴다.
+function resolveConflict(item){
+  if (item.type==='complete'){
+    const o = state.orders.find(x=>x.id===item.id);
+    if (o && o.status==='done' && (o._serverUpdatedAt||0) > (item.updatedAt||0)){
+      return { applied:false, reason:'서버 우선(LWW) — 이미 완료됨', strategy:'server-wins' };
+    }
+    if (o){ o.status='done'; o._serverUpdatedAt = item.updatedAt||Date.now(); }
+    return { applied:true, reason:'클라이언트 변경 적용', strategy:'client-wins' };
+  }
+  return { applied:true, reason:'신규 레코드 삽입', strategy:'insert' };
+}
+
+function trySync(){
+  if (!state || !navigator.onLine) return;
+  DB.drain(items=>{
+    if (!items.length) return;
+    let applied=0, conflicts=0;
+    items.forEach(it=>{
+      const res = resolveConflict(it);
+      if (res.applied) applied++; else conflicts++;
+      state.syncLog.unshift({ t:nowStr(), label:it.label, strategy:res.strategy, applied:res.applied, reason:res.reason });
+      pushHistory('오프라인 큐 동기화', `${it.label} · ${res.strategy} · ${res.applied?'적용':'스킵'}`);
+    });
+    state.queue = [];
+    persist();
+    toast(`큐 ${items.length}건을 동기화했어요 (적용 ${applied} · 충돌 ${conflicts})`);
+    render();
+  });
+}
+window.addEventListener('online', ()=>{ state.online=true; persist(); trySync(); render(); });
+window.addEventListener('offline', ()=>{ state.online=false; persist(); render(); toast('오프라인이에요. 입력은 큐에 저장해 뒀다가 연결되면 보낼게요'); });
+
+// ============================================================================
+// PWA Service Worker (inline blob) + install prompt (기능 4)
+// ============================================================================
+const swCode = `
+self.addEventListener('install', e=>self.skipWaiting());
+self.addEventListener('activate', e=>self.clients.claim());
+self.addEventListener('push', e=>{ const d = e.data? e.data.text():'현장 안전 공지'; self.registration.showNotification('현장톡',{body:d}); });
+self.addEventListener('fetch', e=>{ if (e.request.method==='GET') e.respondWith(caches.open('fw-v3').then(c=>c.match(e.request).then(r=>r||fetch(e.request).then(res=>{c.put(e.request,res.clone());return res;}).catch(()=>caches.match('/'))))); });
+`;
+let swState = 'init';
+async function registerSW(){
+  if (!('serviceWorker' in navigator)){ swState='미지원'; return; }
+  try { const blob=new Blob([swCode],{type:'application/javascript'}); const url=URL.createObjectURL(blob); await navigator.serviceWorker.register(url); swState='등록됨'; }
+  catch(e){ swState='등록 시도(제한)'; }
+}
+registerSW();
+let deferredInstall = null;
+window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); deferredInstall=e; });
+
+// ============================================================================
+// 보험사 위험분석 API 시뮬레이션 (기능 2) — 실 계산 알고리즘
+// 입력: 라인별 이상보고 + 체크리스트 미준수 + 사고 심각도 → 위험점수·등급·권고
+// ============================================================================
+const RISK_API = (()=>{
+  // 산업 손해율 기준치 (보험 언더라이팅 가정) — 라인 산업 추정
+  const INDUSTRY_BASE = { '제조':1.0, 'F&B':0.8, '물류':1.25 };
+  function lineIndustry(line){ return line.includes('물류') ? '물류' : line.includes('C') ? 'F&B' : '제조'; }
+  const SEVERITY_W = { '경미':1, '중대':5, '아차사고':2 };
+
+  // 단일 라인 위험점수 산출 (0~100, 높을수록 위험)
+  function scoreLine(line){
+    const ind = lineIndustry(line);
+    const base = INDUSTRY_BASE[ind] || 1.0;
+    const reports = state.reports.filter(r=>r.line===line);
+    const orders  = state.orders.filter(o=>o.line===line);
+
+    // 1) 사고/이상 가중합 (심각도 가중)
+    const incidentLoad = reports.reduce((s,r)=> s + (SEVERITY_W[r.severity]||1) * (r.resolved?0.4:1), 0);
+    // 2) 미해결 비율
+    const unresolved = reports.length ? reports.filter(r=>!r.resolved).length / reports.length : 0;
+    // 3) 체크리스트 준수율 (낮을수록 위험) — 완료작업 중 체크 충족 비율
+    const withChecks = orders.filter(o=>o.checks && o.checks.length);
+    const compliance = withChecks.length
+      ? withChecks.reduce((s,o)=> s + o.checks.filter(c=>c.d).length / o.checks.length, 0) / withChecks.length
+      : 0.6; // 데이터 부족 시 중립 가정
+    // 4) 작업 적체(미완료 비율)
+    const backlog = orders.length ? orders.filter(o=>o.status!=='done').length / orders.length : 0;
+    // 5) 최근성 가중 — 24h 내 중대 보고 가산
+    const recentSevere = reports.filter(r=> r.severity==='중대' && (Date.now()-r.ts) < 1000*60*60*24).length;
+
+    // 가중 합산 → 0~100 정규화
+    let raw =
+        incidentLoad * 7 * base +
+        unresolved   * 22 +
+        (1 - compliance) * 28 +
+        backlog      * 14 +
+        recentSevere * 9;
+    const score = Math.max(0, Math.min(100, Math.round(raw)));
+
+    const grade = score>=70 ? 'D(고위험)' : score>=50 ? 'C(주의)' : score>=30 ? 'B(보통)' : 'A(양호)';
+    // 보험료 할인·할증 계수 (언더라이팅 가정): A -10% ~ D +25%
+    const premiumDelta = score>=70 ? +0.25 : score>=50 ? +0.10 : score>=30 ? 0.0 : -0.10;
+
+    // 권고 (룰 기반)
+    const rec = [];
+    if (unresolved>0.5) rec.push('미해결 이상보고 즉시 종결 — 24h 내 처리율 80% 목표');
+    if (compliance<0.5) rec.push('체크리스트 준수율 저조 — 라인장 교육 및 게이트 강제 적용');
+    if (recentSevere>0) rec.push('24h 내 중대 사고 발생 — 작업 중지·원인분석(TBM) 권고');
+    if (backlog>0.5)    rec.push('작업 적체 과다 — 인력 재배치 또는 SLA 재산정');
+    if (!rec.length)    rec.push('현 수준 유지 — 분기 보험료 갱신 시 할인 적용 가능');
+
+    return { line, industry:ind, score, grade, premiumDelta,
+             factors:{ incidentLoad:+incidentLoad.toFixed(1), unresolved:+(unresolved*100).toFixed(0),
+                       compliance:+(compliance*100).toFixed(0), backlog:+(backlog*100).toFixed(0), recentSevere },
+             recommendations: rec };
+  }
+
+  // 전사 위험분석 실행 (API 호출 시뮬레이션 — 키 부재 시 로컬 알고리즘, mock 응답 형태 유지)
+  async function run(){
+    const lines = state.lines;
+    const perLine = lines.map(scoreLine);
+    const overall = Math.round(perLine.reduce((s,r)=>s+r.score,0) / (perLine.length||1));
+    const grade = overall>=70 ? 'D(고위험)' : overall>=50 ? 'C(주의)' : overall>=30 ? 'B(보통)' : 'A(양호)';
+    // mock 외부 API 응답 봉투 (HTTPS 키 존재 시 실 fetch 로 대체되는 지점)
+    const envelope = {
+      provider: 'KSafe 보험 위험분석 API (mock)',
+      apiKey: (typeof INSURANCE_API_KEY!=='undefined' && INSURANCE_API_KEY) ? 'live' : 'mock-fallback',
+      requestedAt: nowStr(),
+      overall, grade, perLine,
+    };
+    // 약간의 지연으로 네트워크 호출 흉내
+    await new Promise(r=>setTimeout(r, 120));
+    state.riskResults.unshift(envelope);
+    if (state.riskResults.length>5) state.riskResults.length=5;
+    pushHistory('위험분석 실행', `전사 점수 ${overall} · ${grade}`);
+    persist();
+    return envelope;
+  }
+  return { scoreLine, run };
+})();
+
+// ============================================================================
+// SLA / 에스컬레이션 룰 엔진 (기능 6) — 실 알고리즘
+// 작업 생성 후 경과시간이 우선순위별 SLA 초과 시 자동 상향보고 후보 판정
+// ============================================================================
+function slaEvaluate(){
+  const rule = state.slaRule;
+  const limitFor = (o)=> o.priority==='HIGH'? rule.highMin : o.priority==='NORMAL'? rule.normalMin : rule.lowMin;
+  return state.orders.filter(o=>o.status!=='done').map(o=>{
+    const elapsedMin = Math.round((Date.now()-o.createdAt)/60000);
+    const limit = limitFor(o);
+    const overdue = elapsedMin - limit;
+    const ratio = limit ? elapsedMin/limit : 0;
+    let level = 'ok';
+    if (ratio>=1)       level='breach';        // SLA 위반 → 에스컬레이션
+    else if (ratio>=0.8) level='warn';         // 임박
+    return { o, elapsedMin, limit, overdue, ratio, level };
+  }).sort((a,b)=> b.ratio - a.ratio);
+}
+function runEscalation(){
+  const breaches = slaEvaluate().filter(x=>x.level==='breach');
+  breaches.forEach(b=>{
+    if (!b.o._escalated){
+      b.o._escalated = true;
+      pushHistory('SLA 에스컬레이션', `${b.o.id} ${b.o.title} — ${b.overdue}분 초과 → ${ROLE_LABEL[state.slaRule.escalateTo]} 상향`);
+    }
+  });
+  persist();
+  return breaches;
+}
+
+// ============================================================================
+// 푸시 캠페인 (기능 5) — 전사 안전공지 예약·발송 로그
+// ============================================================================
+async function sendCampaign(title, audience, scheduleStr){
+  // 실 Push 시도 (구독 시) → 미지원/거부 시 mock 발송 로그
+  let mode = 'mock';
+  try {
+    if ('Notification' in window && Notification.permission==='granted'){
+      new Notification('현장톡 안전공지', { body:title }); mode='real';
+    }
+  } catch(e){ mode='mock'; }
+  const reach = state.lines.length * 12 + 6; // 대상 인원 추정
+  const c = { id:'PC-'+String(state.campaigns.length+1).padStart(2,'0'), title, audience,
+              when: scheduleStr || '즉시', status: scheduleStr&&scheduleStr!=='즉시'?'scheduled':'sent',
+              sentAt: scheduleStr&&scheduleStr!=='즉시'? '예약됨' : new Date().toLocaleTimeString('ko-KR'),
+              reach, mode };
+  state.campaigns.unshift(c);
+  pushHistory('푸시 캠페인', `${title} · ${audience} · ${c.status} (${mode})`);
+  persist();
+  return c;
+}
+
+// ============================================================================
+// Helpers
+// ============================================================================
+const PRIO = { HIGH:'bg-red-100 text-red-700', NORMAL:'bg-blue-100 text-blue-700', LOW:'bg-slate-100 text-slate-600' };
+const STATUS = { todo:['대기','bg-slate-200 text-slate-700'], in_progress:['진행중','bg-amber-100 text-amber-800'], done:['완료','bg-emerald-100 text-emerald-800'] };
+const SEV = { '경미':'bg-slate-100 text-slate-600', '중대':'bg-red-100 text-red-700', '아차사고':'bg-amber-100 text-amber-800' };
+const GRADE_COLOR = (g)=> g.startsWith('A')?'text-emerald-600':g.startsWith('B')?'text-blue-600':g.startsWith('C')?'text-amber-600':'text-red-600';
+const fileToDataURL = (file) => new Promise(r=>{const f=new FileReader(); f.onload=()=>r(f.result); f.readAsDataURL(file);});
+const fmtTime = ()=> new Date().toLocaleTimeString('ko-KR');
+const toast = m=>{const t=document.getElementById('toast'); t.textContent=m; t.classList.remove('hidden'); clearTimeout(window.__tt); window.__tt=setTimeout(()=>t.classList.add('hidden'),2000);};
+function pushHistory(label, detail){ state.history.unshift({ t:nowStr(), label, detail, role:state.role }); if(state.history.length>60) state.history.length=60; persist(); }
+function openSheet(html){ const s=document.getElementById('sheet'); const m=document.getElementById('sheet-mask'); s.innerHTML=html; m.classList.remove('hidden'); s.classList.add('open'); m.onclick=closeSheet; }
+function closeSheet(){ document.getElementById('sheet').classList.remove('open'); document.getElementById('sheet-mask').classList.add('hidden'); }
+function kpi(l,v,s,accent){ return `<div class="toss-card p-4"><div class="text-xs text-slate-500">${l}</div><div class="text-2xl font-bold mt-1 ${accent||''}">${v}</div><div class="text-xs text-slate-400 mt-0.5">${s||''}</div></div>`; }
+function sparkline(values, max){ const m=max||Math.max(1,...values); return `<div class="spark">${values.map(v=>`<div style="height:${Math.max(8,v/m*100)}%"></div>`).join('')}</div>`; }
+
+// ============================================================================
+// Navigation (역할별 — 기능 7)
+// ============================================================================
+const NAV = {
+  worker:  [['list','📋','오늘 작업'],['report','⚠️','이상 보고'],['history','🕒','이력'],['mypage','👤','내 정보']],
+  foreman: [['list','📋','작업 현황'],['compose','✏️','작업 발행'],['inbox','📨','이상 수신'],['sla','⏱️','SLA'],['lines','🏭','라인']],
+  pm:      [['admin','📊','대시보드'],['kpi','📈','안전 KPI'],['campaign','📣','캠페인'],['report-mgr','📑','보고서'],['team','👥','팀'],['settings','⚙️','설정']],
+  safety:  [['kpi','📈','안전 KPI'],['risk','🛡️','위험분석'],['checklists','📚','체크리스트'],['inbox','📨','이상'],['audit','📜','감사']],
+};
+function navItems(){ return NAV[state.role] || []; }
+
+function renderNav(){
+  const items = navItems();
+  const sideNav = document.getElementById('nav-side');
+  if (sideNav) sideNav.innerHTML = items.map(([k,e,n])=>`<a data-view="${k}" class="block px-3 py-2 rounded-xl text-sm cursor-pointer focus-ring ${state.view===k?'active':'text-slate-600 hover:bg-slate-50'}">${e} <span class="ml-1">${n}</span></a>`).join('') + roleSwitcher();
+  const botNav = document.getElementById('nav-bottom');
+  if (botNav) botNav.innerHTML = `<div class="grid" style="grid-template-columns:repeat(${items.length},1fr);">${items.map(([k,e,n])=>`<button data-view="${k}" class="py-2.5 text-[11px] ${state.view===k?'text-blue-600 font-bold':'text-slate-500'}">${e}<div class="text-[10px] mt-0.5">${n}</div></button>`).join('')}</div>`;
+  const sp = document.getElementById('status-pwa');
+  if (sp){
+    const swLabel = (navigator.serviceWorker && navigator.serviceWorker.controller) ? '활성' : swState;
+    sp.innerHTML = `
+    <div>역할: <b class="text-slate-700">${ROLE_ICON[state.role]} ${ROLE_LABEL[state.role]}</b></div>
+    <div>${state.online?'<span class="text-emerald-600">● online</span>':'<span class="text-amber-600">● offline · 큐 쌓는 중</span>'}</div>
+    <div>${state.pushSubscribed?`<span class="text-emerald-600">● 푸시 켜짐 (${state.pushMode||'mock'})</span>`:'<span class="text-slate-400">○ 푸시 꺼짐</span>'}</div>
+    <div>SW: <span class="text-slate-500">${swLabel}</span></div>
+    <div>큐: <span class="text-slate-500">${state.queue.length}건 · 동기화 ${state.syncLog.length}회</span></div>
+    <div class="mt-3"><button id="logout" class="text-xs underline">데이터 초기화</button></div>`;
+  }
+}
+function roleSwitcher(){
+  return `<div class="mt-6 p-3 bg-slate-50 rounded-xl text-xs">
+    <div class="text-slate-500 mb-2">역할 전환 (시연용) · 4종</div>
+    <div class="grid grid-cols-2 gap-1">${ROLES.map(r=>`<button data-role="${r}" class="py-1.5 rounded-lg ${state.role===r?'bg-blue-600 text-white font-bold':'bg-white border'}">${ROLE_ICON[r]} ${ROLE_LABEL[r]}</button>`).join('')}</div>
+  </div>`;
+}
+
+function header(){
+  if (window.innerWidth >= 1024) return '';
+  return `<header class="px-5 pt-5 pb-4 bg-white border-b border-slate-100">
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="text-xs text-slate-400">${state.currentLine} · ${state.currentShift}</div>
+        <div class="text-xl font-bold mt-0.5">${state.user} <span class="text-xs text-slate-400 font-normal">${ROLE_ICON[state.role]} ${ROLE_LABEL[state.role]}</span></div>
+      </div>
+      <div class="flex items-center gap-2">
+        ${state.online?'<span class="pill bg-emerald-50 text-emerald-700">online</span>':'<span class="pill bg-amber-50 text-amber-700">offline</span>'}
+        <button id="role-cycle" class="text-xs px-3 py-1.5 rounded-full bg-slate-100">역할 전환</button>
+      </div>
+    </div>
+  </header>`;
+}
+
+// ============================================================================
+// Worker views
+// ============================================================================
+function vList(){
+  const today = state.orders.filter(o=>o.line===state.currentLine);
+  const done = today.filter(o=>o.status==='done').length;
+  return `<div class="px-5 py-5 lg:px-0 lg:py-0 space-y-4 lg:space-y-6">
+    <div class="lg:flex lg:items-end lg:justify-between">
+      <div>
+        <div class="hidden lg:block text-sm text-slate-500">${state.currentLine} · ${state.currentShift}</div>
+        <h1 class="text-xl lg:text-3xl font-bold">오늘의 작업 ${today.length}건</h1>
+        <div class="text-sm text-slate-500 mt-1">완료 ${done} · 진행 ${today.filter(o=>o.status==='in_progress').length} · 대기 ${today.filter(o=>o.status==='todo').length}</div>
+      </div>
+      <div class="hidden lg:flex gap-2"><button id="enable-push" class="btn-secondary px-5">푸시 알림 켜기</button></div>
+    </div>
+    <div class="grid lg:grid-cols-2 xl:grid-cols-3 gap-3">
+    ${today.map(o=>`<button data-id="${o.id}" class="text-left toss-card p-4 active:scale-[0.99] focus-ring">
+      <div class="flex items-center gap-2">
+        <span class="pill ${PRIO[o.priority]}">${o.priority}</span>
+        <span class="pill ${STATUS[o.status][1]}">${STATUS[o.status][0]}</span>
+        <span class="ml-auto text-xs text-slate-400">~${o.due}</span>
+      </div>
+      <div class="mt-3 text-base lg:text-lg font-bold">${o.title}</div>
+      <div class="mt-1.5 text-xs text-slate-500 flex items-center gap-3">
+        <span>📷 ${o.photos.length}</span><span>📝 ${o.checks.filter(c=>c.d).length}/${o.checks.length}</span><span>${o.id}</span>
+      </div>
+    </button>`).join('')}
+    </div>
+    ${state.queue.length?`<div class="toss-card p-4 bg-amber-50 border border-amber-200"><b>오프라인 큐 ${state.queue.length}건</b> · 다시 연결되면 자동으로 보낼게요</div>`:''}
+  </div>`;
+}
+
+function vDetail(){
+  const o = state.orders.find(x=>x.id===state.selected); if (!o) return vList();
+  return `<div class="px-5 py-5 lg:px-0 space-y-4 lg:max-w-2xl">
+    <button data-back class="text-sm text-slate-500 focus-ring">← 목록</button>
+    <div class="toss-card p-5">
+      <div class="flex items-center gap-2"><span class="pill ${PRIO[o.priority]}">${o.priority}</span><span class="pill ${STATUS[o.status][1]}">${STATUS[o.status][0]}</span>${o._escalated?'<span class="pill bg-red-100 text-red-700">SLA 상향</span>':''}</div>
+      <h2 class="mt-3 text-2xl font-bold">${o.title}</h2>
+      <div class="mt-1.5 text-sm text-slate-500">${o.id} · ${o.from} 발행 · ~${o.due}</div>
+      <div class="mt-2 text-sm text-slate-500">${o.line} · ${o.shift}${o.geo?` · 📍 ${o.geo.lat.toFixed(4)}, ${o.geo.lng.toFixed(4)}${o.geo.mock?' (mock)':''}`:''}</div>
+      <div class="mt-5 space-y-1.5 text-sm text-slate-700">${o.detail.map(d=>`<div>• ${d}</div>`).join('')}</div>
+    </div>
+    <div class="toss-card p-5">
+      <div class="flex items-center justify-between"><div class="font-bold">체크리스트</div><div class="text-xs text-slate-400">${o.checks.filter(c=>c.d).length}/${o.checks.length}</div></div>
+      <div class="mt-3 space-y-2">
+        ${o.checks.length? o.checks.map((c,i)=>`<label class="flex items-center gap-3 p-2 rounded-lg ${c.d?'bg-emerald-50':'hover:bg-slate-50'}"><input type="checkbox" data-chk="${i}" ${c.d?'checked':''} class="w-5 h-5 accent-blue-600">${c.l}</label>`).join('') : `<button id="apply-tpl" class="text-sm text-blue-600">+ 산업별 체크리스트 라이브러리에서 적용해요</button>`}
+      </div>
+      ${o.checks.length?`<button id="apply-tpl" class="mt-2 text-xs text-blue-600">↻ 다른 체크리스트로 교체해요</button>`:''}
+    </div>
+    <div class="toss-card p-5">
+      <div class="flex items-center justify-between"><div class="font-bold">완료 인증 사진</div><div class="flex gap-2"><label class="text-sm text-blue-600 font-semibold">+ 카메라<input type="file" id="cam" accept="image/*" capture="environment" class="hidden"></label><button id="open-cam" class="text-sm text-blue-600 font-semibold">스트림</button></div></div>
+      <div class="mt-3 flex flex-wrap gap-2">${o.photos.length? o.photos.map(p=>`<img src="${p}" class="thumb">`).join('') : '<div class="text-xs text-slate-400">사진을 1장 이상 첨부하면 완료할 수 있어요</div>'}</div>
+    </div>
+    <div class="grid grid-cols-1 gap-3">
+      <button data-complete class="btn-primary">${o.status==='done'?'✅ 완료됐어요':'사진 인증 후 완료 보고'}</button>
+      <button data-issue class="btn-secondary text-amber-700">⚠️ 이상 발견 → 즉시 보고</button>
+      <button data-geo class="btn-secondary">📍 현재 위치 기록</button>
+    </div>
+    ${o.log.length?`<div class="toss-card p-5"><div class="font-bold mb-2">작업 로그</div><div class="text-xs text-slate-600 space-y-1">${o.log.map(l=>`<div>· ${l.t} — ${l.msg}</div>`).join('')}</div></div>`:''}
+  </div>`;
+}
+
+function vReport(){
+  return `<div class="px-5 py-5 lg:px-0 space-y-4 lg:max-w-2xl">
+    <h1 class="text-xl lg:text-3xl font-bold">이상 보고</h1>
+    <div class="toss-card p-5 space-y-3">
+      <label class="block"><div class="text-sm font-semibold mb-1.5">카테고리</div>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">${['안전 위험','설비 고장','품질 이상','아차사고'].map((c,i)=>`<button data-cat="${c}" class="cat-btn py-3 rounded-xl border ${i===0?'bg-blue-50 border-blue-500 text-blue-700 font-bold':'border-slate-200'}">${c}</button>`).join('')}</div>
+      </label>
+      <label class="block"><div class="text-sm font-semibold mb-1.5">심각도</div>
+        <div class="grid grid-cols-3 gap-2">${['경미','중대','아차사고'].map((s,i)=>`<button data-sev="${s}" class="sev-btn py-2.5 rounded-xl border ${i===0?'bg-blue-50 border-blue-500 text-blue-700 font-bold':'border-slate-200'}">${s}</button>`).join('')}</div>
+      </label>
+      <label class="block"><div class="text-sm font-semibold mb-1.5">상세 메모</div><textarea id="memo" rows="3" placeholder="음성으로도 적을 수 있어요 — 마이크 누르고 말해 주세요" class="w-full border border-slate-200 rounded-xl p-3 text-base focus:border-blue-500 outline-none"></textarea></label>
+      <label class="block"><div class="text-sm font-semibold mb-1.5">사진 첨부</div><input type="file" id="rphoto" accept="image/*" capture="environment" multiple class="text-sm"><div id="rprev" class="flex gap-2 mt-2"></div></label>
+      <div class="grid grid-cols-2 gap-2"><button id="mic" class="btn-secondary">🎙️ 음성</button><button id="send" class="btn-primary">즉시 전송</button></div>
+    </div>
+    <div class="text-sm font-semibold text-slate-700 mt-6">접수된 보고 ${state.reports.length}건</div>
+    <div class="space-y-2">${state.reports.map(r=>`<div class="toss-card p-4">
+      <div class="flex items-center justify-between text-xs text-slate-500"><span>${r.time} · ${r.by} · ${r.line||''}</span><div class="flex gap-1.5 items-center"><span class="pill ${SEV[r.severity]||''}">${r.severity||''}</span>${r.resolved?'<span class="text-emerald-600">✓</span>':''}</div></div>
+      <div class="font-bold mt-1">${r.cat}</div><div class="text-sm text-slate-700 mt-1">${r.memo}</div>
+      ${r.photos.length?`<div class="flex gap-2 mt-2">${r.photos.map(p=>`<img src="${p}" class="thumb">`).join('')}</div>`:''}
+    </div>`).join('')}</div>
+  </div>`;
+}
+
+function vHistory(){
+  const items = state.history.length ? state.history.map(h=>`<div class="toss-card p-4"><div class="text-xs text-slate-400">${h.t} · ${ROLE_LABEL[h.role]||''}</div><div class="font-bold mt-1">${h.label}</div><div class="text-xs text-slate-600 mt-1">${h.detail||''}</div></div>`).join('') : '<div class="text-sm text-slate-400 text-center py-10">아직 이력이 없어요</div>';
+  return `<div class="px-5 py-5 lg:px-0 space-y-3"><h1 class="text-xl lg:text-3xl font-bold">활동 이력</h1><div class="text-sm text-slate-500">최근 ${state.history.length}건 (저장돼 있어요)</div><div class="grid lg:grid-cols-2 gap-3 mt-4">${items}</div></div>`;
+}
+
+function vMypage(){
+  return `<div class="px-5 py-5 lg:px-0 space-y-4 lg:max-w-2xl">
+    <h1 class="text-xl lg:text-3xl font-bold">내 정보</h1>
+    <div class="toss-card p-6 lg:p-8 text-center">
+      <div class="w-20 h-20 mx-auto rounded-full bg-blue-100 flex items-center justify-center text-3xl">${ROLE_ICON[state.role]}</div>
+      <div class="mt-3 text-2xl font-bold">${state.user}</div>
+      <div class="text-sm text-slate-500 mt-1">${ROLE_LABEL[state.role]} · ${state.currentLine}</div>
+      <div class="grid grid-cols-3 gap-3 mt-6 text-center">
+        <div><div class="text-2xl font-bold">${state.history.filter(h=>h.label==='작업 완료').length}</div><div class="text-xs text-slate-500">완료 작업</div></div>
+        <div><div class="text-2xl font-bold">${state.history.filter(h=>h.label==='이상 보고').length}</div><div class="text-xs text-slate-500">이상 보고</div></div>
+        <div><div class="text-2xl font-bold">${state.queue.length}</div><div class="text-xs text-slate-500">큐</div></div>
+      </div>
+    </div>
+    <div class="toss-card p-5 space-y-3">
+      <div class="font-bold">설정 · 네이티브 앱</div>
+      <button id="install-native" class="w-full text-left p-3 rounded-xl bg-blue-50 flex items-center justify-between"><span>📱 iOS / Android 앱 설치</span><span class="text-sm text-blue-600">안내 보기</span></button>
+      <button id="enable-push" class="w-full text-left p-3 rounded-xl bg-slate-50 flex items-center justify-between"><span>푸시 알림</span><span class="text-sm ${state.pushSubscribed?'text-emerald-600':'text-slate-400'}">${state.pushSubscribed?'켜짐':'꺼짐'}</span></button>
+      <button id="enable-loc" class="w-full text-left p-3 rounded-xl bg-slate-50 flex items-center justify-between"><span>위치 추적</span><span class="text-sm text-slate-400">탭하면 권한을 요청해요</span></button>
+      <select id="line-sel" class="w-full p-3 rounded-xl border border-slate-200">${state.lines.map(l=>`<option ${l===state.currentLine?'selected':''}>${l}</option>`).join('')}</select>
+      <select id="shift-sel" class="w-full p-3 rounded-xl border border-slate-200">${state.shifts.map(s=>`<option ${s===state.currentShift?'selected':''}>${s}</option>`).join('')}</select>
+    </div>
+  </div>`;
+}
+
+// ============================================================================
+// Foreman views
+// ============================================================================
+function vCompose(){
+  const tpls = libraryTemplates();
+  return `<div class="px-5 py-5 lg:px-0 space-y-3 lg:max-w-2xl">
+    <h1 class="text-xl lg:text-3xl font-bold">새 작업 발행</h1>
+    <div class="toss-card p-5 space-y-3">
+      <label class="block"><div class="text-sm font-semibold mb-1">제목</div><input id="c-title" placeholder="예: 컨베이어 점검" class="w-full border border-slate-200 rounded-xl p-3"></label>
+      <div class="grid grid-cols-3 gap-2">
+        <select id="c-prio" class="border border-slate-200 rounded-xl p-3"><option>HIGH</option><option selected>NORMAL</option><option>LOW</option></select>
+        <input id="c-due" type="time" value="17:00" class="border border-slate-200 rounded-xl p-3">
+        <select id="c-line" class="border border-slate-200 rounded-xl p-3">${state.lines.map(l=>`<option>${l}</option>`).join('')}</select>
+      </div>
+      <select id="c-tpl" class="w-full border border-slate-200 rounded-xl p-3"><option value="">산업별 체크리스트 (선택)</option>${tpls.map(t=>`<option value="${t.key}">${CHECKLIST_LIBRARY[t.industry].icon} ${t.key} (${t.items.length})</option>`).join('')}</select>
+      <textarea id="c-detail" rows="3" placeholder="세부 지시를 줄바꿈으로 나눠 적어 주세요" class="w-full border border-slate-200 rounded-xl p-3"></textarea>
+      <button id="c-send" class="w-full btn-primary">발행</button>
+    </div>
+    <div class="text-sm font-semibold mt-4">최근 발행 ${state.orders.length}건</div>
+    <div class="grid lg:grid-cols-2 gap-3">${state.orders.slice(0,6).map(o=>`<div class="toss-card p-4"><div class="text-sm font-bold">${o.title}</div><div class="text-xs text-slate-500 mt-1">${o.id} · ${STATUS[o.status][0]} · ${o.line}</div></div>`).join('')}</div>
+  </div>`;
+}
+
+function vInbox(){
+  const open = state.reports.filter(r=>!r.resolved).length;
+  return `<div class="px-5 py-5 lg:px-0 space-y-3">
+    <h1 class="text-xl lg:text-3xl font-bold">이상 수신함</h1>
+    <div class="text-sm text-slate-500">미처리 ${open}건 / 전체 ${state.reports.length}건</div>
+    <div class="grid lg:grid-cols-2 gap-3">${state.reports.map(r=>`<div class="toss-card p-5">
+      <div class="flex items-center justify-between"><div class="font-bold">${r.cat}</div><div class="flex gap-1.5 items-center text-xs text-slate-400"><span class="pill ${SEV[r.severity]||''}">${r.severity||''}</span>${r.time}</div></div>
+      <div class="text-sm text-slate-700 mt-1">${r.memo}</div><div class="text-xs text-slate-500 mt-1">제보: ${r.by} · ${r.line||''}</div>
+      ${r.photos.length?`<div class="flex gap-2 mt-2">${r.photos.map(p=>`<img src="${p}" class="thumb">`).join('')}</div>`:''}
+      <div class="flex gap-2 mt-3">${r.resolved?'<span class="text-emerald-600 text-sm font-bold py-2">✓ 처리완료</span>':`<button data-resolve="${r.id}" class="flex-1 px-3 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold">처리 완료</button><button data-escalate="${r.id}" class="flex-1 px-3 py-2 rounded-xl bg-amber-500 text-white text-sm font-bold">상위 보고</button>`}</div>
+    </div>`).join('')}</div>
+  </div>`;
+}
+
+function vLines(){
+  return `<div class="px-5 py-5 lg:px-0 space-y-3">
+    <h1 class="text-xl lg:text-3xl font-bold">라인 관리</h1>
+    <div class="grid lg:grid-cols-2 xl:grid-cols-3 gap-3">${state.lines.map(l=>{
+      const ords = state.orders.filter(o=>o.line===l); const done = ords.filter(o=>o.status==='done').length;
+      return `<div class="toss-card p-5">
+        <div class="flex items-center justify-between"><div class="text-lg font-bold">${l}</div><div class="text-xs text-slate-400">${ords.length}건</div></div>
+        <div class="mt-3"><div class="text-xs text-slate-500 mb-1">진척률</div><div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-emerald-500" style="width:${ords.length?done/ords.length*100:0}%"></div></div><div class="text-xs text-slate-500 mt-1">${done}/${ords.length} 완료</div></div>
+      </div>`;
+    }).join('')}</div>
+  </div>`;
+}
+
+// SLA / 에스컬레이션 뷰 (기능 6)
+function vSla(){
+  const rows = slaEvaluate();
+  const breaches = rows.filter(x=>x.level==='breach').length;
+  const warns = rows.filter(x=>x.level==='warn').length;
+  return `<div class="px-5 py-5 lg:px-0 space-y-4">
+    <div class="lg:flex lg:items-center lg:justify-between">
+      <h1 class="text-xl lg:text-3xl font-bold">SLA · 자동 에스컬레이션</h1>
+      <button id="run-escalation" class="btn-secondary px-5 mt-2 lg:mt-0">⚙️ 룰 실행 → 상향보고</button>
+    </div>
+    <div class="grid grid-cols-3 gap-3">
+      ${kpi('SLA 위반', breaches, '에스컬레이션 대상', breaches?'text-red-600':'')}
+      ${kpi('임박(≥80%)', warns, '경고')}
+      ${kpi('정상', rows.length-breaches-warns, '여유')}
+    </div>
+    <div class="toss-card p-4 text-xs text-slate-600">현행 룰 — HIGH ${state.slaRule.highMin}분 · NORMAL ${state.slaRule.normalMin}분 · LOW ${state.slaRule.lowMin}분 초과 시 <b>${ROLE_LABEL[state.slaRule.escalateTo]}</b>에게 자동 상향. (PM 설정에서 변경)</div>
+    <div class="space-y-2">${rows.map(x=>{
+      const c = x.level==='breach'?'border-red-300 bg-red-50':x.level==='warn'?'border-amber-300 bg-amber-50':'';
+      const lab = x.level==='breach'?'<span class="pill bg-red-100 text-red-700">SLA 위반</span>':x.level==='warn'?'<span class="pill bg-amber-100 text-amber-800">임박</span>':'<span class="pill bg-emerald-100 text-emerald-700">정상</span>';
+      return `<div class="toss-card p-4 border ${c}">
+        <div class="flex items-center justify-between"><div class="font-bold">${x.o.title}</div>${lab}</div>
+        <div class="text-xs text-slate-500 mt-1">${x.o.id} · ${x.o.line} · ${x.o.priority}</div>
+        <div class="mt-2"><div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full ${x.level==='breach'?'bg-red-500':x.level==='warn'?'bg-amber-500':'bg-emerald-500'}" style="width:${Math.min(100,x.ratio*100)}%"></div></div>
+        <div class="text-xs text-slate-500 mt-1">경과 ${x.elapsedMin}분 / 한도 ${x.limit}분 ${x.overdue>0?`· <b class="text-red-600">${x.overdue}분 초과</b>`:''} ${x.o._escalated?'· <b class="text-red-600">상향됨</b>':''}</div></div>
+      </div>`;
+    }).join('')}</div>
+  </div>`;
+}
+
+// ============================================================================
+// PM views
+// ============================================================================
+function vAdmin(){
+  const total = state.orders.length, done = state.orders.filter(o=>o.status==='done').length;
+  const issues = state.reports.length, openIssues = state.reports.filter(r=>!r.resolved).length;
+  const breaches = slaEvaluate().filter(x=>x.level==='breach').length;
+  return `<div class="px-5 py-5 lg:px-0 space-y-4">
+    <h1 class="text-xl lg:text-3xl font-bold">PM 대시보드</h1>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      ${kpi('총 작업', total, '오늘 발행')}
+      ${kpi('완료', done, `${total?Math.round(done/total*100):0}%`)}
+      ${kpi('미처리 이상', openIssues, `처리 ${issues-openIssues}/${issues}`, openIssues?'text-amber-600':'')}
+      ${kpi('SLA 위반', breaches, '에스컬레이션', breaches?'text-red-600':'')}
+    </div>
+    <div class="toss-card p-5">
+      <div class="flex items-center justify-between mb-3"><div class="font-bold">라인별 진척</div><button id="goto-campaign" class="text-sm text-blue-600 font-semibold">📣 안전공지 캠페인</button></div>
+      <div class="space-y-3">${state.lines.map(l=>{
+        const ords = state.orders.filter(o=>o.line===l); const d = ords.filter(o=>o.status==='done').length;
+        const pct = ords.length? d/ords.length*100 : 0;
+        return `<div><div class="flex justify-between text-sm"><span>${l}</span><span class="text-slate-500">${d}/${ords.length} (${Math.round(pct)}%)</span></div><div class="h-2 bg-slate-100 rounded-full mt-1.5 overflow-hidden"><div class="h-full bg-blue-600" style="width:${pct}%"></div></div></div>`;
+      }).join('')}</div>
+    </div>
+    <div class="toss-card p-5"><div class="font-bold mb-3">최근 활동</div><div class="space-y-2 text-sm">${state.history.slice(0,8).map(h=>`<div class="flex items-center gap-2"><span class="text-xs text-slate-400 w-32 shrink-0">${(h.t||'').slice(11)}</span><span>${h.label} <span class="text-slate-500">— ${h.detail||''}</span></span></div>`).join('') || '<div class="text-slate-400">아직 활동이 없어요</div>'}</div></div>
+  </div>`;
+}
+
+// 안전 KPI 대시보드 (기능 3) — 라인별 사고/이상/완료율 추세 차트
+function vKpi(){
+  const lines = state.lines;
+  const totalInc = lines.reduce((s,l)=> s + state.kpiSeries[l].reduce((a,d)=>a+d.incidents,0), 0);
+  const totalAno = lines.reduce((s,l)=> s + state.kpiSeries[l].reduce((a,d)=>a+d.anomalies,0), 0);
+  const avgComp = Math.round(lines.reduce((s,l)=>{ const arr=state.kpiSeries[l]; return s + arr[arr.length-1].completion; },0)/lines.length);
+  return `<div class="px-5 py-5 lg:px-0 space-y-4">
+    <h1 class="text-xl lg:text-3xl font-bold">현장 안전 KPI 대시보드</h1>
+    <div class="text-sm text-slate-500">최근 7일 · 라인별 사고·이상·완료율 추세</div>
+    <div class="grid grid-cols-3 gap-3">
+      ${kpi('주간 사고', totalInc, '전 라인 합계', totalInc>8?'text-red-600':'')}
+      ${kpi('주간 이상보고', totalAno, '전 라인 합계')}
+      ${kpi('평균 완료율', avgComp+'%', '최근일')}
+    </div>
+    <div class="grid lg:grid-cols-2 gap-3">${lines.map(l=>{
+      const arr = state.kpiSeries[l];
+      const inc = arr.map(d=>d.incidents); const ano = arr.map(d=>d.anomalies); const comp = arr.map(d=>d.completion);
+      const wkInc = inc.reduce((a,b)=>a+b,0);
+      return `<div class="toss-card p-5">
+        <div class="flex items-center justify-between"><div class="font-bold">${l}</div><span class="pill ${wkInc>=8?'bg-red-100 text-red-700':wkInc>=4?'bg-amber-100 text-amber-800':'bg-emerald-100 text-emerald-700'}">주간 사고 ${wkInc}</span></div>
+        <div class="mt-4 grid grid-cols-3 gap-4">
+          <div><div class="text-xs text-slate-500 mb-1">사고</div>${sparkline(inc)}<div class="flex justify-between text-[10px] text-slate-400 mt-1">${arr.map(d=>`<span>${d.day}</span>`).join('')}</div></div>
+          <div><div class="text-xs text-slate-500 mb-1">이상보고</div>${sparkline(ano)}</div>
+          <div><div class="text-xs text-slate-500 mb-1">완료율</div>${sparkline(comp,100)}<div class="text-xs text-slate-600 mt-1">${comp[comp.length-1]}%</div></div>
+        </div>
+      </div>`;
+    }).join('')}</div>
+  </div>`;
+}
+
+// 보험사 위험분석 (기능 2)
+function vRisk(){
+  const latest = state.riskResults[0];
+  return `<div class="px-5 py-5 lg:px-0 space-y-4">
+    <div class="lg:flex lg:items-center lg:justify-between">
+      <div><h1 class="text-xl lg:text-3xl font-bold">보험사 위험분석</h1><div class="text-sm text-slate-500 mt-1">KSafe 위험분석 API 연동 (키 부재 시 mock 알고리즘)</div></div>
+      <button id="run-risk" class="btn-primary px-6 mt-3 lg:mt-0">🛡️ 위험분석 실행</button>
+    </div>
+    ${latest? `
+    <div class="toss-card p-5">
+      <div class="flex items-center justify-between"><div class="text-sm text-slate-500">전사 종합 위험점수 · ${latest.requestedAt}</div><span class="text-xs px-2 py-1 rounded bg-slate-100 text-slate-500">${latest.provider} · ${latest.apiKey}</span></div>
+      <div class="flex items-end gap-3 mt-2"><div class="text-5xl font-bold ${GRADE_COLOR(latest.grade)}">${latest.overall}</div><div class="text-2xl font-bold ${GRADE_COLOR(latest.grade)} pb-1">${latest.grade}</div></div>
+    </div>
+    <div class="grid lg:grid-cols-2 gap-3">${latest.perLine.map(r=>`
+      <div class="toss-card p-5">
+        <div class="flex items-center justify-between"><div class="font-bold">${r.line} <span class="text-xs text-slate-400">(${r.industry})</span></div><div class="text-right"><div class="text-2xl font-bold ${GRADE_COLOR(r.grade)}">${r.score}</div><div class="text-xs ${GRADE_COLOR(r.grade)} font-bold">${r.grade}</div></div></div>
+        <div class="mt-3 h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full ${r.score>=70?'bg-red-500':r.score>=50?'bg-amber-500':r.score>=30?'bg-blue-500':'bg-emerald-500'}" style="width:${r.score}%"></div></div>
+        <div class="grid grid-cols-2 gap-x-4 gap-y-1 mt-3 text-xs text-slate-600">
+          <div>사고가중 <b>${r.factors.incidentLoad}</b></div>
+          <div>미해결률 <b>${r.factors.unresolved}%</b></div>
+          <div>체크준수 <b>${r.factors.compliance}%</b></div>
+          <div>작업적체 <b>${r.factors.backlog}%</b></div>
+        </div>
+        <div class="mt-3 text-xs">보험료 영향: <b class="${r.premiumDelta>0?'text-red-600':r.premiumDelta<0?'text-emerald-600':'text-slate-600'}">${r.premiumDelta>0?'+':''}${(r.premiumDelta*100).toFixed(0)}%</b></div>
+        <div class="mt-3 space-y-1">${r.recommendations.map(x=>`<div class="text-xs text-slate-700 flex gap-1.5"><span class="text-blue-500">›</span>${x}</div>`).join('')}</div>
+      </div>`).join('')}</div>
+    ` : `<div class="toss-card p-10 text-center text-slate-400 text-sm">위험분석 실행 버튼을 누르면 라인별 위험점수·등급·권고를 뽑아 드려요.<br>입력: 이상보고·심각도·체크리스트 준수율·작업 적체</div>`}
+  </div>`;
+}
+
+// 산업별 체크리스트 라이브러리 뷰 (기능 1)
+function vChecklists(){
+  return `<div class="px-5 py-5 lg:px-0 space-y-4">
+    <h1 class="text-xl lg:text-3xl font-bold">산업별 체크리스트 라이브러리</h1>
+    <div class="text-sm text-slate-500">제조·F&B·물류 — 총 ${libraryTemplates().length}종 / ${libraryTemplates().reduce((s,t)=>s+t.items.length,0)}개 항목</div>
+    ${Object.keys(CHECKLIST_LIBRARY).map(ind=>{
+      const lib = CHECKLIST_LIBRARY[ind];
+      return `<div class="toss-card p-5">
+        <div class="font-bold text-lg flex items-center gap-2">${lib.icon} ${ind} <span class="text-xs text-slate-400 font-normal">${Object.keys(lib.sets).length}개 세트</span></div>
+        <div class="mt-3 grid lg:grid-cols-2 gap-2">${Object.keys(lib.sets).map(setName=>`
+          <div class="p-3 rounded-xl bg-slate-50">
+            <div class="font-semibold text-sm flex items-center justify-between">${setName}<span class="text-xs text-slate-400">${lib.sets[setName].length}항목</span></div>
+            <div class="mt-2 space-y-1 text-xs text-slate-600">${lib.sets[setName].map(i=>`<div>· ${i}</div>`).join('')}</div>
+          </div>`).join('')}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// 안전 감사 로그 (안전관리자) — 동기화/위험분석/에스컬레이션 추적
+function vAudit(){
+  const audit = state.history.filter(h=>['위험분석 실행','SLA 에스컬레이션','오프라인 큐 동기화','이상 처리','푸시 캠페인','체크리스트 적용'].includes(h.label));
+  return `<div class="px-5 py-5 lg:px-0 space-y-3">
+    <h1 class="text-xl lg:text-3xl font-bold">안전 감사 로그</h1>
+    <div class="text-sm text-slate-500">위험분석·에스컬레이션·동기화·처리 추적 (${audit.length}건)</div>
+    ${state.syncLog.length?`<div class="toss-card p-4"><div class="font-bold text-sm mb-2">최근 동기화 충돌 해결</div><div class="space-y-1 text-xs">${state.syncLog.slice(0,4).map(s=>`<div class="flex gap-2"><span class="text-slate-400 w-28 shrink-0">${s.t.slice(11)}</span><span>${s.label} · <b>${s.strategy}</b> · ${s.applied?'적용':'스킵'} <span class="text-slate-400">(${s.reason})</span></span></div>`).join('')}</div></div>`:''}
+    <div class="space-y-2">${audit.length? audit.map(h=>`<div class="toss-card p-4"><div class="text-xs text-slate-400">${h.t} · ${ROLE_LABEL[h.role]||''}</div><div class="font-bold mt-1 text-sm">${h.label}</div><div class="text-xs text-slate-600 mt-1">${h.detail||''}</div></div>`).join('') : '<div class="text-sm text-slate-400 text-center py-10">아직 감사 이벤트가 없어요</div>'}</div>
+  </div>`;
+}
+
+// 푸시 캠페인 (기능 5)
+function vCampaign(){
+  return `<div class="px-5 py-5 lg:px-0 space-y-4 lg:max-w-2xl">
+    <h1 class="text-xl lg:text-3xl font-bold">전사 안전공지 캠페인</h1>
+    <div class="toss-card p-5 space-y-3">
+      <label class="block"><div class="text-sm font-semibold mb-1">공지 제목</div><input id="pc-title" placeholder="예: 폭염 대비 휴식·수분 섭취 안내" class="w-full border border-slate-200 rounded-xl p-3"></label>
+      <div class="grid grid-cols-2 gap-2">
+        <select id="pc-audience" class="border border-slate-200 rounded-xl p-3"><option>전사</option>${state.lines.map(l=>`<option>${l}</option>`).join('')}<option>작업자 전체</option></select>
+        <select id="pc-when" class="border border-slate-200 rounded-xl p-3"><option value="즉시">즉시 발송</option><option value="예약 (오늘 18:00)">예약 (오늘 18:00)</option><option value="예약 (내일 08:00)">예약 (내일 08:00)</option></select>
+      </div>
+      <button id="pc-send" class="w-full btn-primary">📣 캠페인 발송</button>
+    </div>
+    <div class="text-sm font-semibold mt-2">발송 로그 ${state.campaigns.length}건</div>
+    <div class="space-y-2">${state.campaigns.map(c=>`<div class="toss-card p-4">
+      <div class="flex items-center justify-between"><div class="font-bold">${c.title}</div><span class="pill ${c.status==='sent'?'bg-emerald-100 text-emerald-700':'bg-amber-100 text-amber-800'}">${c.status==='sent'?'발송됨':'예약됨'}</span></div>
+      <div class="text-xs text-slate-500 mt-1">대상 ${c.audience} · ${c.when} · 도달 ${c.reach}명 ${c.mode?`· ${c.mode}`:''} ${c.sentAt?`· ${c.sentAt}`:''}</div>
+    </div>`).join('')}</div>
+  </div>`;
+}
+
+function vReportMgr(){
+  return `<div class="px-5 py-5 lg:px-0 space-y-4">
+    <h1 class="text-xl lg:text-3xl font-bold">주간 보고서</h1>
+    <div class="grid grid-cols-3 gap-3">
+      ${kpi('완료율', `${state.orders.length?Math.round(state.orders.filter(o=>o.status==='done').length/state.orders.length*100):0}%`, '주간')}
+      ${kpi('이상 처리율', `${state.reports.length?Math.round(state.reports.filter(r=>r.resolved).length/state.reports.length*100):0}%`, '주간')}
+      ${kpi('평균 응답시간', '14분', '이상→처리')}
+    </div>
+    <div class="toss-card p-5">
+      <div class="font-bold mb-3">우선순위별 분포</div>
+      ${['HIGH','NORMAL','LOW'].map(p=>{const c=state.orders.filter(o=>o.priority===p).length; const pct=state.orders.length?c/state.orders.length*100:0; return `<div class="mb-2"><div class="flex justify-between text-sm"><span>${p}</span><span>${c}건</span></div><div class="h-2 bg-slate-100 rounded-full mt-1"><div class="h-full ${p==='HIGH'?'bg-red-500':p==='NORMAL'?'bg-blue-500':'bg-slate-400'}" style="width:${pct}%"></div></div></div>`;}).join('')}
+    </div>
+    <div class="grid lg:grid-cols-2 gap-3">
+      <button id="export-csv" class="btn-secondary">📥 작업 CSV 내보내기</button>
+      <button id="export-risk-csv" class="btn-secondary">📥 위험분석 CSV 내보내기</button>
+    </div>
+  </div>`;
+}
+
+function vSettings(){
+  return `<div class="px-5 py-5 lg:px-0 space-y-3 lg:max-w-2xl">
+    <h1 class="text-xl lg:text-3xl font-bold">설정</h1>
+    <div class="toss-card p-5 space-y-3">
+      <div class="font-bold">PWA · 네이티브</div>
+      <button id="install-pwa" class="w-full p-3 rounded-xl bg-slate-50 text-left">홈 화면에 설치 (PWA)</button>
+      <button id="install-native" class="w-full p-3 rounded-xl bg-blue-50 text-blue-700 text-left">📱 iOS / Android 네이티브 앱 설치 안내</button>
+      <button id="enable-push" class="w-full p-3 rounded-xl bg-slate-50 text-left">푸시 알림 권한 요청</button>
+    </div>
+    <div class="toss-card p-5 space-y-3">
+      <div class="font-bold">SLA 에스컬레이션 룰</div>
+      <div class="grid grid-cols-3 gap-2 text-sm">
+        <label>HIGH(분)<input id="sla-high" type="number" value="${state.slaRule.highMin}" class="w-full border rounded-lg p-2 mt-1"></label>
+        <label>NORMAL(분)<input id="sla-normal" type="number" value="${state.slaRule.normalMin}" class="w-full border rounded-lg p-2 mt-1"></label>
+        <label>LOW(분)<input id="sla-low" type="number" value="${state.slaRule.lowMin}" class="w-full border rounded-lg p-2 mt-1"></label>
+      </div>
+      <label class="block text-sm">상향 대상<select id="sla-to" class="w-full border rounded-lg p-2 mt-1">${['foreman','pm','safety'].map(r=>`<option value="${r}" ${state.slaRule.escalateTo===r?'selected':''}>${ROLE_LABEL[r]}</option>`).join('')}</select></label>
+      <button id="save-sla" class="w-full btn-secondary">룰 저장</button>
+    </div>
+    <div class="toss-card p-5">
+      <button id="reset" class="w-full p-3 rounded-xl bg-red-50 text-red-700 text-left">전체 데이터 초기화</button>
+    </div>
+  </div>`;
+}
+
+function vTeam(){
+  const team = [
+    { name:'김현장', role:'worker', line:'A-라인' },
+    { name:'최주임', role:'worker', line:'B-라인' },
+    { name:'정기사', role:'worker', line:'D-물류' },
+    { name:'박반장', role:'foreman', line:'A-라인' },
+    { name:'한반장', role:'foreman', line:'D-물류' },
+    { name:'이PM', role:'pm', line:'전체' },
+    { name:'윤안전', role:'safety', line:'전체' },
+  ];
+  return `<div class="px-5 py-5 lg:px-0 space-y-3">
+    <h1 class="text-xl lg:text-3xl font-bold">팀 (${team.length}명 · 4역할)</h1>
+    <div class="grid lg:grid-cols-3 xl:grid-cols-4 gap-3">${team.map(t=>`<div class="toss-card p-5 text-center">
+      <div class="w-16 h-16 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-2xl">${ROLE_ICON[t.role]}</div>
+      <div class="mt-3 font-bold">${t.name}</div>
+      <div class="text-sm text-slate-500">${ROLE_LABEL[t.role]} · ${t.line}</div>
+    </div>`).join('')}</div>
+  </div>`;
+}
+
+// ============================================================================
+// Native install 안내 시트 (기능 4)
+// ============================================================================
+function nativeInstallSheet(){
+  openSheet(`<div class="p-6">
+    <div class="text-lg font-bold mb-1">📱 네이티브 앱 설치</div>
+    <div class="text-xs text-slate-500 mb-4">현장톡은 PWA + 네이티브 래퍼(Capacitor)로 함께 배포돼요. 아래 안내대로 설치해 주세요.</div>
+    <div class="space-y-3">
+      <div class="p-4 rounded-xl bg-slate-50">
+        <div class="font-bold flex items-center gap-2"> iOS (App Store / TestFlight)</div>
+        <ol class="text-sm text-slate-600 mt-2 space-y-1 list-decimal list-inside">
+          <li>Safari에서 공유 → <b>홈 화면에 추가</b> (PWA), 또는</li>
+          <li>TestFlight 초대 링크 → 베타 설치</li>
+          <li>푸시·카메라·위치 권한을 허용해 주세요</li>
+        </ol>
+        <button data-native-link="ios" class="mt-3 w-full py-2.5 rounded-xl bg-black text-white text-sm font-bold">App Store에서 받기 (mock)</button>
+      </div>
+      <div class="p-4 rounded-xl bg-slate-50">
+        <div class="font-bold flex items-center gap-2">🤖 Android (Google Play)</div>
+        <ol class="text-sm text-slate-600 mt-2 space-y-1 list-decimal list-inside">
+          <li>Chrome 메뉴 → <b>앱 설치</b> (TWA/PWA), 또는</li>
+          <li>Play 내부 테스트 트랙 설치</li>
+          <li>알림·위치 권한을 허용해 주세요</li>
+        </ol>
+        <button data-native-link="android" class="mt-3 w-full py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold">Google Play에서 받기 (mock)</button>
+      </div>
+      <div class="text-xs text-slate-400 text-center">manifest·Service Worker 등록 완료 · 동일 코드베이스 래핑</div>
+    </div>
+  </div>`);
+  document.querySelectorAll('[data-native-link]').forEach(b=>b.onclick=()=>{ toast((b.dataset.nativeLink==='ios'?'App Store':'Google Play')+' 링크예요 (mock) — 스토어 등록 후 열려요'); });
+}
+
+// ============================================================================
+// Router + bind
+// ============================================================================
+const VIEW_FN = {
+  list: ()=> state.role==='worker' && state.selected ? vDetail() : vList(),
+  report: vReport, history: vHistory, mypage: vMypage,
+  compose: vCompose, inbox: vInbox, lines: vLines, sla: vSla,
+  admin: vAdmin, kpi: vKpi, campaign: vCampaign, 'report-mgr': vReportMgr, team: vTeam, settings: vSettings,
+  risk: vRisk, checklists: vChecklists, audit: vAudit,
+};
+function bodyView(){
+  const v = allowedView(state.role, state.view);
+  if (v!==state.view){ state.view=v; }
+  return (VIEW_FN[v] || vList)();
+}
+
+function bind(){
+  document.querySelectorAll('[data-role]').forEach(b=>b.onclick=()=>{ state.role=b.dataset.role; state.view=defaultView(state.role); state.selected=null; persist(); render(); });
+  const rc = document.getElementById('role-cycle'); if (rc) rc.onclick=()=>{ const i=ROLES.indexOf(state.role); state.role=ROLES[(i+1)%ROLES.length]; state.view=defaultView(state.role); state.selected=null; persist(); render(); toast('역할을 바꿨어요: '+ROLE_LABEL[state.role]); };
+  document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{ state.view=allowedView(state.role,b.dataset.view); state.selected=null; persist(); render(); });
+  document.querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>{ state.selected=b.dataset.id; persist(); render(); });
+  const back = document.querySelector('[data-back]'); if(back) back.onclick=()=>{ state.selected=null; persist(); render(); };
+
+  // detail: checklist toggle + apply from library
+  document.querySelectorAll('[data-chk]').forEach(c=>c.onclick=()=>{ const o=state.orders.find(x=>x.id===state.selected); o.checks[c.dataset.chk].d=c.checked; persist(); render(); });
+  const apply = document.getElementById('apply-tpl'); if (apply) apply.onclick=()=>{
+    const tpls = libraryTemplates();
+    openSheet(`<div class="p-6"><div class="text-lg font-bold mb-1">산업별 체크리스트 선택</div><div class="text-xs text-slate-500 mb-4">제조·F&B·물류 라이브러리</div>${tpls.map((t,i)=>`<button data-tpl="${i}" class="w-full p-4 my-1.5 rounded-xl bg-slate-50 text-left flex items-center justify-between"><span><span class="font-semibold">${CHECKLIST_LIBRARY[t.industry].icon} ${t.name}</span><span class="block text-xs text-slate-500">${t.industry} · ${t.items.length}항목</span></span><span class="text-blue-600 text-sm">적용</span></button>`).join('')}</div>`);
+    document.querySelectorAll('[data-tpl]').forEach(b=>b.onclick=()=>{ const t=tpls[+b.dataset.tpl]; const o=state.orders.find(x=>x.id===state.selected); o.checks=JSON.parse(JSON.stringify(t.items)); pushHistory('체크리스트 적용', `${o.id} · ${t.key}`); persist(); closeSheet(); render(); toast(t.name+'을(를) 적용했어요'); });
+  };
+
+  // camera (real → mock fallback)
+  const cam = document.getElementById('cam'); if (cam) cam.onchange=async e=>{ const o=state.orders.find(x=>x.id===state.selected); for(const f of e.target.files){ o.photos.push(await fileToDataURL(f)); } persist(); render(); };
+  const oc = document.getElementById('open-cam'); if (oc) oc.onclick=async ()=>{
+    let stream=null;
+    try { if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}); } catch(e){ stream=null; }
+    if (stream){
+      openSheet(`<div class="p-6"><div class="text-lg font-bold mb-4">카메라 스트림 (라이브)</div><video id="vid" autoplay playsinline class="w-full rounded-xl bg-black" style="max-height:60vh"></video><button id="snap" class="w-full mt-4 btn-primary">📸 캡처</button></div>`);
+      document.getElementById('vid').srcObject=stream;
+      document.getElementById('snap').onclick=()=>{ const v=document.getElementById('vid'); const c=document.createElement('canvas'); c.width=v.videoWidth||640; c.height=v.videoHeight||480; c.getContext('2d').drawImage(v,0,0); const o=state.orders.find(x=>x.id===state.selected); o.photos.push(c.toDataURL('image/jpeg',0.8)); stream.getTracks().forEach(t=>t.stop()); persist(); closeSheet(); render(); toast('사진을 담았어요'); };
+    } else {
+      openSheet(`<div class="p-6"><div class="text-lg font-bold mb-1">카메라 (mock 모드)</div><div class="text-xs text-slate-500 mb-4">file:// · 권한 부재로 실 카메라 미가용 → mock 프레임 생성</div><canvas id="mockcam" width="320" height="240" class="w-full rounded-xl border"></canvas><button id="snap" class="w-full mt-4 btn-primary">📸 mock 캡처</button></div>`);
+      const cv=document.getElementById('mockcam'); const g=cv.getContext('2d');
+      g.fillStyle='#1b2733'; g.fillRect(0,0,320,240); g.fillStyle='#3182f6'; g.fillRect(0,0,320,34); g.fillStyle='#fff'; g.font='bold 14px sans-serif'; g.fillText('현장톡 CAM · '+state.currentLine,10,22); g.font='12px sans-serif'; g.fillStyle='#D1D6DB'; g.fillText(new Date().toLocaleString('ko-KR'),10,210); g.fillText('GPS '+(state._geoFix?`${state._geoFix.lat.toFixed(4)}, ${state._geoFix.lng.toFixed(4)}`:'37.5012, 127.0390'),10,228); g.strokeStyle='#FFB331'; g.lineWidth=3; g.strokeRect(110,90,100,70);
+      document.getElementById('snap').onclick=()=>{ const o=state.orders.find(x=>x.id===state.selected); o.photos.push(cv.toDataURL('image/jpeg',0.85)); persist(); closeSheet(); render(); toast('mock 사진을 담았어요'); };
+    }
+  };
+  const cmp = document.querySelector('[data-complete]'); if (cmp) cmp.onclick=()=>{
+    const o=state.orders.find(x=>x.id===state.selected); if(!o) return;
+    if (o.status==='done'){ toast('이미 완료한 작업이에요'); return; }
+    if (!o.photos.length){ toast('사진을 1장 이상 첨부해 주세요'); return; }
+    if (o.checks.length && o.checks.some(c=>!c.d)){ toast('체크리스트를 모두 완료해 주세요'); return; }
+    o.status='done'; o.log.push({t:fmtTime(), msg:`완료 (사진 ${o.photos.length}장, 체크 ${o.checks.length}/${o.checks.length})`});
+    pushHistory('작업 완료', `${o.id} ${o.title}`);
+    if (!state.online){ state.queue.push({type:'complete', id:o.id, label:`완료 ${o.id}`, updatedAt:Date.now()}); DB.put({label:`완료 ${o.id}`, type:'complete', id:o.id, updatedAt:Date.now()}); }
+    persist(); state.selected=null; render(); toast(state.online?'완료 보고했어요!':'오프라인이라 큐에 저장했어요');
+  };
+  const iss = document.querySelector('[data-issue]'); if (iss) iss.onclick=()=>{ state.view='report'; state.selected=null; persist(); render(); };
+  const geo = document.querySelector('[data-geo]'); if (geo) geo.onclick=()=>{
+    const recordMock=()=>{ const o=state.orders.find(x=>x.id===state.selected); const mock={lat:37.5012,lng:127.0390,mock:true}; o.geo=mock; state._geoFix=mock; persist(); render(); toast('위치를 기록했어요 (mock 좌표)'); };
+    if (!navigator.geolocation){ recordMock(); return; }
+    navigator.geolocation.getCurrentPosition(p=>{ const o=state.orders.find(x=>x.id===state.selected); const fix={lat:p.coords.latitude,lng:p.coords.longitude}; o.geo=fix; state._geoFix=fix; persist(); render(); toast('위치를 기록했어요'); }, e=>recordMock(), {timeout:3000});
+  };
+
+  // report form
+  document.querySelectorAll('.cat-btn').forEach(b=>b.onclick=()=>{ document.querySelectorAll('.cat-btn').forEach(x=>{x.classList.remove('bg-blue-50','border-blue-500','text-blue-700','font-bold');x.classList.add('border-slate-200');}); b.classList.add('bg-blue-50','border-blue-500','text-blue-700','font-bold'); window._cat=b.dataset.cat; });
+  document.querySelectorAll('.sev-btn').forEach(b=>b.onclick=()=>{ document.querySelectorAll('.sev-btn').forEach(x=>{x.classList.remove('bg-blue-50','border-blue-500','text-blue-700','font-bold');x.classList.add('border-slate-200');}); b.classList.add('bg-blue-50','border-blue-500','text-blue-700','font-bold'); window._sev=b.dataset.sev; });
+  const send = document.getElementById('send'); if (send) send.onclick=()=>{
+    const memo=document.getElementById('memo').value; if(!memo.trim()){ toast('메모를 입력해 주세요'); return; }
+    const photos=window._rprev||[];
+    const r={ id:'IR-'+Math.floor(Math.random()*900+100), time:fmtTime(), cat:window._cat||'안전 위험', severity:window._sev||'경미', memo, photos:[...photos], by:state.user, line:state.currentLine, resolved:false, ts:Date.now() };
+    state.reports.unshift(r); pushHistory('이상 보고', `[${r.cat}/${r.severity}] ${memo.slice(0,28)}`);
+    if (!state.online){ state.queue.push({type:'report', label:`이상 ${r.id}`, updatedAt:Date.now()}); DB.put({label:`이상 ${r.id}`, type:'report', updatedAt:Date.now()}); }
+    window._rprev=[]; persist(); render(); toast(state.online?'이상 보고를 전송했어요':'오프라인이라 큐에 저장했어요');
+  };
+  const rphoto=document.getElementById('rphoto'); if (rphoto) rphoto.onchange=async e=>{ window._rprev=window._rprev||[]; for(const f of e.target.files){ window._rprev.push(await fileToDataURL(f)); } document.getElementById('rprev').innerHTML=window._rprev.map(p=>`<img src="${p}" class="thumb">`).join(''); };
+  const mic=document.getElementById('mic'); if (mic) mic.onclick=()=>{
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR){ toast('이 브라우저에서는 음성 인식을 쓸 수 없어요'); return; }
+    const r=new SR(); r.lang='ko-KR'; r.interimResults=false;
+    r.onresult=ev=>{ const t=ev.results[0][0].transcript; const ta=document.getElementById('memo'); ta.value=(ta.value?ta.value+' ':'')+t; toast('🎙️ '+t); };
+    r.onerror=ev=>toast('음성 인식이 잘 안 됐어요. 다시 시도해 주세요'); r.start(); toast('🎙️ 듣고 있어요...');
+  };
+
+  // foreman compose
+  const cs=document.getElementById('c-send'); if (cs) cs.onclick=()=>{
+    const t=document.getElementById('c-title').value; if(!t){ toast('제목을 입력해 주세요'); return; }
+    const id='WO-2606-'+String(state.orders.length+1).padStart(2,'0');
+    const tplKey=document.getElementById('c-tpl').value;
+    const tpl = libraryTemplates().find(x=>x.key===tplKey);
+    state.orders.unshift({ id, title:t, priority:document.getElementById('c-prio').value, due:document.getElementById('c-due').value, status:'todo', from:state.user, line:document.getElementById('c-line').value, shift:state.currentShift, detail:document.getElementById('c-detail').value.split('\n').filter(Boolean), photos:[], log:[{t:fmtTime(),msg:'발행됨'}], geo:null, checks: tpl? JSON.parse(JSON.stringify(tpl.items)):[], createdAt:Date.now(), slaMin:120 });
+    pushHistory('작업 발행', `${id} ${t}`); persist(); render(); toast('작업을 발행했어요: '+id);
+  };
+
+  // inbox
+  document.querySelectorAll('[data-resolve]').forEach(b=>b.onclick=()=>{ const r=state.reports.find(x=>x.id===b.dataset.resolve); r.resolved=true; pushHistory('이상 처리', r.id); persist(); render(); toast('처리 완료했어요'); });
+  document.querySelectorAll('[data-escalate]').forEach(b=>b.onclick=()=>{ pushHistory('이상 상위보고', b.dataset.escalate); toast('상위에 보고했어요'); });
+
+  // SLA
+  const re=document.getElementById('run-escalation'); if (re) re.onclick=()=>{ const b=runEscalation(); render(); toast(`에스컬레이션을 실행했어요 — ${b.length}건 상향보고`); };
+
+  // PM admin shortcut
+  const gc=document.getElementById('goto-campaign'); if (gc) gc.onclick=()=>{ state.view='campaign'; persist(); render(); };
+
+  // KPI / risk
+  const rr=document.getElementById('run-risk'); if (rr) rr.onclick=async ()=>{ rr.disabled=true; rr.textContent='분석하고 있어요…'; await RISK_API.run(); render(); toast('위험분석을 마쳤어요'); };
+
+  // campaign
+  const pcs=document.getElementById('pc-send'); if (pcs) pcs.onclick=async ()=>{
+    const t=document.getElementById('pc-title').value; if(!t){ toast('제목을 입력해 주세요'); return; }
+    const aud=document.getElementById('pc-audience').value; const when=document.getElementById('pc-when').value;
+    await sendCampaign(t, aud, when); render(); toast(when==='즉시'?'캠페인을 발송했어요':'캠페인을 예약했어요');
+  };
+
+  // reports CSV
+  const ec=document.getElementById('export-csv'); if (ec) ec.onclick=()=>{
+    const rows=[['ID','제목','우선순위','상태','라인','마감','사진수']].concat(state.orders.map(o=>[o.id,o.title,o.priority,STATUS[o.status][0],o.line,o.due,o.photos.length]));
+    const csv=rows.map(r=>r.join(',')).join('\n'); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv'})); a.download='fieldwork_report.csv'; a.click(); toast('작업 CSV를 내려받았어요');
+  };
+  const erc=document.getElementById('export-risk-csv'); if (erc) erc.onclick=()=>{
+    const latest=state.riskResults[0]; if(!latest){ toast('먼저 위험분석을 실행해 주세요 (안전관리자)'); return; }
+    const rows=[['라인','산업','위험점수','등급','보험료영향%']].concat(latest.perLine.map(r=>[r.line,r.industry,r.score,r.grade,(r.premiumDelta*100).toFixed(0)]));
+    const csv=rows.map(r=>r.join(',')).join('\n'); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv'})); a.download='risk_analysis.csv'; a.click(); toast('위험분석 CSV를 내려받았어요');
+  };
+
+  // settings
+  const ip=document.getElementById('install-pwa'); if (ip) ip.onclick=async ()=>{
+    if (deferredInstall){ deferredInstall.prompt(); const r=await deferredInstall.userChoice; toast(r.outcome==='accepted'?'홈 화면에 설치했어요!':'설치를 취소했어요'); deferredInstall=null; }
+    else toast('브라우저 메뉴에서 "홈 화면에 추가"를 눌러 설치해 주세요 (manifest+SW 등록됨)');
+  };
+  document.querySelectorAll('#install-native').forEach(b=> b.onclick=nativeInstallSheet);
+  const ssla=document.getElementById('save-sla'); if (ssla) ssla.onclick=()=>{
+    state.slaRule.highMin=+document.getElementById('sla-high').value; state.slaRule.normalMin=+document.getElementById('sla-normal').value; state.slaRule.lowMin=+document.getElementById('sla-low').value; state.slaRule.escalateTo=document.getElementById('sla-to').value;
+    persist(); toast('SLA 룰을 저장했어요'); render();
+  };
+  const ep=document.getElementById('enable-push'); if (ep) ep.onclick=async ()=>{
+    let granted=false;
+    try { if ('Notification' in window){ const p=await Notification.requestPermission(); granted=(p==='granted'); if(granted) new Notification('현장톡',{body:'푸시 알림을 켰어요'}); } } catch(e){ granted=false; }
+    state.pushSubscribed=true; state.pushEndpoint = granted?'https://fcm.googleapis.com/fcm/send/REAL-'+Math.random().toString(36).slice(2,10):'mock://push/endpoint/'+Math.random().toString(36).slice(2,10); state.pushMode = granted?'real':'mock';
+    pushHistory('푸시 구독', `${state.pushMode} · ${state.pushEndpoint.slice(0,42)}…`); persist(); render(); toast(granted?'푸시 알림을 켰어요':'푸시 알림을 켰어요 (mock endpoint)');
+  };
+  const el=document.getElementById('enable-loc'); if (el) el.onclick=()=>{ if(!navigator.geolocation){ toast('이 브라우저는 위치를 지원하지 않아요 (mock)'); return; } navigator.geolocation.getCurrentPosition(p=>toast(`위치: ${p.coords.latitude.toFixed(4)}, ${p.coords.longitude.toFixed(4)}`), e=>toast('위치 권한이 꺼져 있어 mock 좌표를 써요')); };
+  const rs=document.getElementById('reset'); if (rs) rs.onclick=()=>{ if(confirm('정말 초기화할까요?')){ localStorage.removeItem(KEY); location.reload(); } };
+
+  // mypage selects
+  const ls=document.getElementById('line-sel'); if (ls) ls.onchange=()=>{ state.currentLine=ls.value; persist(); render(); };
+  const sf=document.getElementById('shift-sel'); if (sf) sf.onchange=()=>{ state.currentShift=sf.value; persist(); render(); };
+
+  const lo=document.getElementById('logout'); if (lo) lo.onclick=()=>{ if(confirm('데이터를 초기화할까요?')){ localStorage.removeItem(KEY); location.reload(); } };
+}
+
+function render(){ document.getElementById('main').innerHTML = header() + bodyView(); renderNav(); bind(); }
+window.addEventListener('resize', ()=>renderNav());
+
+// URL ?view= 진입 (manifest shortcut 지원)
+(function(){ const p=new URLSearchParams(location.search); const v=p.get('view'); if (v) state.view=allowedView(state.role,v); })();
+render();
+</script>
+</body>
+</html>

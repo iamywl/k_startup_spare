@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>현장협업 PWA — 작업·이상·이력</title>
+<script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<script>
+  // 디자인 토큰 재매핑 (Apple × Toss) — design-guide/디자인_애플_토스.md
+  tailwind.config = { theme: { extend: {
+    fontFamily: { sans: ['Pretendard','-apple-system','BlinkMacSystemFont','Apple SD Gothic Neo','sans-serif'] },
+    colors: {
+      brand:   { DEFAULT:'#3182F6', hover:'#1B64DA', light:'#E8F3FF' },
+      blue:    {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      indigo:  {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      sky:     {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      slate:   {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      gray:    {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      zinc:    {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      neutral: {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      emerald: {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      green:   {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      teal:    {50:'#E7F8EF',100:'#D2F2E0',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      amber:   {50:'#FFF6E5',100:'#FFE9C2',300:'#FFB331',400:'#FFB331',500:'#FFB331',600:'#E2991C',700:'#C77F12'},
+      yellow:  {50:'#FFF6E5',100:'#FFE9C2',300:'#FFB331',400:'#FFB331',500:'#FFB331',600:'#E2991C'},
+      orange:  {50:'#FFF6E5',100:'#FFE9C2',400:'#FFB331',500:'#FFB331',600:'#E2991C'},
+      rose:    {50:'#FEECEE',100:'#FCD9DD',300:'#F8A4AC',400:'#F04452',500:'#F04452',600:'#F04452',700:'#D6303D'},
+      red:     {50:'#FEECEE',100:'#FCD9DD',300:'#F8A4AC',400:'#F04452',500:'#F04452',600:'#F04452',700:'#D6303D'},
+    }
+  } } }
+</script>
+<style>
+  body { -webkit-tap-highlight-color: transparent; }
+  .btn-tap { min-height: 56px; }
+  .pill { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .thumb { width: 64px; height: 64px; object-fit: cover; border-radius: 12px; }
+
+  /* ===== design-tone-components (guide §6·§7) ===== */
+  button, [role="button"], a.w-full, input[type="submit"], input[type="button"] {
+    transition: transform .12s cubic-bezier(.3,0,0,1), opacity .15s ease, box-shadow .15s ease, background-color .15s ease;
+  }
+  button:active:not(:disabled), [role="button"]:active, a.w-full:active,
+  input[type="submit"]:active, input[type="button"]:active { transform: scale(.97); }
+  button:disabled, button[disabled], [role="button"][aria-disabled="true"] { opacity: .35; cursor: not-allowed; }
+  input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: none; border-color: #3182F6; box-shadow: 0 0 0 1.5px #3182F6;
+  }
+  button.w-full, button[type="submit"].w-full, a.w-full[class*="bg-"] {
+    min-height: 52px; border-radius: 12px;
+  }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-900">
+<div id="app" class="max-w-md mx-auto bg-white min-h-screen shadow-lg pb-20"></div>
+<div id="toast" class="fixed bottom-24 left-1/2 -translate-x-1/2 hidden bg-slate-900 text-white px-4 py-2 rounded-full text-sm shadow-lg z-50"></div>
+
+<script>
+// ============== 상태 (localStorage 영속) ==============
+const KEY = 'fw_pwa_state_v1';
+const seedOrders = () => ([
+  { id:'WO-2604-01', title:'컨베이어 벨트 청소', priority:'HIGH', due:'14:00', status:'todo', from:'반장 박', line:'A-3호기', detail:['작업 위치: A-3호기 측면','안전 장비: 보안경·면장갑 필수','예상 소요: 30분'], photos:[], log:[] },
+  { id:'WO-2604-02', title:'안전 펜스 점검', priority:'NORMAL', due:'15:30', status:'todo', from:'반장 박', line:'A-3호기', detail:['펜스 8개 구역 육안 점검','파손·이격 발견 시 즉시 보고'], photos:[], log:[] },
+  { id:'WO-2604-03', title:'원료 투입 5톤', priority:'NORMAL', due:'16:00', status:'in_progress', from:'PM 이', line:'A-3호기', detail:['원료 코드: ABS-K2','투입 후 호퍼 잠금 확인'], photos:[], log:[{t:'13:42', msg:'시작'}] },
+  { id:'WO-2604-04', title:'품질 샘플 채취', priority:'LOW', due:'17:00', status:'done', from:'QA 윤', line:'A-3호기', detail:['샘플 3봉지 라벨링·QC팀 전달'], photos:[], log:[{t:'12:10', msg:'완료'}] },
+]);
+const seedReports = () => ([
+  { id:'IR-101', time:'13:50', cat:'설비 고장', memo:'2호기 베어링 소음 발생', photos:[], by:'김현장' },
+]);
+let state = JSON.parse(localStorage.getItem(KEY) || 'null');
+if (!state){ state = {
+  role: 'worker', // worker | manager
+  worker:{ name:'김현장', line:'A-라인 3호기', shift:'주간' },
+  orders: seedOrders(),
+  reports: seedReports(),
+  history:[],
+  view:'list', selected:null, online:true,
+}; persist(); }
+function persist(){ localStorage.setItem(KEY, JSON.stringify(state)); }
+
+const PRIO_COLOR = { HIGH:'bg-red-100 text-red-700', NORMAL:'bg-blue-100 text-blue-700', LOW:'bg-slate-100 text-slate-600' };
+const STATUS_LABEL = { todo:'대기', in_progress:'진행중', done:'완료' };
+const STATUS_COLOR = { todo:'bg-slate-200 text-slate-700', in_progress:'bg-amber-100 text-amber-800', done:'bg-emerald-100 text-emerald-800' };
+
+const root = document.getElementById('app');
+
+// ============== 공통 ==============
+function header(){
+  return `<header class="px-4 pt-5 pb-3 bg-slate-900 text-white">
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="text-xs text-slate-300">${state.worker.line} · ${state.worker.shift}</div>
+        <div class="text-lg font-semibold">${state.worker.name}</div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="role-toggle" class="text-xs px-2 py-1 rounded-full ${state.role==='manager'?'bg-amber-400 text-slate-900':'bg-slate-700 text-white'}">${state.role==='manager'?'관리자':'작업자'}</button>
+        <span class="text-xs ${state.online?'text-emerald-400':'text-amber-400'}">${state.online?'● online':'● offline'}</span>
+      </div>
+    </div>
+  </header>`;
+}
+
+function tabs(){
+  const items = state.role==='worker'
+    ? [['list','작업지시'],['report','이상보고'],['history','이력']]
+    : [['admin','대시보드'],['compose','작업발행'],['inbox','이상수신']];
+  return `<nav class="flex bg-white sticky top-0 border-b z-10">${items.map(([k,n])=>`<button data-view="${k}" class="flex-1 py-3 text-sm font-medium ${state.view===k?'text-slate-900 border-b-2 border-slate-900':'text-slate-500'}">${n}</button>`).join('')}</nav>`;
+}
+
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.remove('hidden'); setTimeout(()=>t.classList.add('hidden'),1500); }
+
+// ============== Worker views ==============
+function vList(){
+  const cards = state.orders.map(o=>`
+    <button data-id="${o.id}" class="w-full text-left bg-white rounded-2xl p-4 border shadow-sm active:scale-[0.99]">
+      <div class="flex items-center gap-2">
+        <span class="pill ${PRIO_COLOR[o.priority]}">${o.priority}</span>
+        <span class="pill ${STATUS_COLOR[o.status]}">${STATUS_LABEL[o.status]}</span>
+        <span class="ml-auto text-xs text-slate-500">${o.due}</span>
+      </div>
+      <div class="mt-2 text-base font-semibold">${o.title}</div>
+      <div class="mt-1 text-xs text-slate-500">${o.id} · ${o.from} 발행 · 사진 ${o.photos.length}건</div>
+    </button>`).join('');
+  return `<div class="px-4 py-4 space-y-3">
+    <div class="text-sm text-slate-500">오늘의 작업 ${state.orders.length}건 · 완료 ${state.orders.filter(o=>o.status==='done').length}건</div>
+    ${cards}
+  </div>`;
+}
+
+function vDetail(){
+  const o = state.orders.find(x=>x.id===state.selected); if (!o) return vList();
+  const thumbs = o.photos.map((src,i)=>`<img src="${src}" class="thumb" data-pi="${i}">`).join('');
+  return `<div class="p-4 space-y-4">
+    <button data-back class="text-sm text-slate-500">&larr; 목록</button>
+    <div class="bg-white rounded-2xl p-4 border">
+      <div class="flex items-center gap-2"><span class="pill ${PRIO_COLOR[o.priority]}">${o.priority}</span><span class="pill ${STATUS_COLOR[o.status]}">${STATUS_LABEL[o.status]}</span></div>
+      <div class="mt-2 text-xl font-semibold">${o.title}</div>
+      <div class="mt-1 text-sm text-slate-500">${o.id} · ${o.from} 발행 · ~${o.due} · ${o.line}</div>
+      <ul class="mt-4 text-sm space-y-1 text-slate-700 list-disc pl-5">${o.detail.map(d=>`<li>${d}</li>`).join('')}</ul>
+    </div>
+    <div class="bg-white rounded-2xl p-4 border">
+      <div class="flex items-center justify-between mb-2"><div class="text-sm font-semibold">완료 인증 사진</div><label class="text-sm text-blue-600">+ 추가<input type="file" id="photo" accept="image/*" capture="environment" class="hidden"></label></div>
+      <div class="flex flex-wrap gap-2">${thumbs || '<div class="text-xs text-slate-400">아직 첨부한 사진이 없어요</div>'}</div>
+    </div>
+    <button data-complete class="w-full btn-tap rounded-2xl bg-emerald-600 text-white font-semibold text-base">${o.status==='done'?'완료됐어요':'사진 인증 후 완료 보고'}</button>
+    <button data-issue class="w-full btn-tap rounded-2xl bg-amber-500 text-white font-semibold text-base">이상 발견 → 즉시 보고</button>
+    ${o.log.length?`<div class="bg-white rounded-2xl p-4 border"><div class="text-sm font-semibold mb-2">작업 로그</div><div class="text-xs text-slate-600 space-y-1">${o.log.map(l=>`<div>· ${l.t} — ${l.msg}</div>`).join('')}</div></div>`:''}
+  </div>`;
+}
+
+function vReport(){
+  const list = state.reports.map(r=>`<div class="bg-white border rounded-2xl p-4">
+    <div class="text-xs text-slate-500">${r.time} · ${r.by}</div>
+    <div class="font-semibold mt-1">${r.cat}</div>
+    <div class="text-sm text-slate-700 mt-1">${r.memo}</div>
+    ${r.photos.length?`<div class="flex gap-2 mt-2">${r.photos.map(p=>`<img src="${p}" class="thumb">`).join('')}</div>`:''}
+  </div>`).join('') || `<div class="text-sm text-slate-400 text-center py-10">아직 접수된 이상 보고가 없어요</div>`;
+  return `<div class="p-4 space-y-3">
+    <div class="bg-white border rounded-2xl p-4 space-y-3">
+      <div class="text-sm font-semibold">새 이상 보고</div>
+      <select id="cat" class="w-full border rounded-xl p-3 text-base"><option>안전 위험</option><option>설비 고장</option><option>품질 이상</option><option>기타</option></select>
+      <textarea id="memo" rows="3" placeholder="음성으로도 적을 수 있어요 — 마이크 누르고 말해 주세요" class="w-full border rounded-xl p-3 text-base"></textarea>
+      <label class="block">
+        <span class="text-xs text-slate-500">사진 첨부 (선택)</span>
+        <input type="file" id="rphoto" accept="image/*" capture="environment" class="block mt-1 text-sm">
+        <div id="rprev" class="flex gap-2 mt-2"></div>
+      </label>
+      <div class="flex gap-2"><button id="mic" class="btn-tap flex-1 rounded-xl bg-slate-100 font-semibold">🎙️ 음성</button><button id="send" class="btn-tap flex-1 rounded-xl bg-blue-600 text-white font-semibold">즉시 전송</button></div>
+    </div>
+    <div class="text-sm text-slate-500 mt-4">접수된 보고 ${state.reports.length}건</div>
+    ${list}
+  </div>`;
+}
+
+function vHistory(){
+  const items = state.history.length ? state.history.map(h=>`<div class="bg-white rounded-2xl border p-4">
+    <div class="text-xs text-slate-500">${h.t}</div>
+    <div class="text-sm font-semibold mt-1">${h.label}</div>
+    <div class="text-xs text-slate-600 mt-1">${h.detail||''}</div>
+  </div>`).join('') : `<div class="text-sm text-slate-400 text-center py-10">아직 이력이 없어요 (작업을 완료하거나 보고하면 자동으로 기록돼요)</div>`;
+  return `<div class="p-4 space-y-2"><div class="text-sm text-slate-500">최근 활동 ${state.history.length}건 (저장돼 있어요)</div>${items}</div>`;
+}
+
+// ============== Manager views ==============
+function vAdmin(){
+  const lines = ['A-라인','B-라인','C-라인'].map(name=>{
+    const total = 8 + Math.floor(Math.random()*6);
+    const done = Math.min(total, 5 + Math.floor(Math.random()*4));
+    const issues = state.reports.filter(r=>true).length; // simplified
+    return { name, total, done, issues };
+  });
+  const total = state.orders.length, done = state.orders.filter(o=>o.status==='done').length, issues = state.reports.length;
+  return `<div class="p-4 space-y-4">
+    <div class="text-sm text-slate-500">관리자 대시보드</div>
+    <div class="grid grid-cols-3 gap-2">
+      <div class="bg-white rounded-2xl p-3 border"><div class="text-xs text-slate-500">총 작업</div><div class="text-2xl font-bold">${total}</div></div>
+      <div class="bg-white rounded-2xl p-3 border"><div class="text-xs text-slate-500">완료</div><div class="text-2xl font-bold text-emerald-600">${done}</div></div>
+      <div class="bg-white rounded-2xl p-3 border"><div class="text-xs text-slate-500">이상</div><div class="text-2xl font-bold text-red-600">${issues}</div></div>
+    </div>
+    <div class="bg-white rounded-2xl border overflow-hidden">
+      <table class="w-full text-sm"><thead class="bg-slate-50 text-slate-600"><tr><th class="text-left p-3">라인</th><th class="text-right p-3">진척</th><th class="text-right p-3">달성률</th><th class="text-right p-3">이상</th></tr></thead>
+      <tbody>${lines.map(l=>`<tr class="border-b last:border-0"><td class="py-3 px-3 font-medium">${l.name}</td><td class="py-3 px-3 text-right">${l.done}/${l.total}</td><td class="py-3 px-3 text-right">${Math.round(l.done/l.total*100)}%</td><td class="py-3 px-3 text-right ${l.issues?'text-red-600 font-semibold':''}">${l.issues}건</td></tr>`).join('')}</tbody></table>
+    </div>
+    <button id="seed-push" class="w-full btn-tap rounded-2xl bg-slate-900 text-white font-semibold">📨 모든 작업자에게 일괄 알림 보내기</button>
+  </div>`;
+}
+
+function vCompose(){
+  return `<div class="p-4 space-y-3">
+    <div class="text-sm font-semibold">새 작업지시 발행</div>
+    <input id="c-title" placeholder="작업 제목" class="w-full border rounded-xl p-3 text-base">
+    <div class="grid grid-cols-2 gap-2">
+      <select id="c-prio" class="border rounded-xl p-3 text-base"><option>HIGH</option><option selected>NORMAL</option><option>LOW</option></select>
+      <input id="c-due" type="time" class="border rounded-xl p-3 text-base">
+    </div>
+    <input id="c-line" placeholder="대상 라인 (예: A-3호기)" value="A-3호기" class="w-full border rounded-xl p-3 text-base">
+    <textarea id="c-detail" rows="3" placeholder="세부 지시 (줄바꿈으로 분리)" class="w-full border rounded-xl p-3 text-base"></textarea>
+    <button id="c-send" class="w-full btn-tap rounded-xl bg-blue-600 text-white font-semibold">발행</button>
+    <div class="text-sm text-slate-500 mt-4">최근 발행 (${state.orders.length}건)</div>
+    ${state.orders.slice(0,5).map(o=>`<div class="bg-white border rounded-xl p-3"><div class="text-sm font-semibold">${o.title}</div><div class="text-xs text-slate-500">${o.id} · ${STATUS_LABEL[o.status]} · ~${o.due}</div></div>`).join('')}
+  </div>`;
+}
+
+function vInbox(){
+  return `<div class="p-4 space-y-3">
+    <div class="text-sm text-slate-500">이상 보고 수신함 (${state.reports.length}건)</div>
+    ${state.reports.length ? state.reports.map(r=>`<div class="bg-white border rounded-2xl p-4">
+      <div class="flex items-center justify-between"><div class="font-semibold">${r.cat}</div><div class="text-xs text-slate-500">${r.time}</div></div>
+      <div class="text-sm text-slate-700 mt-1">${r.memo}</div>
+      <div class="text-xs text-slate-500 mt-1">제보: ${r.by}</div>
+      ${r.photos.length?`<div class="flex gap-2 mt-2">${r.photos.map(p=>`<img src="${p}" class="thumb">`).join('')}</div>`:''}
+      <div class="flex gap-2 mt-3"><button data-resolve="${r.id}" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold">처리 완료</button><button data-escalate="${r.id}" class="px-3 py-1.5 rounded-lg bg-amber-500 text-white text-xs font-semibold">상위 보고</button></div>
+    </div>`).join('') : '<div class="text-sm text-slate-400 text-center py-10">아직 수신된 이상 보고가 없어요</div>'}
+  </div>`;
+}
+
+// ============== 라우팅 + 인터랙션 ==============
+function bodyView(){
+  if (state.role==='worker'){
+    if (state.view==='list') return state.selected ? vDetail() : vList();
+    if (state.view==='report') return vReport();
+    if (state.view==='history') return vHistory();
+    state.view='list'; return vList();
+  } else {
+    if (state.view==='admin') return vAdmin();
+    if (state.view==='compose') return vCompose();
+    if (state.view==='inbox') return vInbox();
+    state.view='admin'; return vAdmin();
+  }
+}
+
+function pushHistory(label, detail){ state.history.unshift({ t: new Date().toLocaleString('ko-KR'), label, detail }); persist(); }
+
+function fileToDataURL(file){ return new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(file); }); }
+
+function bind(){
+  // role + tab
+  document.getElementById('role-toggle').onclick = ()=>{ state.role = state.role==='worker'?'manager':'worker'; state.view = state.role==='worker'?'list':'admin'; state.selected=null; persist(); render(); };
+  root.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{state.view=b.dataset.view; state.selected=null; persist(); render();});
+  root.querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>{state.selected=b.dataset.id; persist(); render();});
+  const back = root.querySelector('[data-back]'); if(back) back.onclick=()=>{state.selected=null; persist(); render();};
+  // detail actions
+  const cmp = root.querySelector('[data-complete]');
+  if (cmp) cmp.onclick = ()=>{
+    const o = state.orders.find(x=>x.id===state.selected); if (!o) return;
+    if (o.status==='done') { toast('이미 완료한 작업이에요'); return; }
+    if (!o.photos.length) { toast('사진을 1장 이상 첨부해 주세요'); return; }
+    o.status='done'; o.log.push({ t: new Date().toLocaleTimeString('ko-KR'), msg:'완료 보고 제출 (사진 '+o.photos.length+'장)' });
+    pushHistory('작업 완료', `${o.id} ${o.title} (사진 ${o.photos.length}장)`);
+    persist(); state.selected=null; render(); toast('완료 보고했어요!');
+  };
+  const iss = root.querySelector('[data-issue]'); if (iss) iss.onclick=()=>{ state.view='report'; state.selected=null; persist(); render(); };
+  const photo = root.querySelector('#photo');
+  if (photo) photo.onchange = async (e)=>{
+    const o = state.orders.find(x=>x.id===state.selected);
+    for (const f of e.target.files){ const url = await fileToDataURL(f); o.photos.push(url); }
+    persist(); render();
+  };
+  // report
+  const send = root.querySelector('#send');
+  if (send) send.onclick = async ()=>{
+    const cat=root.querySelector('#cat').value, memo=root.querySelector('#memo').value;
+    if (!memo.trim()) { toast('메모를 입력해 주세요'); return; }
+    const photos = window._rprev || [];
+    const newRep = { id:'IR-'+Math.floor(Math.random()*900+100), time:new Date().toLocaleTimeString('ko-KR'), cat, memo, photos:[...photos], by:state.worker.name };
+    state.reports.unshift(newRep);
+    pushHistory('이상 보고', `[${cat}] ${memo.slice(0,20)}`);
+    window._rprev = []; persist(); render(); toast('이상 보고를 전송했어요');
+  };
+  const rphoto = root.querySelector('#rphoto');
+  if (rphoto) rphoto.onchange = async (e)=>{
+    window._rprev = window._rprev || [];
+    for (const f of e.target.files){ const url = await fileToDataURL(f); window._rprev.push(url); }
+    document.getElementById('rprev').innerHTML = window._rprev.map(p=>`<img src="${p}" class="thumb">`).join('');
+  };
+  // mic — Web Speech API (browser support 분기)
+  const mic = root.querySelector('#mic');
+  if (mic) mic.onclick = ()=>{
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { toast('이 브라우저에서는 음성 인식을 쓸 수 없어요'); return; }
+    const r = new SR(); r.lang='ko-KR'; r.interimResults=false;
+    r.onresult = (ev)=>{ const text = ev.results[0][0].transcript; const ta = document.querySelector('#memo'); ta.value = (ta.value? ta.value+' ' : '') + text; toast('음성 인식: '+text); };
+    r.onerror = (ev)=>toast('음성 인식이 잘 안 됐어요. 다시 시도해 주세요');
+    r.start(); toast('🎙️ 듣고 있어요…');
+  };
+  // manager compose
+  const cs = root.querySelector('#c-send');
+  if (cs) cs.onclick = ()=>{
+    const t=root.querySelector('#c-title').value; if (!t) { toast('제목을 입력해 주세요'); return; }
+    const p=root.querySelector('#c-prio').value, d=root.querySelector('#c-due').value || '17:00', l=root.querySelector('#c-line').value;
+    const det=root.querySelector('#c-detail').value.split('\n').filter(Boolean);
+    const id = 'WO-2604-' + String(state.orders.length+1).padStart(2,'0');
+    state.orders.unshift({ id, title:t, priority:p, due:d, status:'todo', from:state.worker.name, line:l, detail:det.length?det:['(세부 지시 없음)'], photos:[], log:[{t:new Date().toLocaleTimeString('ko-KR'), msg:'발행됨'}] });
+    pushHistory('작업 발행', `${id} ${t}`);
+    persist(); render(); toast('새 작업지시를 발행했어요: '+id);
+  };
+  // inbox
+  root.querySelectorAll('[data-resolve]').forEach(b=>b.onclick=()=>{
+    state.reports = state.reports.filter(r=>r.id!==b.dataset.resolve); pushHistory('이상 처리 완료', b.dataset.resolve); persist(); render(); toast('처리 완료했어요');
+  });
+  root.querySelectorAll('[data-escalate]').forEach(b=>b.onclick=()=>toast('상위에 보고했어요 (mock)'));
+  // admin push
+  const sp = root.querySelector('#seed-push'); if (sp) sp.onclick = ()=>{ pushHistory('일괄 알림', '전 작업자 푸시 발송'); toast('알림을 보냈어요 (mock)'); };
+}
+
+function render(){ root.innerHTML = header() + tabs() + bodyView(); bind(); }
+render();
+</script>
+</body>
+</html>

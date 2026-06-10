@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>가드레일 — 컴플라이언스 자동화 (v1 MVP)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<script>
+  // 디자인 토큰 재매핑 (Apple × Toss) — design-guide/디자인_애플_토스.md
+  tailwind.config = { theme: { extend: {
+    fontFamily: { sans: ['Pretendard','-apple-system','BlinkMacSystemFont','Apple SD Gothic Neo','sans-serif'] },
+    colors: {
+      brand:   { DEFAULT:'#3182F6', hover:'#1B64DA', light:'#E8F3FF' },
+      blue:    {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      indigo:  {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      sky:     {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      slate:   {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      gray:    {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      zinc:    {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      neutral: {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      emerald: {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      green:   {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      teal:    {50:'#E7F8EF',100:'#D2F2E0',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      amber:   {50:'#FFF6E5',100:'#FFE9C2',300:'#FFB331',400:'#FFB331',500:'#FFB331',600:'#E2991C',700:'#C77F12'},
+      yellow:  {50:'#FFF6E5',100:'#FFE9C2',300:'#FFB331',400:'#FFB331',500:'#FFB331',600:'#E2991C'},
+      orange:  {50:'#FFF6E5',100:'#FFE9C2',400:'#FFB331',500:'#FFB331',600:'#E2991C'},
+      rose:    {50:'#FEECEE',100:'#FCD9DD',300:'#F8A4AC',400:'#F04452',500:'#F04452',600:'#F04452',700:'#D6303D'},
+      red:     {50:'#FEECEE',100:'#FCD9DD',300:'#F8A4AC',400:'#F04452',500:'#F04452',600:'#F04452',700:'#D6303D'},
+    }
+  } } }
+</script>
+<style>
+  body { font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+  .scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: #D1D6DB; border-radius: 4px; }
+  [x-cloak] { display: none !important; }
+
+  /* ===== design-tone-components (guide §6·§7) ===== */
+  button, [role="button"], a.w-full, input[type="submit"], input[type="button"] {
+    transition: transform .12s cubic-bezier(.3,0,0,1), opacity .15s ease, box-shadow .15s ease, background-color .15s ease;
+  }
+  button:active:not(:disabled), [role="button"]:active, a.w-full:active,
+  input[type="submit"]:active, input[type="button"]:active { transform: scale(.97); }
+  button:disabled, button[disabled], [role="button"][aria-disabled="true"] { opacity: .35; cursor: not-allowed; }
+  input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: none; border-color: #3182F6; box-shadow: 0 0 0 1.5px #3182F6;
+  }
+  button.w-full, button[type="submit"].w-full, a.w-full[class*="bg-"] {
+    min-height: 52px; border-radius: 12px;
+  }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800">
+<div id="app"></div>
+
+<script>
+/* =========================================================================
+   가드레일 — CSAP/ISMS-P 컴플라이언스 자동화 SaaS 시제품 v1 (MVP)
+   단일 HTML 자체완결 · 오프라인 동작 · 키 부재 mock fallback · 게스트 무로그인
+   상태 지속: localStorage (key: guardrail.state.v1)
+   ========================================================================= */
+
+/* ---------------------------------------------------------------------------
+   1) 외주 납품 데이터셋 (과업지시서 §2.1) — ISMS-P 대표 통제 라이브러리 시드
+   control_id · category · title · requirement · evidence_types · review_note · framework
+   --------------------------------------------------------------------------- */
+const CONTROL_LIBRARY = [
+  // 1. 관리체계 수립 및 운영
+  { control_id: "1.1.1", category: "관리체계 수립 및 운영", title: "경영진의 참여", requirement: "정보보호 및 개인정보보호 관리체계의 수립·운영 활동 전반에 경영진의 참여가 이루어지도록 보고·의사결정 체계를 수립한다.", evidence_types: ["정책문서", "회의록"], review_note: "경영진 보고 주기·승인 기록 확인", framework: "ISMS-P" },
+  { control_id: "1.1.2", category: "관리체계 수립 및 운영", title: "최고책임자의 지정", requirement: "정보보호 최고책임자(CISO)와 개인정보 보호책임자(CPO)를 예산·인력·자원을 고려하여 공식 지정한다.", evidence_types: ["임명장", "조직도"], review_note: "지정 공문·자격요건 충족 여부", framework: "ISMS-P" },
+  { control_id: "1.2.1", category: "관리체계 수립 및 운영", title: "정보자산 식별", requirement: "조직의 업무 특성에 따라 정보자산을 식별하고 중요도를 산정한 자산목록을 관리한다.", evidence_types: ["자산목록", "설정값"], review_note: "자산목록 최신성·중요도 분류 기준", framework: "ISMS-P" },
+  { control_id: "1.2.2", category: "관리체계 수립 및 운영", title: "현황 및 흐름분석", requirement: "관리체계 범위 내 개인정보 및 정보의 흐름을 분석하고 흐름도를 관리한다.", evidence_types: ["흐름도", "정책문서"], review_note: "개인정보 흐름도 업데이트 이력", framework: "ISMS-P" },
+  { control_id: "1.3.1", category: "관리체계 수립 및 운영", title: "위험 평가", requirement: "위험관리 방법 및 절차를 수립하여 연 1회 이상 정기적으로 위험을 평가한다.", evidence_types: ["위험평가보고서", "정책문서"], review_note: "위험평가 주기·수용수준(DoA) 정의", framework: "ISMS-P" },
+  { control_id: "1.4.1", category: "관리체계 수립 및 운영", title: "법적 요구사항 준수 검토", requirement: "조직이 준수해야 할 정보보호 관련 법적 요구사항을 주기적으로 검토한다.", evidence_types: ["점검표", "정책문서"], review_note: "법령 변경 모니터링 체계", framework: "ISMS-P" },
+
+  // 2. 보호대책 요구사항 — 인적/물리/접근
+  { control_id: "2.1.1", category: "정책·조직·자산 관리", title: "정책의 유지관리", requirement: "정보보호 및 개인정보보호 정책을 수립하고 연 1회 이상 타당성을 검토하여 개정한다.", evidence_types: ["정책문서", "개정이력"], review_note: "정책 최신 개정일·승인 라인", framework: "ISMS-P" },
+  { control_id: "2.2.1", category: "인적 보안", title: "주요 직무자 지정 및 관리", requirement: "개인정보 및 중요정보 취급 등 주요 직무자를 지정하고 별도 관리한다.", evidence_types: ["직무자목록", "정책문서"], review_note: "주요직무자 지정 기준·최소권한", framework: "ISMS-P" },
+  { control_id: "2.2.3", category: "인적 보안", title: "보안 서약", requirement: "임직원 및 외부자에게 직무별 정보보호 및 개인정보보호 책임을 명시한 서약을 받는다.", evidence_types: ["서약서", "교육이수증"], review_note: "신규 입사자 서약 누락 여부", framework: "ISMS-P" },
+  { control_id: "2.4.1", category: "물리 보안", title: "보호구역 지정", requirement: "물리적·환경적 위협으로부터 정보자산을 보호하기 위해 보호구역을 지정하고 출입을 통제한다.", evidence_types: ["출입기록", "도면"], review_note: "보호구역 등급·출입권한 매트릭스", framework: "ISMS-P" },
+  { control_id: "2.5.1", category: "접근 통제", title: "사용자 계정 관리", requirement: "정보시스템 및 개인정보처리시스템 접근 계정의 등록·변경·삭제 절차를 수립하고 권한을 최소화한다.", evidence_types: ["접근기록", "계정목록"], review_note: "퇴직자 계정 회수 적시성", framework: "ISMS-P" },
+  { control_id: "2.5.3", category: "접근 통제", title: "사용자 인증", requirement: "정보시스템 접근 시 안전한 인증수단(2단계 인증 등)을 적용한다.", evidence_types: ["설정값", "접근기록"], review_note: "관리자 MFA 적용 범위", framework: "ISMS-P" },
+  { control_id: "2.6.1", category: "접근 통제", title: "네트워크 접근", requirement: "네트워크 영역을 구분하고 접근통제 정책에 따라 비인가 접근을 차단한다.", evidence_types: ["방화벽정책", "설정값"], review_note: "내·외부 망 분리·ACL 룰", framework: "ISMS-P" },
+
+  // 3. 암호/운영/사고대응
+  { control_id: "2.7.1", category: "암호화", title: "암호정책 적용", requirement: "개인정보 및 중요정보를 보호하기 위한 암호화 정책을 수립하고 저장·전송 구간에 적용한다.", evidence_types: ["설정값", "정책문서"], review_note: "주민번호·비밀번호 암호화 알고리즘", framework: "ISMS-P" },
+  { control_id: "2.9.1", category: "운영 보안", title: "변경관리", requirement: "정보시스템 변경에 따른 영향을 분석하고 통제된 절차에 따라 변경을 수행한다.", evidence_types: ["변경요청서", "승인기록"], review_note: "긴급변경 사후승인 절차", framework: "ISMS-P" },
+  { control_id: "2.9.4", category: "운영 보안", title: "로그 및 접속기록 관리", requirement: "개인정보처리시스템 접속기록을 1년 이상(또는 법령 기준) 보관하고 위·변조를 방지한다.", evidence_types: ["접근기록", "설정값"], review_note: "로그 보관기간·무결성 보장", framework: "ISMS-P" },
+  { control_id: "2.10.1", category: "보안 시스템 운영", title: "보안시스템 운영", requirement: "백신·침입차단 등 보안시스템을 도입·운영하고 정책을 정기적으로 점검한다.", evidence_types: ["설정값", "점검표"], review_note: "패턴 업데이트 주기·예외 처리", framework: "ISMS-P" },
+  { control_id: "2.11.1", category: "사고 예방 및 대응", title: "사고 예방 및 대응체계 구축", requirement: "침해사고 및 개인정보 유출에 대비한 대응 절차와 비상연락체계를 수립한다.", evidence_types: ["대응절차서", "연락망"], review_note: "신고 시한(72시간 등) 준수 절차", framework: "ISMS-P" },
+  { control_id: "2.12.1", category: "재해복구", title: "재해·재난 대비 체계", requirement: "핵심 서비스의 연속성을 위해 복구 목표(RTO/RPO)를 정의하고 대응 체계를 마련한다.", evidence_types: ["BCP문서", "훈련기록"], review_note: "복구훈련 주기·결과 반영", framework: "ISMS-P" },
+
+  // 4. 개인정보 처리단계별 요구사항
+  { control_id: "3.1.1", category: "개인정보 수집 시 보호조치", title: "개인정보 수집·이용", requirement: "개인정보 수집 시 동의 절차를 마련하고 수집 목적·항목을 최소화한다.", evidence_types: ["동의서", "정책문서"], review_note: "필수·선택 동의 분리 여부", framework: "ISMS-P" },
+  { control_id: "3.2.1", category: "개인정보 보유·이용 시 보호조치", title: "개인정보 현황관리", requirement: "보유 중인 개인정보의 현황을 관리하고 목적 외 이용을 통제한다.", evidence_types: ["처리현황", "접근기록"], review_note: "목적외 이용 통제·기록", framework: "ISMS-P" },
+  { control_id: "3.4.1", category: "개인정보 파기 시 보호조치", title: "개인정보 파기", requirement: "보유기간이 경과하거나 목적이 달성된 개인정보를 복구 불가능한 방법으로 파기한다.", evidence_types: ["파기대장", "정책문서"], review_note: "파기 주기·파기 방법 증빙", framework: "ISMS-P" }
+];
+
+/* ---------------------------------------------------------------------------
+   2) 외주 납품 정책문서 템플릿 코퍼스 (과업지시서 §2.2)
+   치환 변수: {{조직명}} {{시행일}} {{책임자}} {{버전}}
+   --------------------------------------------------------------------------- */
+const POLICY_TEMPLATES = [
+  {
+    id: "POL-001",
+    title: "정보보호 및 개인정보보호 정책",
+    mapped_controls: ["1.1.1", "2.1.1"],
+    body:
+`# 정보보호 및 개인정보보호 정책
+
+조직명: {{조직명}}
+문서버전: {{버전}}
+시행일: {{시행일}}
+정보보호 최고책임자: {{책임자}}
+
+## 1. 목적
+본 정책은 {{조직명}}(이하 "회사")의 정보자산을 내·외부 위협으로부터 보호하고,
+개인정보를 안전하게 처리하기 위한 최상위 기준을 정함을 목적으로 한다.
+
+## 2. 적용범위
+본 정책은 회사의 모든 임직원, 외부 위탁자 및 회사가 운영하는 전 정보시스템에 적용한다.
+
+## 3. 정보보호 원칙
+1) 회사는 정보자산의 기밀성·무결성·가용성을 보장한다.
+2) 회사는 법령 및 인증 기준(ISMS-P)을 준수한다.
+3) 회사는 위험기반 접근을 통해 보호대책을 수립·운영한다.
+
+## 4. 책임과 권한
+- 정보보호 최고책임자({{책임자}})는 관리체계 수립·운영을 총괄한다.
+- 전 임직원은 본 정책 및 관련 지침을 준수할 의무가 있다.
+
+## 5. 정책의 검토
+본 정책은 연 1회 이상 타당성을 검토하고 필요 시 개정한다.
+
+본 정책은 {{시행일}}부터 시행한다.`
+  },
+  {
+    id: "POL-002",
+    title: "접근통제 지침",
+    mapped_controls: ["2.5.1", "2.5.3", "2.6.1"],
+    body:
+`# 접근통제 지침
+
+조직명: {{조직명}}
+문서버전: {{버전}}
+시행일: {{시행일}}
+승인: {{책임자}}
+
+## 1. 목적
+{{조직명}}의 정보시스템 및 개인정보처리시스템에 대한 접근을 통제하여
+비인가 접근으로 인한 정보 유출·훼손을 방지한다.
+
+## 2. 계정 관리
+1) 사용자 계정은 업무상 필요 최소 권한으로 부여한다.
+2) 입사·부서이동·퇴직 시 계정의 등록·변경·삭제를 지체 없이 수행한다.
+3) 미사용 계정은 주기적으로 점검하여 회수한다.
+
+## 3. 사용자 인증
+1) 관리자 및 개인정보취급자 접근 시 2단계 인증을 적용한다.
+2) 비밀번호는 회사가 정한 복잡도·변경주기 기준을 따른다.
+
+## 4. 네트워크 접근통제
+1) 내부망과 외부망을 분리하고 접근통제 정책(ACL)을 적용한다.
+2) 원격 접근은 VPN 등 보안 채널을 통해서만 허용한다.
+
+본 지침은 {{시행일}}부터 시행한다.`
+  },
+  {
+    id: "POL-003",
+    title: "정보자산 관리 지침",
+    mapped_controls: ["1.2.1"],
+    body:
+`# 정보자산 관리 지침
+
+조직명: {{조직명}}
+문서버전: {{버전}}
+시행일: {{시행일}}
+관리책임자: {{책임자}}
+
+## 1. 목적
+{{조직명}}의 정보자산을 식별·분류·관리하여 자산의 보호 수준을 적정하게 유지한다.
+
+## 2. 자산 식별 및 목록 관리
+1) 모든 정보자산은 자산목록에 등록하고 자산관리 담당자를 지정한다.
+2) 자산목록은 변경 발생 시 갱신하며 연 1회 이상 전수 점검한다.
+
+## 3. 자산 중요도 분류
+1) 기밀성·무결성·가용성을 기준으로 중요도를 산정한다.
+2) 중요도 등급에 따라 차등 보호대책을 적용한다.
+
+본 지침은 {{시행일}}부터 시행한다.`
+  },
+  {
+    id: "POL-004",
+    title: "침해사고 대응 절차서",
+    mapped_controls: ["2.11.1"],
+    body:
+`# 침해사고 대응 절차서
+
+조직명: {{조직명}}
+문서버전: {{버전}}
+시행일: {{시행일}}
+대응총괄: {{책임자}}
+
+## 1. 목적
+{{조직명}}에서 발생하는 침해사고 및 개인정보 유출에 신속·체계적으로 대응한다.
+
+## 2. 대응 단계
+1) 탐지·접수 → 2) 초동 분석·등급 산정 → 3) 차단·격리 → 4) 복구 → 5) 사후 분석·재발방지
+
+## 3. 신고 및 통지
+1) 개인정보 유출 인지 시 관계 법령에 따른 시한 내 신고·통지를 수행한다.
+2) 비상연락망에 따라 경영진 및 유관 부서에 즉시 보고한다.
+
+## 4. 사후관리
+사고 종료 후 원인 분석 결과를 정책·보호대책에 반영한다.
+
+본 절차서는 {{시행일}}부터 시행한다.`
+  },
+  {
+    id: "POL-005",
+    title: "개인정보 파기 지침",
+    mapped_controls: ["3.4.1"],
+    body:
+`# 개인정보 파기 지침
+
+조직명: {{조직명}}
+문서버전: {{버전}}
+시행일: {{시행일}}
+책임자: {{책임자}}
+
+## 1. 목적
+보유기간이 경과하거나 처리목적이 달성된 개인정보를 안전하게 파기한다.
+
+## 2. 파기 대상 및 시기
+1) 보유기간 경과·목적 달성 시 지체 없이(5일 이내 등 내부기준) 파기한다.
+2) 파기 대상·시기·방법을 파기대장에 기록한다.
+
+## 3. 파기 방법
+1) 전자적 파일: 복구 불가능한 기술적 방법으로 영구 삭제한다.
+2) 출력물: 파쇄 또는 소각한다.
+
+본 지침은 {{시행일}}부터 시행한다.`
+  }
+];
+
+/* ---------------------------------------------------------------------------
+   3) 상태 관리 (localStorage 영속)
+   --------------------------------------------------------------------------- */
+const STORAGE_KEY = "guardrail.state.v1";
+
+function defaultState() {
+  const controls = {};
+  CONTROL_LIBRARY.forEach(c => { controls[c.control_id] = { status: "none" }; }); // none | met | partial | na
+  return {
+    org: { name: "", responsible: "", effectiveDate: "", version: "1.0" },
+    framework: "ISMS-P",
+    controls,                 // control_id -> { status }
+    evidences: [],            // {id,name,type,dataUrl,size,control_id,version,expiry,uploadedAt}
+    generatedPolicies: [],    // {id,templateId,title,body,createdAt}
+    workflow: { step: 1, completed: { 1:false,2:false,3:false,4:false } },
+    activity: []              // {ts, msg}
+  };
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return defaultState();
+    const parsed = JSON.parse(raw);
+    // 안전 병합 (스키마 변동 대비)
+    const base = defaultState();
+    return {
+      ...base, ...parsed,
+      org: { ...base.org, ...(parsed.org||{}) },
+      controls: { ...base.controls, ...(parsed.controls||{}) },
+      workflow: { ...base.workflow, ...(parsed.workflow||{}), completed: { ...base.workflow.completed, ...((parsed.workflow||{}).completed||{}) } }
+    };
+  } catch (e) {
+    console.warn("상태 로드 실패, 기본값 사용", e);
+    return defaultState();
+  }
+}
+
+let state = loadState();
+
+function saveState() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch (e) { console.warn("상태 저장 실패", e); }
+}
+
+function logActivity(msg) {
+  state.activity.unshift({ ts: new Date().toISOString(), msg });
+  state.activity = state.activity.slice(0, 50);
+}
+
+/* ---------------------------------------------------------------------------
+   4) 계산 로직
+   --------------------------------------------------------------------------- */
+function controlsByCategory() {
+  const map = {};
+  CONTROL_LIBRARY.forEach(c => {
+    if (!map[c.category]) map[c.category] = [];
+    map[c.category].push(c);
+  });
+  return map;
+}
+
+function readinessStats() {
+  let met = 0, partial = 0, na = 0, none = 0;
+  CONTROL_LIBRARY.forEach(c => {
+    const s = (state.controls[c.control_id] || {}).status || "none";
+    if (s === "met") met++;
+    else if (s === "partial") partial++;
+    else if (s === "na") na++;
+    else none++;
+  });
+  const total = CONTROL_LIBRARY.length;
+  const applicable = total - na;
+  // 준비율: 충족 1.0 + 부분충족 0.5, 분모는 해당없음 제외
+  const weighted = met + partial * 0.5;
+  const score = applicable === 0 ? 0 : Math.round((weighted / applicable) * 1000) / 10;
+  return { met, partial, na, none, total, applicable, score };
+}
+
+function gapList() {
+  // 미흡(none/partial) 항목을 우선순위로 (none 우선, 증적유형 많은 순)
+  return CONTROL_LIBRARY
+    .map(c => ({ c, status: (state.controls[c.control_id]||{}).status || "none" }))
+    .filter(x => x.status === "none" || x.status === "partial")
+    .sort((a, b) => {
+      if (a.status !== b.status) return a.status === "none" ? -1 : 1;
+      return b.c.evidence_types.length - a.c.evidence_types.length;
+    });
+}
+
+function evidenceCountFor(controlId) {
+  return state.evidences.filter(e => e.control_id === controlId).length;
+}
+
+/* ---------------------------------------------------------------------------
+   5) 렌더링
+   --------------------------------------------------------------------------- */
+let currentView = "dashboard"; // dashboard | checklist | evidence | policy | workflow
+
+const STATUS_META = {
+  met: { label: "충족", cls: "bg-emerald-100 text-emerald-700 border-emerald-300" },
+  partial: { label: "부분충족", cls: "bg-amber-100 text-amber-700 border-amber-300" },
+  na: { label: "해당없음", cls: "bg-slate-200 text-slate-500 border-slate-300" },
+  none: { label: "미점검", cls: "bg-rose-100 text-rose-700 border-rose-300" }
+};
+
+function el(html) { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstChild; }
+
+function render() {
+  const root = document.getElementById("app");
+  root.innerHTML = "";
+  root.appendChild(renderShell());
+  saveState();
+}
+
+function renderShell() {
+  const stats = readinessStats();
+  const navItems = [
+    { id: "dashboard", icon: "📊", label: "갭분석 대시보드" },
+    { id: "checklist", icon: "✅", label: "통제 체크리스트" },
+    { id: "evidence", icon: "📎", label: "증적 관리" },
+    { id: "policy", icon: "📄", label: "정책문서 생성" },
+    { id: "workflow", icon: "🧭", label: "준비 워크플로" }
+  ];
+  const wrap = el(`<div class="min-h-screen flex"></div>`);
+
+  // Sidebar
+  const side = el(`
+    <aside class="w-64 bg-slate-900 text-slate-200 flex flex-col shrink-0">
+      <div class="px-5 py-5 border-b border-slate-700">
+        <div class="flex items-center gap-2">
+          <div class="w-9 h-9 rounded-lg bg-indigo-500 flex items-center justify-center text-white font-bold">G</div>
+          <div>
+            <div class="font-bold text-white leading-tight">가드레일</div>
+            <div class="text-[11px] text-slate-400">컴플라이언스 자동화 · v1</div>
+          </div>
+        </div>
+      </div>
+      <nav class="flex-1 py-3" id="nav"></nav>
+      <div class="px-5 py-4 border-t border-slate-700 text-xs text-slate-400">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span> 게스트 모드 (무로그인)
+        </div>
+        <div>프레임워크: <span class="text-slate-200 font-medium">${state.framework}</span></div>
+      </div>
+    </aside>`);
+  const nav = side.querySelector("#nav");
+  navItems.forEach(it => {
+    const active = currentView === it.id;
+    const b = el(`<button class="w-full text-left px-5 py-2.5 flex items-center gap-3 text-sm ${active ? "bg-slate-800 text-white border-l-2 border-indigo-400" : "text-slate-300 hover:bg-slate-800"}">
+      <span>${it.icon}</span><span>${it.label}</span></button>`);
+    b.onclick = () => { currentView = it.id; render(); };
+    nav.appendChild(b);
+  });
+  wrap.appendChild(side);
+
+  // Main
+  const main = el(`<div class="flex-1 flex flex-col min-w-0"></div>`);
+  // Top bar
+  const top = el(`
+    <header class="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between">
+      <div>
+        <h1 class="text-lg font-bold text-slate-800" id="page-title"></h1>
+        <p class="text-xs text-slate-500" id="page-sub"></p>
+      </div>
+      <div class="flex items-center gap-4">
+        <div class="text-right">
+          <div class="text-[11px] text-slate-500">인증 준비율</div>
+          <div class="text-2xl font-extrabold ${stats.score>=70?'text-emerald-600':stats.score>=40?'text-amber-600':'text-rose-600'}">${stats.score}%</div>
+        </div>
+        <button id="reset-btn" class="text-xs px-3 py-2 rounded-md border border-slate-300 text-slate-500 hover:bg-slate-50">데이터 초기화</button>
+      </div>
+    </header>`);
+  top.querySelector("#reset-btn").onclick = () => {
+    if (confirm("모든 진행 데이터를 초기화해요. 계속할까요?")) {
+      state = defaultState(); saveState(); render();
+    }
+  };
+  main.appendChild(top);
+
+  const titles = {
+    dashboard: ["갭분석 대시보드", "분류별 충족 현황과 미흡 항목 우선순위를 한눈에 볼 수 있어요"],
+    checklist: ["통제 체크리스트", "외주 통제 라이브러리를 불러와 항목별 상태를 점검해요"],
+    evidence: ["증적 관리", "파일을 올리고 미리 보고, 통제 매핑·버전·만료일을 함께 관리해요"],
+    policy: ["정책문서 자동생성", "외주 템플릿에 조직 변수를 채워 정책문서를 만들고 내려받아요"],
+    workflow: ["준비 워크플로", "프레임워크 선택부터 통제 점검·증적 첨부·정책 생성까지 4단계로 진행해요"]
+  };
+  top.querySelector("#page-title").textContent = titles[currentView][0];
+  top.querySelector("#page-sub").textContent = titles[currentView][1];
+
+  const content = el(`<div class="flex-1 overflow-auto scrollbar-thin p-8 bg-slate-100"></div>`);
+  let body;
+  switch (currentView) {
+    case "checklist": body = renderChecklist(); break;
+    case "evidence": body = renderEvidence(); break;
+    case "policy": body = renderPolicy(); break;
+    case "workflow": body = renderWorkflow(); break;
+    default: body = renderDashboard();
+  }
+  content.appendChild(body);
+  main.appendChild(content);
+  wrap.appendChild(main);
+  return wrap;
+}
+
+/* ---------- 대시보드 ---------- */
+function renderDashboard() {
+  const stats = readinessStats();
+  const byCat = controlsByCategory();
+  const root = el(`<div class="space-y-6"></div>`);
+
+  // KPI cards
+  const kpis = el(`<div class="grid grid-cols-4 gap-4"></div>`);
+  const cardDefs = [
+    { label: "전체 통제항목", val: stats.total, color: "text-slate-800" },
+    { label: "충족", val: stats.met, color: "text-emerald-600" },
+    { label: "부분충족", val: stats.partial, color: "text-amber-600" },
+    { label: "미점검", val: stats.none, color: "text-rose-600" }
+  ];
+  cardDefs.forEach(c => {
+    kpis.appendChild(el(`<div class="bg-white rounded-xl border border-slate-200 p-5">
+      <div class="text-xs text-slate-500 mb-1">${c.label}</div>
+      <div class="text-3xl font-extrabold ${c.color}">${c.val}</div></div>`));
+  });
+  root.appendChild(kpis);
+
+  // Gauge + activity
+  const grid = el(`<div class="grid grid-cols-3 gap-6"></div>`);
+  // Gauge
+  const pct = stats.score;
+  const gaugeColor = pct>=70?'#14AE5C':pct>=40?'#FFB331':'#F04452';
+  const gauge = el(`<div class="bg-white rounded-xl border border-slate-200 p-6 flex flex-col items-center justify-center">
+      <div class="text-sm font-semibold text-slate-700 mb-3">인증 준비율 스코어</div>
+      <svg width="180" height="180" viewBox="0 0 180 180">
+        <circle cx="90" cy="90" r="76" fill="none" stroke="#E5E8EB" stroke-width="16"/>
+        <circle cx="90" cy="90" r="76" fill="none" stroke="${gaugeColor}" stroke-width="16"
+          stroke-linecap="round" stroke-dasharray="${2*Math.PI*76}"
+          stroke-dashoffset="${2*Math.PI*76*(1-pct/100)}" transform="rotate(-90 90 90)"/>
+        <text x="90" y="86" text-anchor="middle" font-size="34" font-weight="800" fill="${gaugeColor}">${pct}%</text>
+        <text x="90" y="110" text-anchor="middle" font-size="12" fill="#4E5968">해당 통제 ${stats.applicable}건 기준</text>
+      </svg>
+      <div class="text-xs text-slate-500 mt-2">충족 1.0 · 부분충족 0.5 가중, 해당없음 제외</div>
+    </div>`);
+  grid.appendChild(gauge);
+
+  // Category bars (span 2)
+  const catWrap = el(`<div class="col-span-2 bg-white rounded-xl border border-slate-200 p-6">
+      <div class="text-sm font-semibold text-slate-700 mb-4">분류별 충족 현황</div>
+      <div class="space-y-3" id="catbars"></div></div>`);
+  const cb = catWrap.querySelector("#catbars");
+  Object.entries(byCat).forEach(([cat, list]) => {
+    let met=0, partial=0, na=0, none=0;
+    list.forEach(c => { const s=(state.controls[c.control_id]||{}).status||"none";
+      if(s==="met")met++; else if(s==="partial")partial++; else if(s==="na")na++; else none++; });
+    const tot = list.length;
+    const w = (n)=> tot===0?0:(n/tot*100);
+    cb.appendChild(el(`<div>
+      <div class="flex justify-between text-xs mb-1"><span class="text-slate-700 font-medium">${cat}</span><span class="text-slate-400">${met}/${tot} 충족</span></div>
+      <div class="flex h-3 rounded-full overflow-hidden bg-slate-100">
+        <div style="width:${w(met)}%" class="bg-emerald-500"></div>
+        <div style="width:${w(partial)}%" class="bg-amber-400"></div>
+        <div style="width:${w(none)}%" class="bg-rose-300"></div>
+        <div style="width:${w(na)}%" class="bg-slate-300"></div>
+      </div></div>`));
+  });
+  grid.appendChild(catWrap);
+  root.appendChild(grid);
+
+  // Gap priority table
+  const gaps = gapList();
+  const gapWrap = el(`<div class="bg-white rounded-xl border border-slate-200 p-6">
+      <div class="flex items-center justify-between mb-4">
+        <div class="text-sm font-semibold text-slate-700">미흡 항목 우선순위 (갭)</div>
+        <div class="text-xs text-slate-400">${gaps.length}건 조치 필요</div>
+      </div>
+      <div id="gaptable"></div></div>`);
+  const gt = gapWrap.querySelector("#gaptable");
+  if (gaps.length === 0) {
+    gt.appendChild(el(`<div class="text-sm text-emerald-600 py-4 text-center">미흡 항목이 없어요. 모든 해당 통제가 충족 상태예요.</div>`));
+  } else {
+    const table = el(`<table class="w-full text-sm"><thead><tr class="text-left text-xs text-slate-400 border-b border-slate-200">
+      <th class="py-2 pr-2">통제ID</th><th class="pr-2">통제항목</th><th class="pr-2">분류</th><th class="pr-2">상태</th><th class="pr-2">증적</th><th>요구 증적유형</th></tr></thead><tbody></tbody></table>`);
+    const tb = table.querySelector("tbody");
+    gaps.slice(0, 12).forEach(({c, status}) => {
+      const m = STATUS_META[status];
+      tb.appendChild(el(`<tr class="border-b border-slate-50 hover:bg-slate-50">
+        <td class="py-2 pr-2 font-mono text-xs text-indigo-600">${c.control_id}</td>
+        <td class="pr-2">${c.title}</td>
+        <td class="pr-2 text-slate-500 text-xs">${c.category}</td>
+        <td class="pr-2"><span class="text-[11px] px-2 py-0.5 rounded-full border ${m.cls}">${m.label}</span></td>
+        <td class="pr-2 text-xs ${evidenceCountFor(c.control_id)>0?'text-emerald-600':'text-slate-400'}">${evidenceCountFor(c.control_id)}건</td>
+        <td class="text-xs text-slate-500">${c.evidence_types.join(", ")}</td></tr>`));
+    });
+    gt.appendChild(table);
+  }
+  root.appendChild(gapWrap);
+
+  // Activity log
+  const act = el(`<div class="bg-white rounded-xl border border-slate-200 p-6">
+      <div class="text-sm font-semibold text-slate-700 mb-3">최근 활동 로그</div>
+      <div id="actlog" class="space-y-2 max-h-48 overflow-auto scrollbar-thin"></div></div>`);
+  const al = act.querySelector("#actlog");
+  if (state.activity.length === 0) al.appendChild(el(`<div class="text-xs text-slate-400">아직 활동 기록이 없어요.</div>`));
+  state.activity.slice(0,10).forEach(a => {
+    al.appendChild(el(`<div class="flex gap-3 text-xs"><span class="text-slate-400 font-mono shrink-0">${new Date(a.ts).toLocaleString('ko-KR')}</span><span class="text-slate-600">${a.msg}</span></div>`));
+  });
+  root.appendChild(act);
+  return root;
+}
+
+/* ---------- 체크리스트 ---------- */
+function renderChecklist() {
+  const byCat = controlsByCategory();
+  const root = el(`<div class="space-y-5"></div>`);
+
+  const info = el(`<div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex items-center justify-between">
+    <div class="text-sm text-indigo-800">외주 통제 라이브러리 <b>${CONTROL_LIBRARY.length}개 항목</b>을 불러왔어요 (프레임워크: ${state.framework}) — 각 항목의 상태를 눌러서 바꿔 주세요.</div>
+    <div class="flex gap-2">
+      <button id="markmet" class="text-xs px-3 py-1.5 rounded-md bg-emerald-600 text-white">데모 시드: 절반 충족</button>
+    </div></div>`);
+  info.querySelector("#markmet").onclick = () => {
+    CONTROL_LIBRARY.forEach((c,i) => { state.controls[c.control_id].status = i%3===0?"partial":(i%2===0?"met":"none"); });
+    logActivity(`데모 시드 적용 — 통제 상태 일괄 설정`);
+    render();
+  };
+  root.appendChild(info);
+
+  Object.entries(byCat).forEach(([cat, list]) => {
+    const sec = el(`<div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div class="px-5 py-3 bg-slate-50 border-b border-slate-200 text-sm font-semibold text-slate-700">${cat} <span class="text-slate-400 font-normal">(${list.length})</span></div>
+      <div class="divide-y divide-slate-100" id="rows"></div></div>`);
+    const rows = sec.querySelector("#rows");
+    list.forEach(c => {
+      const status = (state.controls[c.control_id]||{}).status || "none";
+      const row = el(`<div class="px-5 py-3">
+        <div class="flex items-start justify-between gap-4">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs text-indigo-600">${c.control_id}</span>
+              <span class="font-medium text-sm text-slate-800">${c.title}</span>
+            </div>
+            <div class="text-xs text-slate-500 mt-1">${c.requirement}</div>
+            <div class="text-[11px] text-slate-400 mt-1">요구 증적: ${c.evidence_types.join(", ")} · 점검 포인트: ${c.review_note}</div>
+          </div>
+          <div class="flex gap-1 shrink-0" id="btns"></div>
+        </div></div>`);
+      const btns = row.querySelector("#btns");
+      ["met","partial","na","none"].forEach(st => {
+        const m = STATUS_META[st];
+        const active = status === st;
+        const b = el(`<button class="text-[11px] px-2 py-1 rounded-md border ${active? m.cls+' font-semibold' : 'border-slate-200 text-slate-400 hover:bg-slate-50'}">${m.label}</button>`);
+        b.onclick = () => {
+          state.controls[c.control_id].status = st;
+          logActivity(`통제 ${c.control_id} 상태 변경 → ${m.label}`);
+          render();
+        };
+        btns.appendChild(b);
+      });
+      rows.appendChild(row);
+    });
+    root.appendChild(sec);
+  });
+  return root;
+}
+
+/* ---------- 증적 관리 ---------- */
+function renderEvidence() {
+  const root = el(`<div class="grid grid-cols-3 gap-6"></div>`);
+
+  // Upload form
+  const form = el(`<div class="bg-white rounded-xl border border-slate-200 p-5">
+    <div class="text-sm font-semibold text-slate-700 mb-4">증적 업로드</div>
+    <label class="block text-xs text-slate-500 mb-1">파일 선택</label>
+    <input id="file" type="file" class="w-full text-xs mb-3 file:mr-2 file:px-3 file:py-1.5 file:rounded-md file:border-0 file:bg-indigo-600 file:text-white"/>
+    <div id="preview" class="hidden mb-3 border border-slate-200 rounded-lg p-2 bg-slate-50"></div>
+    <label class="block text-xs text-slate-500 mb-1">매핑 통제항목</label>
+    <select id="ctrl" class="w-full text-xs border border-slate-300 rounded-md px-2 py-1.5 mb-3"></select>
+    <div class="grid grid-cols-2 gap-2 mb-3">
+      <div><label class="block text-xs text-slate-500 mb-1">버전</label><input id="ver" value="1.0" class="w-full text-xs border border-slate-300 rounded-md px-2 py-1.5"/></div>
+      <div><label class="block text-xs text-slate-500 mb-1">만료일</label><input id="exp" type="date" class="w-full text-xs border border-slate-300 rounded-md px-2 py-1.5"/></div>
+    </div>
+    <button id="add" class="w-full text-sm bg-indigo-600 text-white py-2 rounded-md hover:bg-indigo-700">증적 등록</button>
+  </div>`);
+  const sel = form.querySelector("#ctrl");
+  CONTROL_LIBRARY.forEach(c => sel.appendChild(el(`<option value="${c.control_id}">${c.control_id} — ${c.title}</option>`)));
+  let pendingFile = null;
+  const fileInput = form.querySelector("#file");
+  const preview = form.querySelector("#preview");
+  fileInput.onchange = (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      pendingFile = { name: f.name, size: f.size, dataUrl: reader.result, mime: f.type };
+      preview.classList.remove("hidden");
+      preview.innerHTML = "";
+      if (f.type.startsWith("image/")) {
+        preview.appendChild(el(`<img src="${reader.result}" class="max-h-32 mx-auto rounded"/>`));
+      } else {
+        preview.appendChild(el(`<div class="text-xs text-slate-600 py-3 text-center">📄 ${f.name}<div class="text-[10px] text-slate-400">${(f.size/1024).toFixed(1)} KB · 미리보기를 지원하지 않는 형식이에요</div></div>`));
+      }
+    };
+    reader.readAsDataURL(f);
+  };
+  form.querySelector("#add").onclick = () => {
+    if (!pendingFile) { alert("파일을 먼저 선택해 주세요."); return; }
+    const cid = sel.value;
+    state.evidences.unshift({
+      id: "EV-" + Date.now(),
+      name: pendingFile.name, type: pendingFile.mime || "file",
+      dataUrl: pendingFile.dataUrl, size: pendingFile.size,
+      control_id: cid, version: form.querySelector("#ver").value || "1.0",
+      expiry: form.querySelector("#exp").value || "",
+      uploadedAt: new Date().toISOString()
+    });
+    logActivity(`증적 등록 — ${pendingFile.name} → 통제 ${cid}`);
+    render();
+  };
+  root.appendChild(form);
+
+  // Evidence list (span 2)
+  const listWrap = el(`<div class="col-span-2 bg-white rounded-xl border border-slate-200 p-5">
+    <div class="flex items-center justify-between mb-4">
+      <div class="text-sm font-semibold text-slate-700">등록된 증적</div>
+      <div class="text-xs text-slate-400">${state.evidences.length}건</div>
+    </div>
+    <div id="evlist" class="space-y-2"></div></div>`);
+  const list = listWrap.querySelector("#evlist");
+  if (state.evidences.length === 0) {
+    list.appendChild(el(`<div class="text-sm text-slate-400 py-8 text-center">아직 등록된 증적이 없어요. 왼쪽에서 파일을 올려 주세요.</div>`));
+  }
+  state.evidences.forEach(ev => {
+    const ctrl = CONTROL_LIBRARY.find(c => c.control_id === ev.control_id);
+    const expired = ev.expiry && new Date(ev.expiry) < new Date();
+    const isImg = (ev.type||"").startsWith("image/");
+    const item = el(`<div class="flex items-center gap-3 border border-slate-200 rounded-lg p-3">
+      <div class="w-12 h-12 rounded-md bg-slate-100 flex items-center justify-center overflow-hidden shrink-0">
+        ${isImg ? `<img src="${ev.dataUrl}" class="w-full h-full object-cover"/>` : `<span class="text-xl">📄</span>`}
+      </div>
+      <div class="min-w-0 flex-1">
+        <div class="text-sm font-medium text-slate-800 truncate">${ev.name}</div>
+        <div class="text-xs text-slate-500">통제 <span class="font-mono text-indigo-600">${ev.control_id}</span> · ${ctrl?ctrl.title:''} · v${ev.version} · ${(ev.size/1024).toFixed(1)}KB</div>
+        <div class="text-[11px] ${expired?'text-rose-600 font-semibold':'text-slate-400'}">만료일: ${ev.expiry||'설정 안 함'}${expired?' (만료됐어요)':''} · 등록 ${new Date(ev.uploadedAt).toLocaleDateString('ko-KR')}</div>
+      </div>
+      <button class="text-xs text-rose-500 hover:underline shrink-0" id="del">삭제</button>
+    </div>`);
+    item.querySelector("#del").onclick = () => {
+      state.evidences = state.evidences.filter(x => x.id !== ev.id);
+      logActivity(`증적 삭제 — ${ev.name}`);
+      render();
+    };
+    list.appendChild(item);
+  });
+  root.appendChild(listWrap);
+  return root;
+}
+
+/* ---------- 정책문서 생성 ---------- */
+function fillTemplate(body) {
+  const o = state.org;
+  return body
+    .replaceAll("{{조직명}}", o.name || "(조직명 미입력)")
+    .replaceAll("{{시행일}}", o.effectiveDate || "(시행일 미입력)")
+    .replaceAll("{{책임자}}", o.responsible || "(책임자 미입력)")
+    .replaceAll("{{버전}}", o.version || "1.0");
+}
+
+function renderPolicy() {
+  const root = el(`<div class="grid grid-cols-3 gap-6"></div>`);
+
+  // Org form + template list
+  const left = el(`<div class="space-y-6"></div>`);
+  const orgForm = el(`<div class="bg-white rounded-xl border border-slate-200 p-5">
+    <div class="text-sm font-semibold text-slate-700 mb-4">조직 변수 (치환값)</div>
+    <label class="block text-xs text-slate-500 mb-1">조직명 {{조직명}}</label>
+    <input id="oname" value="${state.org.name}" class="w-full text-sm border border-slate-300 rounded-md px-2 py-1.5 mb-3" placeholder="예: 주식회사 OO"/>
+    <label class="block text-xs text-slate-500 mb-1">책임자 {{책임자}}</label>
+    <input id="oresp" value="${state.org.responsible}" class="w-full text-sm border border-slate-300 rounded-md px-2 py-1.5 mb-3" placeholder="예: 홍길동 CISO"/>
+    <div class="grid grid-cols-2 gap-2 mb-3">
+      <div><label class="block text-xs text-slate-500 mb-1">시행일</label><input id="odate" type="date" value="${state.org.effectiveDate}" class="w-full text-sm border border-slate-300 rounded-md px-2 py-1.5"/></div>
+      <div><label class="block text-xs text-slate-500 mb-1">버전</label><input id="over" value="${state.org.version}" class="w-full text-sm border border-slate-300 rounded-md px-2 py-1.5"/></div>
+    </div>
+    <button id="savorg" class="w-full text-sm bg-slate-700 text-white py-2 rounded-md hover:bg-slate-800">조직 변수 저장</button>
+  </div>`);
+  orgForm.querySelector("#savorg").onclick = () => {
+    state.org = {
+      name: orgForm.querySelector("#oname").value,
+      responsible: orgForm.querySelector("#oresp").value,
+      effectiveDate: orgForm.querySelector("#odate").value,
+      version: orgForm.querySelector("#over").value || "1.0"
+    };
+    logActivity(`조직 변수 저장 — ${state.org.name||'(미입력)'}`);
+    render();
+  };
+  left.appendChild(orgForm);
+
+  const tplWrap = el(`<div class="bg-white rounded-xl border border-slate-200 p-5">
+    <div class="text-sm font-semibold text-slate-700 mb-3">외주 템플릿 코퍼스 (${POLICY_TEMPLATES.length}종)</div>
+    <div class="space-y-2" id="tpls"></div></div>`);
+  const tpls = tplWrap.querySelector("#tpls");
+  POLICY_TEMPLATES.forEach(t => {
+    const row = el(`<div class="flex items-center justify-between border border-slate-200 rounded-lg px-3 py-2">
+      <div><div class="text-sm font-medium text-slate-800">${t.title}</div>
+        <div class="text-[11px] text-slate-400">${t.id} · 매핑통제: ${t.mapped_controls.join(", ")}</div></div>
+      <button class="text-xs px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700" id="gen">생성</button></div>`);
+    row.querySelector("#gen").onclick = () => {
+      const filled = fillTemplate(t.body);
+      state.generatedPolicies.unshift({
+        id: "GEN-" + Date.now(), templateId: t.id, title: t.title,
+        body: filled, createdAt: new Date().toISOString()
+      });
+      logActivity(`정책문서 생성 — ${t.title}`);
+      render();
+    };
+    tpls.appendChild(row);
+  });
+  left.appendChild(tplWrap);
+  root.appendChild(left);
+
+  // Generated docs (span 2)
+  const right = el(`<div class="col-span-2 bg-white rounded-xl border border-slate-200 p-5">
+    <div class="flex items-center justify-between mb-4">
+      <div class="text-sm font-semibold text-slate-700">생성된 정책문서</div>
+      <div class="text-xs text-slate-400">${state.generatedPolicies.length}건</div>
+    </div>
+    <div id="gens" class="space-y-3"></div></div>`);
+  const gens = right.querySelector("#gens");
+  if (state.generatedPolicies.length === 0) {
+    gens.appendChild(el(`<div class="text-sm text-slate-400 py-8 text-center">왼쪽에서 조직 변수를 저장하고 템플릿을 만들어 보세요.</div>`));
+  }
+  state.generatedPolicies.forEach(g => {
+    const item = el(`<div class="border border-slate-200 rounded-lg">
+      <div class="flex items-center justify-between px-4 py-2 bg-slate-50 border-b border-slate-200">
+        <div class="text-sm font-medium text-slate-800">${g.title} <span class="text-[11px] text-slate-400 font-normal">${g.templateId} · ${new Date(g.createdAt).toLocaleString('ko-KR')}</span></div>
+        <div class="flex gap-2">
+          <button class="text-xs px-2 py-1 rounded border border-slate-300 text-slate-600 hover:bg-slate-100" id="dl">다운로드(.md)</button>
+          <button class="text-xs px-2 py-1 rounded border border-rose-200 text-rose-500 hover:bg-rose-50" id="rm">삭제</button>
+        </div>
+      </div>
+      <pre class="text-xs text-slate-700 whitespace-pre-wrap p-4 max-h-72 overflow-auto scrollbar-thin">${g.body.replace(/</g,"&lt;")}</pre>
+    </div>`);
+    item.querySelector("#dl").onclick = () => {
+      const blob = new Blob([g.body], { type: "text/markdown;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `${g.title}.md`; a.click();
+      URL.revokeObjectURL(url);
+      logActivity(`정책문서 다운로드 — ${g.title}`);
+    };
+    item.querySelector("#rm").onclick = () => {
+      state.generatedPolicies = state.generatedPolicies.filter(x => x.id !== g.id);
+      render();
+    };
+    gens.appendChild(item);
+  });
+  root.appendChild(right);
+  return root;
+}
+
+/* ---------- 워크플로 ---------- */
+function renderWorkflow() {
+  const stats = readinessStats();
+  const root = el(`<div class="space-y-6"></div>`);
+
+  const steps = [
+    { n:1, title:"프레임워크 선택", desc:"인증 대상 프레임워크를 정해요." },
+    { n:2, title:"통제 점검", desc:"통제 체크리스트에서 항목별 상태를 점검해요." },
+    { n:3, title:"증적 첨부", desc:"통제별 증적을 올리고 매핑해요." },
+    { n:4, title:"정책 생성 & 준비율 확인", desc:"정책문서를 만들고 준비율을 확인해요." }
+  ];
+  const cur = state.workflow.step;
+
+  // Stepper
+  const stepper = el(`<div class="bg-white rounded-xl border border-slate-200 p-6">
+    <div class="flex items-center justify-between" id="stepbar"></div></div>`);
+  const bar = stepper.querySelector("#stepbar");
+  steps.forEach((s, i) => {
+    const done = state.workflow.completed[s.n];
+    const active = cur === s.n;
+    const node = el(`<div class="flex-1 flex items-center ${i<steps.length-1?'':''}">
+      <div class="flex flex-col items-center text-center cursor-pointer" id="node">
+        <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${done?'bg-emerald-500 text-white':active?'bg-indigo-600 text-white':'bg-slate-200 text-slate-500'}">${done?'✓':s.n}</div>
+        <div class="text-xs font-medium mt-2 ${active?'text-indigo-700':'text-slate-600'}">${s.title}</div>
+      </div>
+      ${i<steps.length-1?`<div class="flex-1 h-0.5 mx-2 ${done?'bg-emerald-400':'bg-slate-200'}"></div>`:''}
+    </div>`);
+    node.querySelector("#node").onclick = () => { state.workflow.step = s.n; render(); };
+    bar.appendChild(node);
+  });
+  root.appendChild(stepper);
+
+  // Step content
+  const panel = el(`<div class="bg-white rounded-xl border border-slate-200 p-6"></div>`);
+  const s = steps[cur-1];
+  panel.appendChild(el(`<div class="text-sm font-bold text-slate-800 mb-1">${cur}단계 · ${s.title}</div><div class="text-xs text-slate-500 mb-5">${s.desc}</div>`));
+
+  const inner = el(`<div></div>`);
+  if (cur === 1) {
+    const fwWrap = el(`<div class="flex gap-3" id="fws"></div>`);
+    ["ISMS-P","CSAP"].forEach(fw => {
+      const active = state.framework === fw;
+      const b = el(`<button class="px-5 py-4 rounded-lg border text-left ${active?'border-indigo-500 bg-indigo-50':'border-slate-200 hover:bg-slate-50'}">
+        <div class="font-semibold text-sm ${active?'text-indigo-700':'text-slate-700'}">${fw}</div>
+        <div class="text-xs text-slate-500 mt-1">${fw==='ISMS-P'?'정보보호 및 개인정보보호 관리체계 인증':'클라우드 보안 인증제'}</div>
+        ${active?'<div class="text-[11px] text-indigo-600 mt-2">✓ 선택됨 · 통제 라이브러리 로드</div>':''}</button>`);
+      b.onclick = () => { state.framework = fw; logActivity(`프레임워크 선택 — ${fw}`); render(); };
+      fwWrap.appendChild(b);
+    });
+    inner.appendChild(fwWrap);
+    inner.appendChild(el(`<div class="text-xs text-slate-400 mt-4">v1은 단일 프레임워크로 동작하는 PoC예요. (CSAP 통제 라이브러리는 외주 납품 시 동일 스키마로 교체돼요)</div>`));
+  } else if (cur === 2) {
+    inner.appendChild(el(`<div class="text-sm text-slate-600 mb-3">현재 점검 현황: 충족 ${stats.met} · 부분충족 ${stats.partial} · 미점검 ${stats.none} · 해당없음 ${stats.na}</div>`));
+    const go = el(`<button class="text-sm px-4 py-2 rounded-md bg-indigo-600 text-white">통제 체크리스트로 이동</button>`);
+    go.onclick = () => { currentView = "checklist"; render(); };
+    inner.appendChild(go);
+  } else if (cur === 3) {
+    inner.appendChild(el(`<div class="text-sm text-slate-600 mb-3">등록된 증적: <b>${state.evidences.length}</b>건 · 증적 보유 통제: ${new Set(state.evidences.map(e=>e.control_id)).size}개</div>`));
+    const go = el(`<button class="text-sm px-4 py-2 rounded-md bg-indigo-600 text-white">증적 관리로 이동</button>`);
+    go.onclick = () => { currentView = "evidence"; render(); };
+    inner.appendChild(go);
+  } else {
+    inner.appendChild(el(`<div class="flex items-center gap-6 mb-4">
+      <div><div class="text-xs text-slate-500">생성 정책문서</div><div class="text-2xl font-bold text-slate-800">${state.generatedPolicies.length}건</div></div>
+      <div><div class="text-xs text-slate-500">인증 준비율</div><div class="text-2xl font-bold ${stats.score>=70?'text-emerald-600':'text-amber-600'}">${stats.score}%</div></div>
+    </div>`));
+    const go = el(`<button class="text-sm px-4 py-2 rounded-md bg-indigo-600 text-white mr-2">정책 생성으로 이동</button>`);
+    go.onclick = () => { currentView = "policy"; render(); };
+    inner.appendChild(go);
+    const go2 = el(`<button class="text-sm px-4 py-2 rounded-md border border-slate-300 text-slate-600">대시보드에서 결과 확인</button>`);
+    go2.onclick = () => { currentView = "dashboard"; render(); };
+    inner.appendChild(go2);
+  }
+  panel.appendChild(inner);
+
+  // Step nav
+  const navrow = el(`<div class="flex items-center justify-between mt-6 pt-4 border-t border-slate-100"></div>`);
+  const prev = el(`<button class="text-sm px-4 py-2 rounded-md border border-slate-300 text-slate-600 ${cur===1?'opacity-40 pointer-events-none':''}">이전</button>`);
+  prev.onclick = () => { if(cur>1){ state.workflow.step = cur-1; render(); } };
+  const completeBtn = el(`<button class="text-sm px-4 py-2 rounded-md ${state.workflow.completed[cur]?'bg-emerald-100 text-emerald-700':'bg-emerald-600 text-white'}">${state.workflow.completed[cur]?'완료됨 ✓':'이 단계 완료 표시'}</button>`);
+  completeBtn.onclick = () => {
+    state.workflow.completed[cur] = !state.workflow.completed[cur];
+    logActivity(`워크플로 ${cur}단계 ${state.workflow.completed[cur]?'완료':'완료해제'}`);
+    render();
+  };
+  const next = el(`<button class="text-sm px-4 py-2 rounded-md bg-slate-800 text-white ${cur===4?'opacity-40 pointer-events-none':''}">다음 단계</button>`);
+  next.onclick = () => { if(cur<4){ state.workflow.step = cur+1; render(); } };
+  const rightBtns = el(`<div class="flex gap-2"></div>`);
+  rightBtns.appendChild(completeBtn); rightBtns.appendChild(next);
+  navrow.appendChild(prev); navrow.appendChild(rightBtns);
+  panel.appendChild(navrow);
+  root.appendChild(panel);
+  return root;
+}
+
+/* ---------------------------------------------------------------------------
+   6) 부트스트랩
+   --------------------------------------------------------------------------- */
+render();
+</script>
+</body>
+</html>

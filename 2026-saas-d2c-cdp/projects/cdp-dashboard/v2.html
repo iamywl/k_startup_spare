@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>로아스KR v2 — D2C 통합 분석 플랫폼</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // 디자인 토큰 재매핑 (Apple × Toss) — design-guide/디자인_애플_토스.md
+  tailwind.config = { theme: { extend: {
+    fontFamily: { sans: ['Pretendard','-apple-system','BlinkMacSystemFont','Apple SD Gothic Neo','sans-serif'] },
+    colors: {
+      brand:   { DEFAULT:'#3182F6', hover:'#1B64DA', light:'#E8F3FF' },
+      blue:    {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      indigo:  {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      sky:     {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      slate:   {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      gray:    {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      zinc:    {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      neutral: {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      emerald: {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      green:   {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      teal:    {50:'#E7F8EF',100:'#D2F2E0',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      amber:   {50:'#FFF6E5',100:'#FFE9C2',300:'#FFB331',400:'#FFB331',500:'#FFB331',600:'#E2991C',700:'#C77F12'},
+      yellow:  {50:'#FFF6E5',100:'#FFE9C2',300:'#FFB331',400:'#FFB331',500:'#FFB331',600:'#E2991C'},
+      orange:  {50:'#FFF6E5',100:'#FFE9C2',400:'#FFB331',500:'#FFB331',600:'#E2991C'},
+      rose:    {50:'#FEECEE',100:'#FCD9DD',300:'#F8A4AC',400:'#F04452',500:'#F04452',600:'#F04452',700:'#D6303D'},
+      red:     {50:'#FEECEE',100:'#FCD9DD',300:'#F8A4AC',400:'#F04452',500:'#F04452',600:'#F04452',700:'#D6303D'},
+    }
+  } } }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root { --brand:#3182f6; --ink:#191f28; --ink-2:#4e5968; --ink-3:#8b95a1; --bg:#F9FAFB; --line:#e5e8eb; --green:#14AE5C; --red:#F04452; }
+  body { background:var(--bg); color:var(--ink); font-family: "Pretendard", -apple-system,"Pretendard","Apple SD Gothic Neo",system-ui,sans-serif; }
+  .toss-card { background:#fff; border-radius:18px; box-shadow:0 1px 2px rgba(0,0,0,.04), 0 4px 14px rgba(17,24,39,.04); }
+  .pill { padding:3px 9px; border-radius:999px; font-size:11px; font-weight:700; }
+  .nav-side a.active { background:#eef3ff; color:var(--brand); font-weight:700; }
+  .focus-ring:focus-visible { outline:3px solid #c5d8ff; outline-offset:2px; }
+  @media print { aside, #nav-bottom, .no-print { display:none !important; } main { padding:0 !important; } }
+
+  /* ===== design-tone-components (guide §6·§7) ===== */
+  button, [role="button"], a.w-full, input[type="submit"], input[type="button"] {
+    transition: transform .12s cubic-bezier(.3,0,0,1), opacity .15s ease, box-shadow .15s ease, background-color .15s ease;
+  }
+  button:active:not(:disabled), [role="button"]:active, a.w-full:active,
+  input[type="submit"]:active, input[type="button"]:active { transform: scale(.97); }
+  button:disabled, button[disabled], [role="button"][aria-disabled="true"] { opacity: .35; cursor: not-allowed; }
+  input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: none; border-color: #3182F6; box-shadow: 0 0 0 1.5px #3182F6;
+  }
+  button.w-full, button[type="submit"].w-full, a.w-full[class*="bg-"] {
+    min-height: 52px; border-radius: 12px;
+  }
+  </style>
+</head>
+<body>
+
+<div class="lg:flex lg:max-w-[1400px] lg:mx-auto">
+  <aside class="hidden lg:block w-60 p-6 sticky top-0 h-screen no-print">
+    <div class="text-2xl font-bold">로아스 <span class="text-blue-600">KR</span></div>
+    <div class="text-xs text-slate-500 mt-1">D2C 통합 분석 플랫폼 v2</div>
+    <div class="mt-5"><label class="text-xs text-slate-500">브랜드</label><select id="brand-sel" class="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white text-sm"></select></div>
+    <nav id="nav-side" class="nav-side mt-6 space-y-1 text-sm"></nav>
+    <div class="mt-8 text-xs text-slate-400">
+      <div class="font-semibold text-slate-600">연결 매체</div>
+      <div id="conn-status" class="mt-2 space-y-1"></div>
+    </div>
+  </aside>
+
+  <main id="main" class="lg:flex-1 p-5 lg:p-8 pb-24 lg:pb-8 max-w-md lg:max-w-none mx-auto"></main>
+</div>
+
+<nav id="nav-bottom" class="lg:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur border-t z-30 no-print"></nav>
+<div id="toast" class="fixed bottom-24 lg:bottom-6 left-1/2 -translate-x-1/2 hidden bg-slate-900 text-white px-5 py-3 rounded-full text-sm shadow-2xl z-50 max-w-[90%]"></div>
+
+<script>
+// ============== 브랜드·데이터 ==============
+const KEY = 'cdp_v2_state_2';
+const BRANDS = [
+  { id:'mood', name:'오늘의 무드', industry:'패션' },
+  { id:'beanly', name:'Beanly Coffee', industry:'F&B' },
+  { id:'cleanwave', name:'Cleanwave', industry:'생활' },
+];
+const seedSpend = ()=>([
+  { name:'네이버검색', color:'#14AE5C', cost:38_200_000, oauth:false },
+  { name:'카카오모먼트', color:'#FFB331', cost:21_500_000, oauth:false },
+  { name:'메타IG', color:'#3182F6', cost:32_700_000, oauth:false },
+  { name:'구글PMax', color:'#F04452', cost:18_600_000, oauth:false },
+  { name:'쿠팡애즈', color:'#8b5cf6', cost:8_840_000, oauth:false },
+]);
+const seedJourneys = ()=>{
+  // 광고비(약 1.2억) 대비 매출 기여가 합리적으로 상회(전체 ROAS ≈ 3x)하도록 터치포인트 빈도·전환율·AOV 보정.
+  const weighted=[]; const chanWeight={ '네이버검색':30,'메타IG':24,'카카오모먼트':14,'구글PMax':16,'쿠팡애즈':9,organic:11,direct:11 };
+  for (const [c,n] of Object.entries(chanWeight)) for (let i=0;i<n;i++) weighted.push(c);
+  const convBoost={ '네이버검색':0.26,'구글PMax':0.30,'메타IG':0.10,'쿠팡애즈':0.20,'카카오모먼트':0.06,organic:0.04,direct:0.04 };
+  const pick=()=>weighted[Math.floor(Math.random()*weighted.length)];
+  const out=[]; for (let i=0;i<3600;i++){ const len=1+Math.floor(Math.random()*4); const seq=[]; for (let k=0;k<len;k++) seq.push(pick()); const boost=seq.reduce((s,c)=>Math.max(s,convBoost[c]||0),0); const conv = Math.random() < (0.30 + boost); out.push({id:i,seq,converted:conv,value:conv?115_000+Math.round(Math.random()*160_000):0,day:Math.floor(Math.random()*30),user:'u'+Math.floor(Math.random()*400),segment:['신규','재구매','VIP','이탈위험'][Math.floor(Math.random()*4)]}); } return out;
+};
+
+let state = JSON.parse(localStorage.getItem(KEY) || 'null');
+if (!state) { state = { brand:'mood', view:'dashboard', model:'last_click', range:30, segments:{}, schedule:null, sendLog:[], brands:Object.fromEntries(BRANDS.map(b=>[b.id, { spend:seedSpend(), journeys:seedJourneys() }])) }; persist(); }
+if (!state.sendLog) state.sendLog = [];
+function persist(){ localStorage.setItem(KEY, JSON.stringify(state)); }
+const cur = ()=>state.brands[state.brand];
+
+// ============== URL state — 깊은 링크 복원 ==============
+// 형식: #<view>?model=<m>&brand=<b>  (공유 버튼이 생성, 로드 시 여기서 복원)
+function restoreFromUrl(){
+  const h = location.hash.replace(/^#/,''); if (!h) return false;
+  const [view, qs] = h.split('?');
+  const valid = NAV.map(n=>n[0]);
+  let changed = false;
+  if (view && valid.includes(view)) { state.view = view; changed = true; }
+  if (qs){ const p = new URLSearchParams(qs);
+    const m = p.get('model'); if (m && ['last_click','first_click','linear','time_decay','markov','shapley'].includes(m)) { state.model = m; changed = true; }
+    const b = p.get('brand'); if (b && BRANDS.some(x=>x.id===b)) { state.brand = b; changed = true; }
+  }
+  if (changed) persist();
+  return changed;
+}
+function shareUrl(){ return location.href.split('#')[0]+'#'+state.view+'?model='+state.model+'&brand='+state.brand; }
+
+const NAV = [['dashboard','📊','대시보드'],['attribution','🎯','어트리뷰션'],['funnel','🔻','깔때기'],['segments','👥','세그먼트'],['rfm','🎚️','RFM'],['cohort','📈','코호트'],['journeys','🛤️','여정'],['import','⬆️','데이터 가져오기'],['integrations','🔌','연동'],['schedule','📅','자동 보고']];
+
+const KRW = n=> '₩' + Math.round(n).toLocaleString('ko-KR');
+const fmt = n=> Math.round(n).toLocaleString('ko-KR');
+const toast = m=>{const t=document.getElementById('toast'); t.textContent=m; t.classList.remove('hidden'); setTimeout(()=>t.classList.add('hidden'),1700);};
+
+// ============== Attribution (full) ==============
+function attribute(model){
+  const totals={}; cur().spend.forEach(c=>totals[c.name]=0);
+  for (const j of cur().journeys){
+    if (!j.converted) continue;
+    const seq = j.seq.filter(c=>totals[c]!==undefined); if (!seq.length) continue;
+    if (model==='last_click') totals[seq[seq.length-1]] += j.value;
+    else if (model==='first_click') totals[seq[0]] += j.value;
+    else if (model==='linear'){ const w=j.value/seq.length; seq.forEach(c=>totals[c]+=w); }
+    else if (model==='time_decay'){ const w=seq.map((_,i)=>Math.pow(2,i/seq.length)); const s=w.reduce((a,b)=>a+b,0); seq.forEach((c,i)=>totals[c]+=j.value*w[i]/s); }
+    else if (model==='markov'){ const cred = markovCredit(seq, j.value); Object.entries(cred).forEach(([c,v])=>totals[c]+=v); }
+    else if (model==='shapley'){ const cred = shapleyCredit(seq, j.value); Object.entries(cred).forEach(([c,v])=>totals[c]+=v); }
+  }
+  return totals;
+}
+function markovCredit(seq, value){
+  const T={}; const states=['S',...seq,'C'];
+  for (let i=0;i<states.length-1;i++){ const a=states[i],b=states[i+1]; T[a]=T[a]||{}; T[a][b]=(T[a][b]||0)+1; }
+  const base = pathProb(seq, T); const credit={};
+  for (const c of [...new Set(seq)]){ const p = pathProb(seq.filter(x=>x!==c), T); credit[c] = Math.max(0, base-p); }
+  const sum = Object.values(credit).reduce((a,b)=>a+b,0)||1;
+  const out={}; Object.entries(credit).forEach(([c,v])=>out[c]=(v/sum)*value); return out;
+}
+function pathProb(seq, T){ if(!seq.length) return 0; let p=1, prev='S'; for (const s of [...seq,'C']){ const r=T[prev]||{}; const tot=Object.values(r).reduce((a,b)=>a+b,0)||1; p *= (r[s]||0.1)/(tot+1); prev=s; } return p; }
+function shapleyCredit(seq, value){
+  // Approximate Shapley by averaging marginal contribution across permutations (sample 6)
+  const channels = [...new Set(seq)]; const credit = Object.fromEntries(channels.map(c=>[c,0]));
+  const N = 6;
+  for (let i=0;i<N;i++){ const perm = [...channels].sort(()=>Math.random()-0.5);
+    let prev = 0;
+    perm.forEach((c,idx)=>{ const subset = perm.slice(0,idx+1); const v = subset.length / channels.length; credit[c] += (v - prev) * value / N; prev = v; });
+  }
+  return credit;
+}
+
+// ============== Render shell ==============
+function renderShell(){
+  // brand selector
+  const bs = document.getElementById('brand-sel'); if (bs){ bs.innerHTML = BRANDS.map(b=>`<option value="${b.id}" ${b.id===state.brand?'selected':''}>${b.name} (${b.industry})</option>`).join(''); bs.onchange = ()=>{ state.brand=bs.value; persist(); render(); }; }
+  // nav
+  document.getElementById('nav-side').innerHTML = NAV.map(([k,e,n])=>`<a data-view="${k}" class="block px-3 py-2 rounded-xl text-sm cursor-pointer focus-ring ${state.view===k?'active':'text-slate-600 hover:bg-slate-50'}">${e} <span class="ml-1">${n}</span></a>`).join('');
+  document.getElementById('nav-bottom').innerHTML = `<div class="grid overflow-x-auto" style="grid-template-columns:repeat(${Math.min(NAV.length,5)},1fr);">${NAV.slice(0,5).map(([k,e,n])=>`<button data-view="${k}" class="py-2.5 text-xs ${state.view===k?'text-blue-600 font-bold':'text-slate-500'}">${e}<div class="text-[10px] mt-0.5">${n}</div></button>`).join('')}</div>`;
+  // connection status
+  const cs = document.getElementById('conn-status'); if (cs) cs.innerHTML = cur().spend.map(s=>`<div>${s.oauth?'<span class="text-emerald-600">●</span>':'<span class="text-slate-300">○</span>'} ${s.name}</div>`).join('');
+}
+
+// ============== Views ==============
+function vDashboard(){
+  const totalSpend = cur().spend.reduce((a,b)=>a+b.cost,0);
+  const conv = cur().journeys.filter(j=>j.converted);
+  const totalRev = conv.reduce((a,b)=>a+b.value,0);
+  const roas = (totalRev/totalSpend).toFixed(2);
+  const cac = totalSpend/conv.length;
+  return `
+  <div class="lg:flex lg:items-end lg:justify-between mb-6">
+    <div><div class="text-sm text-slate-500">${BRANDS.find(b=>b.id===state.brand).name}</div><h1 class="text-2xl lg:text-3xl font-bold mt-1">대시보드</h1></div>
+    <div class="hidden lg:flex gap-2 mt-3 lg:mt-0"><button id="share" class="px-4 py-2 rounded-xl border bg-white text-sm">🔗 공유 링크</button><button id="print" class="px-4 py-2 rounded-xl border bg-white text-sm">🖨️ 인쇄</button></div>
+  </div>
+  <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+    ${kpi('매출', KRW(totalRev), '+12.4% vs 이전','text-emerald-600')}
+    ${kpi('광고비', KRW(totalSpend), `${cur().spend.length}개 매체`,'text-slate-500')}
+    ${kpi('ROAS', roas+'x','+0.31','text-emerald-600')}
+    ${kpi('CAC', KRW(cac), `전환 ${conv.length.toLocaleString()}건`,'text-slate-500')}
+  </section>
+  <section class="grid lg:grid-cols-3 gap-4 mb-5">
+    <div class="toss-card p-5 lg:col-span-2"><div class="flex justify-between mb-3"><div class="font-bold">일자별 매출 vs 광고비</div><div class="text-xs text-slate-500">최근 30일</div></div><div style="height:240px"><canvas id="trend"></canvas></div></div>
+    <div class="toss-card p-5"><div class="font-bold mb-3">매체별 광고비</div><div style="height:240px"><canvas id="donut"></canvas></div></div>
+  </section>
+  <section class="toss-card p-5">
+    <div class="flex justify-between items-center mb-4"><div class="font-bold">매체별 효율 <span class="text-xs text-slate-400 font-normal">(${labelOf(state.model)})</span></div><button id="csv" class="text-sm text-blue-600">CSV 내보내기</button></div>
+    <div class="overflow-x-auto"><table class="w-full text-sm" id="ch-tbl">${chTable(attribute(state.model))}</table></div>
+  </section>`;
+}
+function chTable(att){
+  const rows = cur().spend.map(c=>{const r=att[c.name]||0; const ro=r/c.cost; return `<tr class="border-t"><td class="p-3 flex items-center gap-2"><span class="w-2 h-2 rounded-full" style="background:${c.color}"></span>${c.name}</td><td class="p-3 text-right">${KRW(c.cost)}</td><td class="p-3 text-right">${KRW(r)}</td><td class="p-3 text-right font-bold ${ro>=4?'text-emerald-600':ro>=2?'text-amber-600':'text-red-600'}">${ro.toFixed(2)}x</td></tr>`;}).join('');
+  return `<thead class="text-slate-500"><tr><th class="text-left p-3">매체</th><th class="text-right p-3">광고비</th><th class="text-right p-3">기여 매출</th><th class="text-right p-3">ROAS</th></tr></thead><tbody>${rows}</tbody>`;
+}
+function kpi(l,v,s,sc){ return `<div class="toss-card p-4"><div class="text-xs text-slate-500">${l}</div><div class="text-2xl font-bold mt-1">${v}</div><div class="text-xs ${sc} mt-1">${s}</div></div>`; }
+function labelOf(m){ return ({last_click:'Last Click',first_click:'First Click',linear:'Linear',time_decay:'Time Decay',markov:'Markov',shapley:'Shapley'})[m]; }
+
+function vAttribution(){
+  const att=attribute(state.model);
+  return `
+  <div class="lg:flex lg:items-end lg:justify-between mb-5"><div><h1 class="text-2xl lg:text-3xl font-bold">어트리뷰션 분석</h1><div class="text-sm text-slate-500 mt-1">여정 ${cur().journeys.length}건 · 전환 ${cur().journeys.filter(j=>j.converted).length}건을 바탕으로 직접 계산했어요</div></div>
+  <select id="model-sel" class="mt-3 lg:mt-0 px-3 py-2 rounded-xl border bg-white text-sm">${['last_click','first_click','linear','time_decay','markov','shapley'].map(m=>`<option value="${m}" ${state.model===m?'selected':''}>${labelOf(m)}</option>`).join('')}</select>
+  </div>
+  <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 mb-5">고른 모델은 자동으로 저장돼요. 전체 화면에 바로 반영돼요.</div>
+  <section class="grid lg:grid-cols-3 gap-4 mb-5">
+    <div class="toss-card p-5 lg:col-span-2"><div class="font-bold mb-3">매체별 매출 기여</div><div style="height:220px"><canvas id="bar"></canvas></div></div>
+    <div class="toss-card p-5"><div class="font-bold mb-3">기여 비중</div><div style="height:220px"><canvas id="att-donut"></canvas></div></div>
+  </section>
+  <section class="grid lg:grid-cols-2 gap-4">
+    <div class="toss-card p-5"><div class="font-bold mb-3">Last Click vs Markov 비교</div><div style="height:220px"><canvas id="cmp"></canvas></div></div>
+    <div class="toss-card p-5"><div class="font-bold mb-3">모델별 의사결정 차이</div><table class="w-full text-sm"><thead class="text-slate-500"><tr><th class="text-left p-2">매체</th><th class="text-right p-2">Last Click</th><th class="text-right p-2">Markov</th><th class="text-right p-2">차이</th></tr></thead><tbody id="diff"></tbody></table></div>
+  </section>`;
+}
+
+function vFunnel(){
+  return `<h1 class="text-2xl lg:text-3xl font-bold mb-5">전환 깔때기</h1>
+  <section class="grid lg:grid-cols-3 gap-4 mb-5">
+    <div class="toss-card p-5 lg:col-span-2"><div class="font-bold mb-3">단계별 이탈</div><div style="height:240px"><canvas id="funnel"></canvas></div></div>
+    <div class="toss-card p-5 space-y-3 text-sm">${[['세션',41800,41800],['상품 조회',27600,41800],['장바구니',7450,27600],['체크아웃',3180,7450],['구매',1880,3180]].map(([l,n,b])=>{const p=(n/b*100).toFixed(1); return `<div><div class="flex justify-between text-xs"><span>${l}</span><span class="text-slate-500">${p}% 잔존</span></div><div class="h-2 bg-slate-100 rounded mt-1 overflow-hidden"><div class="h-full bg-emerald-500" style="width:${p}%"></div></div><div class="text-xs text-slate-500 mt-1">${fmt(n)}명</div></div>`}).join('')}<div class="pt-3 border-t mt-3"><div class="text-xs text-slate-500">전체 전환율</div><div class="text-2xl font-bold text-emerald-600">${(1880/41800*100).toFixed(2)}%</div></div></div>
+  </section>
+  <section class="toss-card p-5"><div class="font-bold mb-3">매체 진입별 깔때기</div><div class="overflow-x-auto"><table class="w-full text-sm"><thead class="text-slate-500"><tr><th class="text-left p-2">매체</th><th class="text-right p-2">세션</th><th class="text-right p-2">조회</th><th class="text-right p-2">장바구니</th><th class="text-right p-2">구매</th><th class="text-right p-2">전환율</th></tr></thead><tbody>${cur().spend.map(c=>{const s=3000+Math.round(Math.random()*4000), v=Math.round(s*0.7), c1=Math.round(v*0.28), b=Math.round(c1*0.5); return `<tr class="border-t"><td class="p-2 flex items-center gap-2"><span class="w-2 h-2 rounded-full" style="background:${c.color}"></span>${c.name}</td><td class="p-2 text-right">${fmt(s)}</td><td class="p-2 text-right">${fmt(v)}</td><td class="p-2 text-right">${fmt(c1)}</td><td class="p-2 text-right">${fmt(b)}</td><td class="p-2 text-right font-bold">${(b/s*100).toFixed(2)}%</td></tr>`;}).join('')}</tbody></table></div></section>`;
+}
+
+function vSegments(){
+  const segs=['신규','재구매','VIP','이탈위험'];
+  const stats=segs.map(s=>{const p=cur().journeys.filter(j=>j.segment===s); const c=p.filter(j=>j.converted); return {name:s,count:p.length,conv:c.length,rev:c.reduce((a,b)=>a+b.value,0)};});
+  return `<div class="lg:flex lg:items-end lg:justify-between mb-5"><div><h1 class="text-2xl lg:text-3xl font-bold">고객 세그먼트</h1><div class="text-sm text-slate-500 mt-1">RFM·행동 기반 4개 + 사용자 정의</div></div><button id="add-seg" class="mt-3 lg:mt-0 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold">+ 세그먼트 빌더</button></div>
+  <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">${stats.map(s=>`<div class="toss-card p-4"><div class="text-xs text-slate-500">${s.name}</div><div class="text-2xl font-bold mt-1">${fmt(s.count)}명</div><div class="text-xs text-emerald-600 mt-1">전환 ${fmt(s.conv)} · ${KRW(s.rev)}</div></div>`).join('')}</section>
+  <section class="toss-card p-5 mb-5"><div class="font-bold mb-3">세그먼트별 매출 기여</div><div style="height:220px"><canvas id="seg-bar"></canvas></div></section>
+  <section class="toss-card overflow-hidden"><div class="p-5 font-bold border-b">사용자 정의 세그먼트</div><table class="w-full text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="p-3 text-left">이름</th><th class="p-3 text-left">조건</th><th class="p-3 text-right">모집단</th><th class="p-3"></th></tr></thead><tbody id="user-segs"></tbody></table></section>
+  <dialog id="seg-dlg" class="rounded-2xl p-0 backdrop:bg-black/40 w-[480px] max-w-[92%]"><form method="dialog" class="p-6 space-y-3">
+    <h3 class="text-lg font-bold">세그먼트 빌더</h3>
+    <input id="seg-name" required placeholder="이름 (예: 메타 유입 VIP)" class="w-full border rounded-xl p-3 text-sm">
+    <div class="grid grid-cols-2 gap-2 text-sm">
+      <select id="seg-channel" class="border rounded-xl p-3"><option value="">진입 매체 (전체)</option>${cur().spend.map(c=>`<option>${c.name}</option>`).join('')}</select>
+      <select id="seg-tier" class="border rounded-xl p-3"><option value="">티어 (전체)</option><option>신규</option><option>재구매</option><option>VIP</option><option>이탈위험</option></select>
+      <input id="seg-min" type="number" placeholder="최소 매출 (원)" class="border rounded-xl p-3">
+      <input id="seg-mc" type="number" placeholder="최소 전환수" class="border rounded-xl p-3">
+    </div>
+    <div class="flex justify-end gap-2 pt-2"><button value="cancel" class="px-4 py-2 rounded-xl border">취소</button><button id="seg-save" value="ok" class="px-4 py-2 rounded-xl bg-blue-600 text-white">저장</button></div>
+  </form></dialog>`;
+}
+
+// RFM 실 계산 — Recency/Frequency/Monetary 5분위(quintile) 점수 → 5세그
+function computeRFM(){
+  const today = 30;
+  const usrs = {};
+  for (const j of cur().journeys){ if(!j.converted) continue; const u=usrs[j.user]||{r:99,f:0,m:0}; u.r = Math.min(u.r, today-j.day); u.f++; u.m += j.value; usrs[j.user]=u; }
+  const arr = Object.entries(usrs).map(([u,v])=>({u,...v}));
+  const quintile = (vals,asc)=>{const s=[...vals].sort((a,b)=>asc?a-b:b-a); return v=>{const i=s.indexOf(v); const q=Math.ceil((i+1)/(s.length/5)); return Math.min(5,Math.max(1,q));};};
+  const rs = quintile(arr.map(a=>a.r), true), fs = quintile(arr.map(a=>a.f), false), ms = quintile(arr.map(a=>a.m), false);
+  arr.forEach(a=>{ a.R=rs(a.r); a.F=fs(a.f); a.M=ms(a.m); a.score=a.R+a.F+a.M; a.seg = a.score>=13?'VIP':a.score>=10?'충성':a.score>=7?'잠재':a.score>=4?'위험':'이탈';});
+  const segCounts = ['VIP','충성','잠재','위험','이탈'].map(s=>({s, n:arr.filter(a=>a.seg===s).length, sum:arr.filter(a=>a.seg===s).reduce((a,b)=>a+b.m,0)}));
+  return { arr, segCounts };
+}
+function vRFM(){
+  const { arr, segCounts } = computeRFM();
+  return `<h1 class="text-2xl lg:text-3xl font-bold mb-5">RFM 자동 세그먼트</h1>
+  <div class="text-sm text-slate-500 mb-5">전환 고객 ${arr.length}명을 Recency·Frequency·Monetary 5분위로 채점해 5개 세그먼트로 자동 분류했어요.</div>
+  <section class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-5">${segCounts.map(s=>`<div class="toss-card p-4"><div class="text-xs text-slate-500">${s.s}</div><div class="text-2xl font-bold mt-1">${s.n}명</div><div class="text-xs text-slate-500 mt-1">${KRW(s.sum)}</div></div>`).join('')}</section>
+  <section class="toss-card p-5 mb-5"><div class="font-bold mb-3">RFM 점수 분포</div><div style="height:220px"><canvas id="rfm-bar"></canvas></div></section>
+  <section class="toss-card overflow-hidden"><div class="p-5 border-b font-bold">상위 사용자 30명</div><div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="p-3 text-left">User</th><th class="p-3 text-right">R</th><th class="p-3 text-right">F</th><th class="p-3 text-right">M</th><th class="p-3 text-right">총점</th><th class="p-3 text-left">세그먼트</th></tr></thead><tbody>${arr.sort((a,b)=>b.score-a.score).slice(0,30).map(a=>`<tr class="border-t"><td class="p-3 font-mono text-xs">${a.u}</td><td class="p-3 text-right">${a.R}</td><td class="p-3 text-right">${a.F}</td><td class="p-3 text-right">${a.M}</td><td class="p-3 text-right font-bold">${a.score}</td><td class="p-3"><span class="pill ${a.seg==='VIP'?'bg-amber-100 text-amber-800':a.seg==='충성'?'bg-emerald-100 text-emerald-800':a.seg==='잠재'?'bg-blue-100 text-blue-700':a.seg==='위험'?'bg-orange-100 text-orange-700':'bg-red-100 text-red-700'}">${a.seg}</span></td></tr>`).join('')}</tbody></table></div></section>`;
+}
+
+function vCohort(){
+  return `<h1 class="text-2xl lg:text-3xl font-bold mb-5">코호트 리텐션</h1>
+  <section class="toss-card p-5 mb-5 overflow-x-auto"><table class="w-full text-sm" id="cohort-tbl"></table></section>
+  <section class="toss-card p-5"><div class="font-bold mb-3">평균 잔존 곡선</div><div style="height:220px"><canvas id="ret"></canvas></div></section>`;
+}
+
+function vJourneys(){
+  return `<h1 class="text-2xl lg:text-3xl font-bold mb-5">여정 탐색 (${cur().journeys.length}건)</h1>
+  <div class="toss-card p-4 flex flex-wrap gap-2 items-center text-sm mb-4">
+    <span class="text-slate-500">매체 포함:</span>
+    ${cur().spend.map(c=>`<label class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-50"><input type="checkbox" data-ch="${c.name}" class="jf"> ${c.name}</label>`).join('')}
+    <label class="inline-flex items-center gap-1 ml-2"><input type="checkbox" id="conv-only" checked> 전환만</label>
+    <button id="re-sample" class="ml-auto px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs">재샘플</button>
+  </div>
+  <div class="toss-card overflow-hidden"><table class="w-full text-sm" id="jrn-tbl"><thead class="bg-slate-50 text-slate-500"><tr><th class="p-3 text-left">ID</th><th class="p-3 text-left">여정</th><th class="p-3 text-right">매출</th><th class="p-3">세그</th></tr></thead><tbody></tbody></table></div>`;
+}
+
+function vImport(){
+  return `<h1 class="text-2xl lg:text-3xl font-bold mb-5">데이터 가져오기</h1>
+  <div class="toss-card p-6 mb-5">
+    <div class="font-bold mb-3">CSV 업로드 — 광고비 데이터</div>
+    <div class="text-sm text-slate-500 mb-4">컬럼은 <code class="bg-slate-100 px-2 py-0.5 rounded">매체,광고비</code> (KRW)로 구성해요. 예시 파일은 아래에서 내려받을 수 있어요.</div>
+    <div class="border-2 border-dashed rounded-xl p-8 text-center"><input type="file" id="csv-file" accept=".csv" class="text-sm"><div class="text-xs text-slate-500 mt-3">파일 선택 또는 드래그</div></div>
+    <div id="csv-preview" class="mt-4"></div>
+    <div class="flex gap-2 mt-4"><button id="dl-template" class="flex-1 px-4 py-2 rounded-xl border text-sm">📥 템플릿 다운로드</button><button id="apply-csv" class="flex-1 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold">데이터 적용</button></div>
+  </div>
+  <div class="toss-card p-6"><div class="font-bold mb-3">CSV 내보내기</div><div class="text-sm text-slate-500 mb-3">지금 고른 어트리뷰션 모델(${labelOf(state.model)}) 기준으로 매체별 ROAS를 내보내요.</div><button id="export-roas" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm">📤 ROAS CSV 내보내기</button></div>`;
+}
+
+function vIntegrations(){
+  return `<h1 class="text-2xl lg:text-3xl font-bold mb-5">매체 연동</h1>
+  <div class="text-sm text-slate-500 mb-5">OAuth 2.0 권한 위임 흐름이에요. 키가 없으면 mock 토큰으로 통과해 오프라인에서도 시연할 수 있어요. 실 환경에서는 각 매체 API Console에서 클라이언트를 등록한 뒤 인증해 주세요.</div>
+  <div class="grid lg:grid-cols-2 gap-3">
+    ${cur().spend.map(c=>`<div class="toss-card p-5 flex items-center justify-between"><div class="flex items-center gap-3"><span class="w-3 h-3 rounded-full" style="background:${c.color}"></span><div><div class="font-bold">${c.name}</div><div class="text-xs ${c.oauth?'text-emerald-600':'text-slate-500'}">${c.oauth?'연결됨 · access_token: '+(c.token||'mock')+' · 자동 동기화':'미연결'}</div></div></div><button data-oauth="${c.name}" class="px-4 py-2 rounded-xl ${c.oauth?'bg-emerald-50 text-emerald-700':'bg-blue-600 text-white'} text-sm font-semibold">${c.oauth?'연결 해제':'OAuth 연결'}</button></div>`).join('')}
+  </div>
+  <dialog id="oauth-dlg" class="rounded-2xl p-0 backdrop:bg-black/50 w-[420px] max-w-[92%]">
+    <div id="oauth-body"></div>
+  </dialog>`;
+}
+// 매체 OAuth 동의 화면(실 화면) — 1) 동의 → 2) 인증 처리 → 3) 토큰 발급 완료
+function startOAuth(name){
+  const sp = cur().spend.find(s=>s.name===name);
+  const dlg = document.getElementById('oauth-dlg'); const body = document.getElementById('oauth-body');
+  const consent = ()=>{ body.innerHTML = `
+    <div class="px-6 pt-6 pb-4 border-b text-center">
+      <div class="text-xs text-slate-400 tracking-wide">OAuth 2.0 권한 위임</div>
+      <div class="mt-2 text-lg font-bold flex items-center justify-center gap-2"><span class="w-3 h-3 rounded-full" style="background:${sp.color}"></span>${name} 계정 연결</div>
+    </div>
+    <div class="p-6 text-sm space-y-3">
+      <div class="text-slate-600"><b>로아스KR</b> 이(가) 다음 권한을 요청해요:</div>
+      <ul class="space-y-2">
+        <li class="flex gap-2"><span class="text-emerald-600">✓</span> 광고 캠페인·비용 데이터 읽기</li>
+        <li class="flex gap-2"><span class="text-emerald-600">✓</span> 전환·성과 리포트 읽기</li>
+        <li class="flex gap-2"><span class="text-slate-300">✗</span> 광고 집행·결제 (요청 안 함)</li>
+      </ul>
+      <div class="bg-slate-50 rounded-xl p-3 text-xs text-slate-500 font-mono break-all">redirect_uri=https://app.로아스kr/oauth/callback<br>scope=ads.read report.read<br>response_type=code</div>
+      <div class="flex gap-2 pt-2"><button id="oa-cancel" class="flex-1 py-2.5 rounded-xl border">취소</button><button id="oa-allow" class="flex-1 py-2.5 rounded-xl text-white font-semibold" style="background:${sp.color}">동의하고 계속</button></div>
+    </div>`;
+    document.getElementById('oa-cancel').onclick=()=>dlg.close();
+    document.getElementById('oa-allow').onclick=auth;
+  };
+  const auth = ()=>{ body.innerHTML = `<div class="p-10 text-center"><div class="animate-spin w-8 h-8 border-3 border-slate-200 border-t-blue-600 rounded-full mx-auto" style="border-width:3px"></div><div class="mt-4 text-sm text-slate-500">인증 코드를 교환하고 있어요...<br>authorization_code → access_token</div></div>`;
+    setTimeout(done, 700);
+  };
+  const done = ()=>{ const token='mock_'+Math.random().toString(36).slice(2,10); sp.oauth=true; sp.token=token; persist();
+    body.innerHTML = `<div class="p-8 text-center"><div class="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 text-2xl flex items-center justify-center mx-auto">✓</div><div class="mt-4 font-bold">${name} 연결 완료</div><div class="mt-2 text-xs text-slate-500 font-mono">access_token: ${token}<br>token_type: Bearer · expires_in: 3600</div><button id="oa-ok" class="mt-5 w-full py-2.5 rounded-xl bg-blue-600 text-white font-semibold">완료</button></div>`;
+    document.getElementById('oa-ok').onclick=()=>{ dlg.close(); render(); toast(`${name} OAuth 연결을 마쳤어요!`); };
+  };
+  consent(); dlg.showModal();
+}
+
+function vSchedule(){
+  const s = state.schedule || {channel:'', when:'08:00', day:'monday'};
+  return `<h1 class="text-2xl lg:text-3xl font-bold mb-5">자동 보고 스케줄</h1>
+  <div class="toss-card p-6 mb-5">
+    <div class="font-bold mb-3">발송 채널 + 시간</div>
+    <div class="grid lg:grid-cols-3 gap-3">
+      <select id="sch-ch" class="p-3 rounded-xl border bg-white"><option value="">선택...</option><option value="email">이메일</option><option value="slack">Slack</option><option value="kakao">카카오톡 알림톡</option></select>
+      <select id="sch-day" class="p-3 rounded-xl border bg-white"><option value="daily">매일</option><option value="monday" selected>매주 월요일</option><option value="month1">매월 1일</option></select>
+      <input id="sch-time" type="time" value="${s.when}" class="p-3 rounded-xl border bg-white">
+    </div>
+    <div class="flex gap-2 mt-4"><button id="sch-save" class="flex-1 py-3 rounded-xl bg-blue-600 text-white font-semibold">스케줄 저장</button><button id="sch-test" class="flex-1 py-3 rounded-xl bg-slate-900 text-white font-semibold">지금 발송 테스트</button></div>
+    ${state.schedule? `<div class="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-800">✓ 활성화: <b>${state.schedule.channel}</b> · ${state.schedule.day} ${state.schedule.when}</div>`:''}
+  </div>
+  <div class="toss-card p-6 mb-5"><div class="font-bold mb-3">미리보기 — 어제 ROAS 요약</div>
+    <div class="bg-slate-50 rounded-xl p-4 text-sm font-mono whitespace-pre-line">${reportText()}</div>
+  </div>
+  <div class="toss-card overflow-hidden"><div class="p-5 border-b font-bold flex justify-between"><span>발송 로그</span><span class="text-xs text-slate-400 font-normal">mock 외부 발송 기록이에요 (localStorage에 보관돼요)</span></div>
+    <table class="w-full text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="p-3 text-left">시각</th><th class="p-3 text-left">채널</th><th class="p-3 text-left">대상</th><th class="p-3 text-right">상태</th></tr></thead>
+    <tbody id="send-log">${(state.sendLog||[]).length? state.sendLog.slice().reverse().map(l=>`<tr class="border-t"><td class="p-3 text-xs">${l.at}</td><td class="p-3">${l.channel}</td><td class="p-3 text-xs text-slate-500">${l.target}</td><td class="p-3 text-right"><span class="pill bg-emerald-100 text-emerald-700">${l.status}</span></td></tr>`).join('') : `<tr><td colspan="4" class="p-6 text-center text-slate-400">아직 발송한 기록이 없어요 — '지금 발송 테스트'를 눌러보세요</td></tr>`}</tbody></table>
+  </div>`;
+}
+function reportText(){
+  const yRev = cur().journeys.filter(j=>j.converted&&j.day===29).reduce((a,b)=>a+b.value,0);
+  const yAd = cur().spend.reduce((a,b)=>a+b.cost,0)/30;
+  return `[로아스KR] 어제 ROAS 요약
+브랜드: ${BRANDS.find(b=>b.id===state.brand).name}
+- 매출: ${KRW(yRev)}
+- 광고비: ${KRW(yAd)}
+- ROAS: ${(yRev/yAd).toFixed(2)}x
+- 네이버검색 기여: ${KRW(attribute(state.model)['네이버검색']||0)}
+
+대시보드 →`;
+}
+
+// ============== Render + bind + draw ==============
+function render(){
+  document.getElementById('main').innerHTML = ({dashboard:vDashboard,attribution:vAttribution,funnel:vFunnel,segments:vSegments,rfm:vRFM,cohort:vCohort,journeys:vJourneys,import:vImport,integrations:vIntegrations,schedule:vSchedule})[state.view]();
+  renderShell(); bind();
+  if (state.view==='dashboard') drawDash();
+  if (state.view==='attribution') drawAtt();
+  if (state.view==='funnel') drawFun();
+  if (state.view==='segments') drawSeg();
+  if (state.view==='rfm') drawRFM();
+  if (state.view==='cohort') drawCoh();
+  if (state.view==='journeys') drawJrn();
+}
+
+function drawDash(){
+  const days=[...Array(30).keys()].map(i=>String(i+1));
+  const rev=days.map((_,i)=>cur().journeys.filter(j=>j.day===i&&j.converted).reduce((a,b)=>a+b.value,0));
+  const ad=days.map((_,i)=>Math.round(cur().spend.reduce((s,c)=>s+c.cost,0)/30+Math.sin(i/4)*900_000));
+  new Chart(document.getElementById('trend'),{type:'line',data:{labels:days,datasets:[{label:'매출',data:rev,borderColor:'#14AE5C',backgroundColor:'rgba(16,185,129,.1)',tension:.3,fill:true},{label:'광고비',data:ad,borderColor:'#F04452',backgroundColor:'rgba(239,68,68,.05)',tension:.3,fill:true}]},options:{maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},scales:{y:{ticks:{callback:v=>(v/1_000_000).toFixed(0)+'M'}}}}});
+  new Chart(document.getElementById('donut'),{type:'doughnut',data:{labels:cur().spend.map(c=>c.name),datasets:[{data:cur().spend.map(c=>c.cost),backgroundColor:cur().spend.map(c=>c.color),borderWidth:0}]},options:{maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{font:{size:11}}}}}});
+  document.getElementById('csv').onclick=()=>exportCSV();
+  const sh=document.getElementById('share'); if(sh) sh.onclick=()=>{ const url=shareUrl(); location.hash=state.view+'?model='+state.model+'&brand='+state.brand; (navigator.clipboard?.writeText(url)||Promise.resolve()).catch(()=>{}); toast('공유 링크를 복사했어요: '+url.split('#')[1]); };
+  const pr=document.getElementById('print'); if(pr) pr.onclick=()=>window.print();
+}
+function drawAtt(){
+  const sel=document.getElementById('model-sel'); sel.onchange=e=>{ state.model=e.target.value; persist(); render(); toast(labelOf(state.model)+' 모델을 적용했어요'); };
+  const att=attribute(state.model); const last=attribute('last_click'); const markov=attribute('markov');
+  new Chart(document.getElementById('bar'),{type:'bar',data:{labels:cur().spend.map(c=>c.name),datasets:[{data:cur().spend.map(c=>att[c.name]||0),backgroundColor:cur().spend.map(c=>c.color)}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>(v/1_000_000).toFixed(0)+'M'}}}}});
+  new Chart(document.getElementById('att-donut'),{type:'doughnut',data:{labels:cur().spend.map(c=>c.name),datasets:[{data:cur().spend.map(c=>att[c.name]||0),backgroundColor:cur().spend.map(c=>c.color),borderWidth:0}]},options:{maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'bottom',labels:{font:{size:11}}}}}});
+  new Chart(document.getElementById('cmp'),{type:'bar',data:{labels:cur().spend.map(c=>c.name),datasets:[{label:'Last',data:cur().spend.map(c=>last[c.name]||0),backgroundColor:'#8B95A1'},{label:'Markov',data:cur().spend.map(c=>markov[c.name]||0),backgroundColor:'#14AE5C'}]},options:{maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},scales:{y:{ticks:{callback:v=>(v/1_000_000).toFixed(0)+'M'}}}}});
+  document.getElementById('diff').innerHTML = cur().spend.map(c=>{const a=last[c.name]||0,b=markov[c.name]||0,d=b-a; return `<tr class="border-t"><td class="p-2">${c.name}</td><td class="p-2 text-right">${KRW(a)}</td><td class="p-2 text-right">${KRW(b)}</td><td class="p-2 text-right ${d>=0?'text-emerald-600':'text-red-600'}">${d>=0?'+':''}${KRW(d)}</td></tr>`;}).join('');
+}
+function drawFun(){ new Chart(document.getElementById('funnel'),{type:'bar',data:{labels:['세션','조회','장바구니','체크아웃','구매'],datasets:[{data:[41800,27600,7450,3180,1880],backgroundColor:['#0ea5e9','#06b6d4','#14AE5C','#FFB331','#F04452']}]},options:{indexAxis:'y',maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>(v/1000).toFixed(0)+'k'}}}}}); }
+function drawSeg(){
+  const segs=['신규','재구매','VIP','이탈위험'];
+  const rev=segs.map(s=>cur().journeys.filter(j=>j.segment===s&&j.converted).reduce((a,b)=>a+b.value,0));
+  new Chart(document.getElementById('seg-bar'),{type:'bar',data:{labels:segs,datasets:[{data:rev,backgroundColor:['#0ea5e9','#14AE5C','#FFB331','#F04452']}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>(v/1_000_000).toFixed(0)+'M'}}}}});
+  refreshUS();
+  document.getElementById('add-seg').onclick=()=>document.getElementById('seg-dlg').showModal();
+  document.getElementById('seg-save').onclick=e=>{ e.preventDefault(); const n=document.getElementById('seg-name').value; if(!n) return; state.segments[n]={ch:document.getElementById('seg-channel').value, tier:document.getElementById('seg-tier').value, min:+document.getElementById('seg-min').value||0, mc:+document.getElementById('seg-mc').value||0}; persist(); document.getElementById('seg-dlg').close(); refreshUS(); toast(n+' 세그먼트를 저장했어요'); };
+}
+function refreshUS(){ const tb=document.getElementById('user-segs'); const ent=Object.entries(state.segments||{}); if(!ent.length){ tb.innerHTML=`<tr><td colspan="4" class="p-6 text-center text-slate-400">아직 만든 세그먼트가 없어요. 위 빌더로 첫 세그먼트를 만들어 보세요</td></tr>`; return; } tb.innerHTML=ent.map(([n,c])=>{const cnt=cur().journeys.filter(j=>(!c.ch||j.seq.includes(c.ch))&&(!c.tier||j.segment===c.tier)&&(!c.min||j.value>=c.min)).length; return `<tr class="border-t"><td class="p-3 font-medium">${n}</td><td class="p-3 text-slate-500">${[c.ch&&'매체='+c.ch,c.tier&&'티어='+c.tier,c.min&&'≥'+KRW(c.min)].filter(Boolean).join(' · ')||'(전체)'}</td><td class="p-3 text-right">${fmt(cnt)}</td><td class="p-3 text-right"><button data-del="${n}" class="text-xs text-red-600">삭제</button></td></tr>`;}).join(''); tb.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ delete state.segments[b.dataset.del]; persist(); refreshUS(); }); }
+function drawRFM(){ const { segCounts } = computeRFM(); new Chart(document.getElementById('rfm-bar'),{type:'bar',data:{labels:segCounts.map(s=>s.s),datasets:[{label:'고객 수',data:segCounts.map(s=>s.n),backgroundColor:['#FFB331','#14AE5C','#3182F6','#FFB331','#F04452']}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}}); }
+function drawCoh(){
+  const tbl=document.getElementById('cohort-tbl'); const m=['25-11','25-12','26-01','26-02','26-03','26-04'];
+  let html=`<thead class="bg-slate-50 text-slate-500"><tr><th class="p-2 text-left">코호트</th><th class="p-2 text-right">신규</th>${m.map((_,i)=>`<th class="p-2 text-right">M${i}</th>`).join('')}</tr></thead><tbody>`;
+  const mat=[]; for (let i=0;i<m.length;i++){ const n=800+Math.round(Math.random()*400); const r=[n]; for (let k=1; k+i<m.length+1; k++) r.push(Math.round(n*Math.pow(0.78-0.02*i,k))); mat.push(r); html += `<tr class="border-t"><td class="p-2 font-medium">${m[i]}</td>${r.map((v,j)=>{const p=j===0?100:(v/r[0]*100); const bg=j===0?'':`background:rgba(16,185,129,${p/120})`; return `<td class="p-2 text-right" style="${bg}">${j===0?fmt(v):p.toFixed(0)+'%'}</td>`;}).join('')}</tr>`; }
+  html += '</tbody>'; tbl.innerHTML = html;
+  const max=Math.max(...mat.map(r=>r.length)); const avg=[]; for (let k=0;k<max;k++){ const vs=mat.filter(r=>r[k]!==undefined).map(r=>r[k]/r[0]*100); avg.push(vs.reduce((a,b)=>a+b,0)/vs.length); }
+  new Chart(document.getElementById('ret'),{type:'line',data:{labels:avg.map((_,i)=>'M'+i),datasets:[{label:'평균 잔존(%)',data:avg,borderColor:'#14AE5C',backgroundColor:'rgba(16,185,129,.1)',tension:.3,fill:true}]},options:{maintainAspectRatio:false,scales:{y:{max:100,beginAtZero:true,ticks:{callback:v=>v+'%'}}}}});
+}
+function drawJrn(){
+  const tb=document.querySelector('#jrn-tbl tbody');
+  const filt=()=>Array.from(document.querySelectorAll('.jf:checked')).map(c=>c.dataset.ch);
+  function ref(){ const ch=filt(); const co=document.getElementById('conv-only').checked; const samples = cur().journeys.filter(j=>(!co||j.converted)&&(!ch.length||ch.every(c=>j.seq.includes(c)))).slice(0,30);
+    tb.innerHTML = samples.length? samples.map(j=>`<tr class="border-t"><td class="p-3 text-slate-500">#${j.id}</td><td class="p-3">${j.seq.map(c=>{const col=cur().spend.find(x=>x.name===c)?.color||'#8B95A1'; return `<span class="inline-block px-2 py-0.5 rounded text-white text-xs mr-1" style="background:${col}">${c}</span>`;}).join('→ ')}</td><td class="p-3 text-right">${KRW(j.value)}</td><td class="p-3">${j.segment}</td></tr>`).join('') : `<tr><td colspan="4" class="p-6 text-center text-slate-400">조건에 맞는 여정이 없어요. 필터를 바꿔 보세요</td></tr>`; }
+  document.querySelectorAll('.jf').forEach(c=>c.onchange=ref);
+  document.getElementById('conv-only').onchange=ref;
+  document.getElementById('re-sample').onclick=()=>{ cur().journeys = cur().journeys.sort(()=>Math.random()-0.5); ref(); };
+  ref();
+}
+function exportCSV(){
+  const att=attribute(state.model);
+  const rows=[['매체','광고비_KRW','매출기여_KRW','ROAS']].concat(cur().spend.map(c=>{const r=att[c.name]||0; return [c.name,c.cost,Math.round(r),(r/c.cost).toFixed(3)];}));
+  const csv=rows.map(r=>r.join(',')).join('\n'); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download=`roas_${state.brand}_${state.model}.csv`; a.click(); toast('CSV를 내려받았어요!');
+}
+
+function bind(){
+  document.querySelectorAll('[data-view]').forEach(a=>a.onclick=()=>{ state.view=a.dataset.view; persist(); render(); });
+  // Import
+  const dl=document.getElementById('dl-template'); if(dl) dl.onclick=()=>{ const csv='매체,광고비\n네이버검색,38200000\n메타IG,32700000'; const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='spend_template.csv'; a.click(); };
+  const cf=document.getElementById('csv-file'); if(cf) cf.onchange=async e=>{ const f=e.target.files[0]; const t=await f.text(); const lines=t.split('\n').slice(1).filter(Boolean); const data=lines.map(l=>l.split(',')); window._csvData=data; document.getElementById('csv-preview').innerHTML=`<div class="bg-slate-50 rounded-xl p-3 text-sm"><b>${lines.length}행 미리보기:</b><table class="w-full mt-2 text-xs">${data.slice(0,5).map(r=>`<tr><td class="p-1">${r[0]}</td><td class="p-1 text-right">${r[1]}</td></tr>`).join('')}</table></div>`; };
+  const ac=document.getElementById('apply-csv'); if(ac) ac.onclick=()=>{ if(!window._csvData){ toast('먼저 파일을 선택해 주세요'); return; } window._csvData.forEach(([n,c])=>{ const sp=cur().spend.find(s=>s.name===n); if(sp) sp.cost=+c; }); persist(); toast('데이터를 적용했어요'); render(); };
+  const er=document.getElementById('export-roas'); if(er) er.onclick=exportCSV;
+  // Integrations — OAuth 동의 화면 흐름
+  document.querySelectorAll('[data-oauth]').forEach(b=>b.onclick=()=>{ const name=b.dataset.oauth; const sp=cur().spend.find(s=>s.name===name); if(sp.oauth){ sp.oauth=false; delete sp.token; persist(); render(); toast(`${name} 연결을 해제했어요`); } else { startOAuth(name); } });
+  // Schedule
+  const chLabel = v=>({email:'이메일',slack:'Slack',kakao:'카카오 알림톡'})[v]||v;
+  const ss=document.getElementById('sch-save'); if(ss) ss.onclick=()=>{ const ch=document.getElementById('sch-ch').value; if(!ch){ toast('발송 채널을 선택해 주세요'); return; } state.schedule={channel:chLabel(ch), day:document.getElementById('sch-day').value, when:document.getElementById('sch-time').value}; persist(); render(); toast('스케줄을 저장했어요'); };
+  const st=document.getElementById('sch-test'); if(st) st.onclick=()=>{ const ch=document.getElementById('sch-ch').value; if(!ch){ toast('먼저 발송 채널을 선택해 주세요'); return; } const target=({email:'growth@'+state.brand+'.kr',slack:'#마케팅-리포트',kakao:'담당자 010-****-****'})[ch]; const now=new Date().toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}); state.sendLog=(state.sendLog||[]).concat([{at:now,channel:chLabel(ch),target,status:'발송 성공'}]); persist(); render(); toast(chLabel(ch)+' 리포트를 보냈어요! (mock)'); };
+}
+
+restoreFromUrl();
+window.addEventListener('hashchange', ()=>{ if (restoreFromUrl()) render(); });
+render();
+</script>
+</body>
+</html>

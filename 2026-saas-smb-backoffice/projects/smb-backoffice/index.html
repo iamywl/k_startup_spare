@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1440,initial-scale=1" />
+<title>스몰박스 SMB — 통합 백오피스</title>
+<script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<script>
+  // 디자인 토큰 재매핑 (Apple × Toss) — design-guide/디자인_애플_토스.md
+  tailwind.config = { theme: { extend: {
+    fontFamily: { sans: ['Pretendard','-apple-system','BlinkMacSystemFont','Apple SD Gothic Neo','sans-serif'] },
+    colors: {
+      brand:   { DEFAULT:'#3182F6', hover:'#1B64DA', light:'#E8F3FF' },
+      blue:    {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      indigo:  {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      sky:     {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      slate:   {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      gray:    {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      zinc:    {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      neutral: {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      emerald: {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      green:   {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      teal:    {50:'#E7F8EF',100:'#D2F2E0',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      amber:   {50:'#FFF6E5',100:'#FFE9C2',300:'#FFB331',400:'#FFB331',500:'#FFB331',600:'#E2991C',700:'#C77F12'},
+      yellow:  {50:'#FFF6E5',100:'#FFE9C2',300:'#FFB331',400:'#FFB331',500:'#FFB331',600:'#E2991C'},
+      orange:  {50:'#FFF6E5',100:'#FFE9C2',400:'#FFB331',500:'#FFB331',600:'#E2991C'},
+      rose:    {50:'#FEECEE',100:'#FCD9DD',300:'#F8A4AC',400:'#F04452',500:'#F04452',600:'#F04452',700:'#D6303D'},
+      red:     {50:'#FEECEE',100:'#FCD9DD',300:'#F8A4AC',400:'#F04452',500:'#F04452',600:'#F04452',700:'#D6303D'},
+    }
+  } } }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<style>
+  /* design-tone-components */
+  /* ===== design-tone-components (guide §6·§7) ===== */
+  button, [role="button"], a.w-full, input[type="submit"], input[type="button"] {
+    transition: transform .12s cubic-bezier(.3,0,0,1), opacity .15s ease, box-shadow .15s ease, background-color .15s ease;
+  }
+  button:active:not(:disabled), [role="button"]:active, a.w-full:active,
+  input[type="submit"]:active, input[type="button"]:active { transform: scale(.97); }
+  button:disabled, button[disabled], [role="button"][aria-disabled="true"] { opacity: .35; cursor: not-allowed; }
+  input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: none; border-color: #3182F6; box-shadow: 0 0 0 1.5px #3182F6;
+  }
+  button.w-full, button[type="submit"].w-full, a.w-full[class*="bg-"] {
+    min-height: 52px; border-radius: 12px;
+  }
+</style>
+</head>
+<body class="bg-slate-100 text-slate-900">
+<div class="min-h-screen flex">
+  <aside class="w-60 bg-white border-r p-5">
+    <div class="text-lg font-semibold">스몰박스 <span class="text-blue-600">SMB</span></div>
+    <div class="text-xs text-slate-500 mt-1">시트당 9,900원/월</div>
+    <nav id="nav" class="mt-8 space-y-1 text-sm"></nav>
+    <div class="mt-10 text-xs text-slate-500">
+      <div class="font-semibold text-slate-700">로그인 계정</div>
+      <div class="mt-1">demo@smb.kr (게스트)</div>
+      <div class="mt-1 text-emerald-600">로그인 없이 바로 둘러봐요</div>
+    </div>
+    <div class="mt-8 text-xs text-slate-400">v1.0 · all-in-one</div>
+  </aside>
+  <main id="main" class="flex-1 p-8"></main>
+</div>
+<div id="toast" class="fixed bottom-6 right-6 hidden bg-slate-900 text-white px-4 py-2 rounded-lg shadow-lg text-sm z-50"></div>
+
+<script>
+// ============== 상태 ==============
+const KEY = 'smb_state_v1';
+const seedEmployees = () => ([
+  { id:'E001', name:'이지원', dept:'개발', join:'2024-03-01', salary:3_800_000, email:'lee@smb.kr', phone:'010-1111-2222' },
+  { id:'E002', name:'박민서', dept:'마케팅', join:'2024-08-15', salary:3_200_000, email:'park@smb.kr', phone:'010-2222-3333' },
+  { id:'E003', name:'최지훈', dept:'영업', join:'2025-01-10', salary:3_500_000, email:'choi@smb.kr', phone:'010-3333-4444' },
+  { id:'E004', name:'정나연', dept:'디자인', join:'2025-04-01', salary:3_400_000, email:'jung@smb.kr', phone:'010-4444-5555' },
+]);
+const seedContracts = () => ([
+  { id:'C-2024-01', kind:'근로계약서', target:'최지훈', status:'완료', sent:'2025-01-10', signed:'2025-01-10' },
+  { id:'C-2024-02', kind:'NDA', target:'박민서', status:'완료', sent:'2026-03-30', signed:'2026-03-31' },
+  { id:'C-2024-03', kind:'용역계약서', target:'한솔 디자인', status:'서명대기', sent:'2026-04-21', signed:null },
+  { id:'C-2024-04', kind:'근로계약서', target:'정나연', status:'서명대기', sent:'2026-04-22', signed:null },
+]);
+const seedKakao = () => ([
+  { t:'2026-04-22 09:14', to:'정나연', tpl:'근로계약 발송', result:'열람 ✓' },
+  { t:'2026-04-21 16:02', to:'한솔 디자인', tpl:'용역계약 발송', result:'열람 ✓' },
+  { t:'2026-04-20 18:00', to:'전 직원(4)', tpl:'급여 명세 발송', result:'4/4 열람' },
+]);
+let state = JSON.parse(localStorage.getItem(KEY) || 'null');
+if (!state) { state = { view:'dash', employees:seedEmployees(), contracts:seedContracts(), kakao:seedKakao(), wfStep:1, wfData:{}, signImg:null }; persist(); }
+function persist(){ localStorage.setItem(KEY, JSON.stringify(state)); }
+
+const KRW = n => '₩ ' + Math.round(n).toLocaleString('ko-KR');
+// 근로자 본인 부담분 요율 (2025년 기준 근사값).
+//  - 국민연금 4.5% (사업주 4.5% 별도) — 본인 부담 4.5%
+//  - 건강보험 3.545% (총 7.09% 중 절반) — 본인 부담
+//  - 장기요양보험 = 건강보험료 × 12.95% (건강보험료에 부과, 월급 대비 약 0.459%)
+//  - 고용보험 0.9% (실업급여분, 본인 부담)
+//  - 산재보험은 전액 사업주 부담 → 본인 공제 없음(0)
+// 출처: 국민연금공단/국민건강보험공단/고용노동부 2025 고시 기준 근사. 시연용 단순화.
+const RATES = { np: 0.045, hi: 0.03545, ltOnHi: 0.1295, lt: 0.009, ph: 0 };
+// 소득세: 정확한 간이세액표 대신 과세표준 구간 누진율 근사(지방소득세 10% 가산 포함).
+// 부양가족·비과세 미반영. 시연용 단순 추정값([추정]).
+const calcIncomeTax = (monthly) => {
+  const annual = monthly * 12;
+  let tax;
+  if (annual <= 14_000_000) tax = annual * 0.06;
+  else if (annual <= 50_000_000) tax = 840_000 + (annual - 14_000_000) * 0.15;
+  else if (annual <= 88_000_000) tax = 6_240_000 + (annual - 50_000_000) * 0.24;
+  else tax = 15_360_000 + (annual - 88_000_000) * 0.35;
+  // 근로소득세액공제 단순 반영(약 55만원 한도 근사) 후 월할 + 지방소득세 10%
+  const yearlyTax = Math.max(0, tax - 550_000);
+  return Math.round((yearlyTax / 12) * 1.1);
+};
+const calcPay = (s) => {
+  const np = Math.round(s*RATES.np), hi = Math.round(s*RATES.hi);
+  const lt = Math.round(hi*RATES.ltOnHi), emp = Math.round(s*RATES.lt), ph = 0;
+  const tax = calcIncomeTax(s);
+  const ins = np + hi + lt + emp;  // 산재(ph)는 사업주 전액 부담 → 본인 공제 제외
+  return { np, hi, lt, emp, ph, ins, tax, net: s - ins - tax };
+};
+
+const NAV = [
+  ['dash','📊 대시보드'], ['contract','📝 전자계약'], ['workflow','🔄 계약 워크플로'],
+  ['attendance','⏰ 근태'], ['payroll','💰 급여'], ['employees','👥 직원 관리'],
+  ['kakao','💬 알림톡 로그'], ['docs','📁 문서함'],
+];
+
+function renderNav(){
+  document.getElementById('nav').innerHTML = NAV.map(([k,n])=>`<a data-view="${k}" class="block px-3 py-2 rounded text-sm cursor-pointer ${state.view===k?'bg-blue-50 text-blue-700 font-semibold':'text-slate-700 hover:bg-slate-50'}">${n}</a>`).join('');
+}
+
+// ============== 화면 ==============
+function vDash(){
+  const totalSalary = state.employees.reduce((a,b)=>a+b.salary,0);
+  const totalNet = state.employees.reduce((a,b)=>a+calcPay(b.salary).net,0);
+  const pending = state.contracts.filter(c=>c.status==='서명대기').length;
+  return `<h1 class="text-2xl font-bold">대시보드</h1>
+  <div class="grid grid-cols-4 gap-4 mt-6">
+    ${kpi('직원 수', state.employees.length+'명', '4대보험 자동 계산')}
+    ${kpi('대기 계약', pending+'건', '카카오 알림톡 발송 완료')}
+    ${kpi('이번달 총급여', KRW(totalSalary), `실 지급 ${KRW(totalNet)}`)}
+    ${kpi('알림톡 누계', state.kakao.length+'건', '최근 7일')}
+  </div>
+  <section class="grid grid-cols-2 gap-4 mt-6">
+    <div class="bg-white rounded-2xl p-5 border"><div class="font-semibold mb-3">최근 활동</div>
+      <ul class="text-sm space-y-2 text-slate-700">
+        ${state.kakao.slice(0,5).map(k=>`<li>· ${k.t} — <b>${k.to}</b> · ${k.tpl} <span class="text-emerald-600 text-xs">${k.result}</span></li>`).join('')}
+      </ul></div>
+    <div class="bg-white rounded-2xl p-5 border"><div class="font-semibold mb-3">대기중 계약</div>
+      <ul class="text-sm space-y-2 text-slate-700">
+        ${state.contracts.filter(c=>c.status==='서명대기').map(c=>`<li>· <b>${c.kind}</b> → ${c.target} (발송 ${c.sent})</li>`).join('') || '<li class="text-slate-400">대기중인 계약이 아직 없어요</li>'}
+      </ul></div>
+  </section>`;
+}
+function kpi(l,v,s){ return `<div class="bg-white rounded-2xl p-5 border"><div class="text-xs text-slate-500">${l}</div><div class="text-2xl font-bold mt-1">${v}</div><div class="text-xs text-slate-500 mt-1">${s}</div></div>`; }
+
+function vContract(){
+  return `<h1 class="text-2xl font-bold">전자계약</h1>
+  <div class="mt-2 text-sm text-slate-500">jsPDF 실 PDF 생성 + 서명 캔버스 + 카카오 알림톡 발송 로그</div>
+  <button id="new-c" class="mt-4 px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold">새 계약 작성하기</button>
+  <div class="mt-6 bg-white rounded-2xl border overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-slate-600"><tr><th class="text-left p-3">계약 ID</th><th class="text-left p-3">유형</th><th class="text-left p-3">상대방</th><th class="text-left p-3">상태</th><th class="text-left p-3">발송일</th><th class="text-right p-3">동작</th></tr></thead>
+      <tbody>${state.contracts.map(c=>`<tr class="border-t">
+        <td class="p-3 font-mono text-xs">${c.id}</td>
+        <td class="p-3">${c.kind}</td>
+        <td class="p-3">${c.target}</td>
+        <td class="p-3 ${c.status==='서명대기'?'text-amber-600':'text-emerald-600'}">${c.status}</td>
+        <td class="p-3">${c.sent}</td>
+        <td class="p-3 text-right"><button data-pdf="${c.id}" class="text-blue-600 text-xs">PDF</button></td>
+      </tr>`).join('')}</tbody>
+    </table>
+  </div>`;
+}
+
+function vWorkflow(){
+  const step = state.wfStep || 1;
+  const dot = i => `<div class="flex items-center"><div class="w-7 h-7 rounded-full ${step>=i?'bg-blue-600 text-white':'bg-slate-200 text-slate-500'} font-bold flex items-center justify-center text-sm">${i}</div></div>`;
+  const line = i => `<div class="flex-1 h-1 ${step>i?'bg-blue-600':'bg-slate-200'} mx-2"></div>`;
+  return `<h1 class="text-2xl font-bold">계약 발행 워크플로</h1>
+  <div class="mt-6 flex items-center">
+    ${dot(1)}${line(1)}${dot(2)}${line(2)}${dot(3)}${line(3)}${dot(4)}
+  </div>
+  <div class="flex justify-between text-xs text-slate-500 mt-2"><span>1. 템플릿 선택</span><span>2. 변수 입력</span><span>3. PDF 미리보기</span><span>4. 서명·발송</span></div>
+  <div class="mt-8">${[wfStep1, wfStep2, wfStep3, wfStep4][step-1]()}</div>`;
+}
+
+function wfStep1(){
+  const tpls = [
+    { id:'근로계약서', desc:'표준 근로계약서 — 고용노동부 표준 양식 기반', vars:['employee','startDate','position','salary'] },
+    { id:'용역계약서', desc:'용역(SI·디자인·콘텐츠 등) 표준 계약서', vars:['vendor','project','fee','dueDate'] },
+    { id:'NDA',       desc:'비밀유지계약서 (한·영 병기)', vars:['party','term','scope'] },
+  ];
+  return `<div class="grid grid-cols-3 gap-4">
+    ${tpls.map(t=>`<button data-tpl="${t.id}" class="text-left bg-white rounded-2xl border p-5 hover:border-blue-500 hover:shadow">
+      <div class="font-semibold">${t.id}</div><div class="text-sm text-slate-500 mt-1">${t.desc}</div><div class="text-xs text-slate-400 mt-3">변수 ${t.vars.length}개</div>
+    </button>`).join('')}
+  </div>`;
+}
+function wfStep2(){
+  const k = state.wfData.kind;
+  const fields = { '근로계약서':[['상대방(이름)','employee','정나연'],['시작일','startDate','2026-04-22'],['직책','position','UI/UX 디자이너'],['월급(원)','salary','3400000']],
+                   '용역계약서':[['용역사(상호)','vendor','한솔 디자인'],['프로젝트명','project','SMB 백오피스 UI 키트'],['대금(원)','fee','5000000'],['납기일','dueDate','2026-05-31']],
+                   'NDA':[['상대방','party','박민서'],['기한(년)','term','2'],['범위','scope','전 사업영역의 영업비밀']] }[k];
+  return `<div class="bg-white rounded-2xl border p-6 max-w-xl space-y-3">
+    <div class="text-sm text-slate-500">템플릿: <b>${k}</b></div>
+    ${fields.map(([l,n,v])=>`<label class="block"><span class="text-xs text-slate-500">${l}</span><input id="wf-${n}" value="${state.wfData[n]||v}" class="mt-1 w-full border rounded-lg p-3 text-sm"></label>`).join('')}
+    <div class="flex gap-2 pt-2"><button data-back class="flex-1 py-2 rounded-lg border">이전</button><button data-next class="flex-1 py-2 rounded-lg bg-blue-600 text-white font-semibold">다음 → 미리보기</button></div>
+  </div>`;
+}
+function wfStep3(){
+  return `<div class="grid grid-cols-2 gap-6">
+    <div class="bg-white rounded-2xl border p-6">
+      <div class="text-sm text-slate-500">PDF 미리보기 (jsPDF 실 생성)</div>
+      <iframe id="pdf-iframe" class="w-full h-[600px] mt-3 border rounded"></iframe>
+    </div>
+    <div class="bg-white rounded-2xl border p-6">
+      <div class="font-semibold mb-3">생성된 계약서 정보</div>
+      <table class="text-sm w-full"><tbody>${Object.entries(state.wfData).map(([k,v])=>`<tr class="border-t"><td class="p-2 text-slate-500">${k}</td><td class="p-2">${v}</td></tr>`).join('')}</tbody></table>
+      <div class="mt-6 space-y-2">
+        <button id="dl-pdf" class="w-full py-2 rounded-lg border">PDF 다운로드</button>
+        <button data-back class="w-full py-2 rounded-lg border">이전</button>
+        <button data-next class="w-full py-2 rounded-lg bg-blue-600 text-white font-semibold">다음 → 서명·발송</button>
+      </div>
+    </div>
+  </div>`;
+}
+function wfStep4(){
+  return `<div class="grid grid-cols-2 gap-6">
+    <div class="bg-white rounded-2xl border p-6">
+      <div class="font-semibold mb-3">서명란</div>
+      <canvas id="sig" width="500" height="180" class="border rounded-lg bg-slate-50 w-full"></canvas>
+      <div class="flex gap-2 mt-3"><button id="sig-clear" class="flex-1 py-2 rounded-lg border">지우기</button><button id="sig-save" class="flex-1 py-2 rounded-lg bg-emerald-600 text-white font-semibold">서명 저장</button></div>
+    </div>
+    <div class="bg-white rounded-2xl border p-6 space-y-3">
+      <div class="font-semibold">발송</div>
+      <div class="text-sm text-slate-500">상대방: <b>${state.wfData.employee || state.wfData.vendor || state.wfData.party}</b></div>
+      <label class="block"><span class="text-xs text-slate-500">알림 채널</span>
+        <select id="ch" class="mt-1 w-full border rounded-lg p-2 text-sm"><option>카카오 알림톡</option><option>이메일</option><option>SMS</option></select>
+      </label>
+      <button id="send-final" class="w-full py-3 rounded-lg bg-blue-600 text-white font-semibold">서명 + 발송 + 알림톡</button>
+      <div id="wf-done" class="hidden bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm text-emerald-800">발송했어요! 계약 목록과 알림톡 로그에 추가했어요.</div>
+    </div>
+  </div>`;
+}
+
+function vAttendance(){
+  const today = new Date(); const week = ['월','화','수','목','금','토','일'];
+  return `<h1 class="text-2xl font-bold">근태</h1>
+  <div class="grid grid-cols-2 gap-6 mt-6">
+    <div class="bg-white rounded-2xl border p-6">
+      <div class="font-semibold mb-3">이번 주 출퇴근 (예시)</div>
+      <table class="w-full text-sm"><thead class="bg-slate-50 text-slate-600"><tr><th class="p-3 text-left">요일</th><th class="p-3 text-right">출근</th><th class="p-3 text-right">퇴근</th><th class="p-3 text-right">근무</th></tr></thead>
+      <tbody>${week.map((d,i)=>i<5?`<tr class="border-t"><td class="p-3">${d}</td><td class="p-3 text-right">09:0${i+1}</td><td class="p-3 text-right">18:1${i}</td><td class="p-3 text-right text-emerald-600">9시간</td></tr>`:`<tr class="border-t"><td class="p-3">${d}</td><td colspan="3" class="p-3 text-right text-slate-400">휴무</td></tr>`).join('')}</tbody></table>
+    </div>
+    <div class="bg-white rounded-2xl border p-6">
+      <div class="font-semibold mb-3">시프트 캘린더 — ${today.getFullYear()}.${today.getMonth()+1}</div>
+      <div class="grid grid-cols-7 gap-1 text-xs">${week.map(d=>`<div class="text-center text-slate-500 p-1">${d}</div>`).join('')}
+      ${Array.from({length:28},(_,i)=>{const off=i%7>=5; return `<div class="aspect-square border rounded p-1 ${off?'bg-slate-50 text-slate-400':'bg-emerald-50'}">${i+1}<div class="text-[10px]">${off?'휴무':'주간'}</div></div>`;}).join('')}</div>
+    </div>
+  </div>`;
+}
+
+function vPayroll(){
+  return `<h1 class="text-2xl font-bold">급여 명세 — 이번 달</h1>
+  <div class="text-sm text-slate-500 mt-1">4대보험(국민연금·건강·고용·산재) + 소득세 자동 계산. 명세서는 jsPDF로 즉시 PDF.</div>
+  <div class="bg-white rounded-2xl border mt-6 overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-slate-600">
+        <tr><th class="text-left p-3">직원</th><th class="text-left p-3">부서</th><th class="text-right p-3">기본급</th><th class="text-right p-3">4대보험 합</th><th class="text-right p-3">소득세</th><th class="text-right p-3">실 지급</th><th class="text-center p-3">동작</th></tr>
+      </thead>
+      <tbody>
+        ${state.employees.map(e=>{const p=calcPay(e.salary); return `<tr class="border-t">
+          <td class="p-3 font-medium">${e.name}</td>
+          <td class="p-3">${e.dept}</td>
+          <td class="p-3 text-right">${KRW(e.salary)}</td>
+          <td class="p-3 text-right text-slate-500">${KRW(p.ins)}</td>
+          <td class="p-3 text-right text-slate-500">${KRW(p.tax)}</td>
+          <td class="p-3 text-right font-semibold">${KRW(p.net)}</td>
+          <td class="p-3 text-center space-x-2">
+            <button data-payslip="${e.id}" class="px-2 py-1 rounded bg-slate-100 text-xs font-semibold">명세서 PDF</button>
+            <button data-notify="${e.id}" class="px-2 py-1 rounded bg-yellow-300 text-yellow-900 text-xs font-bold">알림톡</button>
+          </td>
+        </tr>`;}).join('')}
+      </tbody>
+    </table>
+  </div>
+  <details class="mt-4 bg-white rounded-2xl border p-5">
+    <summary class="cursor-pointer text-sm font-semibold">계산 요율 (시연 기본값)</summary>
+    <table class="text-sm mt-3 w-full"><tbody>${[
+      ['국민연금 (본인부담)', RATES.np*100, '월 기본급 × 4.5%'],
+      ['건강보험 (본인부담)', RATES.hi*100, '월 기본급 × 3.545%'],
+      ['장기요양보험', RATES.ltOnHi*100, '건강보험료 × 12.95%'],
+      ['고용보험 (실업급여분)', RATES.lt*100, '월 기본급 × 0.9%'],
+      ['산재보험', RATES.ph*100, '전액 사업주 부담 (본인 공제 0)'],
+      ['소득세+지방소득세', null, '간이세액 누진율 근사 [추정]'],
+    ].map(([k,v,note])=>`<tr class="border-t"><td class="p-2">${k}</td><td class="p-2 text-right">${v===null?'-':v.toFixed(3)+'%'}</td><td class="p-2 text-xs text-slate-400">${note}</td></tr>`).join('')}</tbody></table>
+    <div class="mt-2 text-xs text-slate-400">2025년 4대보험 본인부담 요율 근사값. 부양가족·비과세 항목 미반영(시연용 단순화).</div>
+  </details>`;
+}
+
+function vEmployees(){
+  return `<h1 class="text-2xl font-bold">직원 관리</h1>
+  <button id="emp-add" class="mt-4 px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold">+ 직원 추가</button>
+  <div class="mt-6 bg-white rounded-2xl border overflow-hidden">
+    <table class="w-full text-sm"><thead class="bg-slate-50 text-slate-600"><tr><th class="text-left p-3">사번</th><th class="text-left p-3">이름</th><th class="text-left p-3">부서</th><th class="text-left p-3">입사일</th><th class="text-right p-3">월급</th><th class="text-left p-3">연락처</th><th class="text-right p-3">동작</th></tr></thead>
+      <tbody>${state.employees.map(e=>`<tr class="border-t" id="row-${e.id}">
+        <td class="p-3 font-mono text-xs">${e.id}</td><td class="p-3 font-medium">${e.name}</td><td class="p-3">${e.dept}</td><td class="p-3">${e.join}</td><td class="p-3 text-right">${KRW(e.salary)}</td><td class="p-3 text-xs text-slate-500">${e.phone}</td>
+        <td class="p-3 text-right space-x-2"><button data-edit="${e.id}" class="text-xs text-blue-600">편집</button><button data-del="${e.id}" class="text-xs text-red-600">삭제</button></td>
+      </tr>`).join('')}</tbody></table>
+  </div>
+  <dialog id="emp-dlg" class="rounded-2xl p-0 backdrop:bg-black/40 w-[480px]">
+    <form method="dialog" class="p-6 space-y-3">
+      <h3 id="emp-dlg-title" class="text-lg font-semibold">직원 추가</h3>
+      <input id="ef-name" placeholder="이름" class="w-full border rounded-lg p-3 text-sm">
+      <div class="grid grid-cols-2 gap-2">
+        <input id="ef-dept" placeholder="부서" class="border rounded-lg p-3 text-sm">
+        <input id="ef-join" type="date" class="border rounded-lg p-3 text-sm">
+      </div>
+      <input id="ef-salary" type="number" placeholder="월급(원)" class="w-full border rounded-lg p-3 text-sm">
+      <div class="grid grid-cols-2 gap-2">
+        <input id="ef-email" type="email" placeholder="이메일" class="border rounded-lg p-3 text-sm">
+        <input id="ef-phone" placeholder="연락처" class="border rounded-lg p-3 text-sm">
+      </div>
+      <div class="flex justify-end gap-2"><button value="cancel" class="px-4 py-2 rounded-lg border">취소</button><button id="ef-save" value="ok" class="px-4 py-2 rounded-lg bg-blue-600 text-white">저장</button></div>
+    </form>
+  </dialog>`;
+}
+
+function vKakao(){
+  return `<h1 class="text-2xl font-bold">알림톡 로그</h1>
+  <div class="mt-2 text-sm text-slate-500">실제 발송은 NHN Toast·카카오 비즈메시지 키가 있을 때 켜져요. 지금은 mock 발송 로그예요.</div>
+  <div class="mt-6 bg-white rounded-2xl border overflow-hidden">
+    <table class="w-full text-sm"><thead class="bg-slate-50 text-slate-600"><tr><th class="text-left p-3">시각</th><th class="text-left p-3">수신</th><th class="text-left p-3">템플릿</th><th class="text-left p-3">결과</th></tr></thead>
+      <tbody>${state.kakao.map(k=>`<tr class="border-t"><td class="p-3 text-xs text-slate-500">${k.t}</td><td class="p-3">${k.to}</td><td class="p-3">${k.tpl}</td><td class="p-3 text-emerald-600">${k.result}</td></tr>`).join('')}</tbody></table>
+  </div>`;
+}
+
+function vDocs(){
+  const cnt = (kind) => state.contracts.filter(c=>c.kind===kind).length;
+  const cards = [
+    ['근로계약', cnt('근로계약서'), 'bg-blue-50 text-blue-700'],
+    ['용역계약', cnt('용역계약서'), 'bg-purple-50 text-purple-700'],
+    ['NDA', cnt('NDA'), 'bg-amber-50 text-amber-700'],
+    ['세금계산서', 47, 'bg-emerald-50 text-emerald-700'],
+    ['재직증명', 3, 'bg-slate-100 text-slate-700'],
+    ['기타', 11, 'bg-pink-50 text-pink-700'],
+  ];
+  return `<h1 class="text-2xl font-bold">문서함</h1>
+  <div class="grid grid-cols-3 gap-4 mt-6">${cards.map(([n,c,cls])=>`<div class="${cls} rounded-2xl p-5"><div class="text-sm">${n}</div><div class="text-3xl font-bold mt-1">${c}건</div></div>`).join('')}</div>`;
+}
+
+// ============== PDF (jsPDF 실 생성) ==============
+function buildPdf(kind, data){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ format:'a4', unit:'mm' });
+  // CJK 폰트는 jsPDF 기본 미포함 — 시연용으로 영문화 + 한글 latin1 한계는 알림에 표시
+  doc.setFont('helvetica','bold'); doc.setFontSize(18);
+  doc.text(kind === '근로계약서' ? 'EMPLOYMENT CONTRACT' : kind === '용역계약서' ? 'SERVICE AGREEMENT' : 'NDA', 105, 25, { align:'center' });
+  doc.setFontSize(11); doc.setFont('helvetica','normal');
+  doc.text('(주)스몰박스 SMB — Generated by SMB Backoffice SaaS', 105, 33, { align:'center' });
+  doc.line(20, 38, 190, 38);
+  let y = 50;
+  const row = (k,v) => { doc.setFont('helvetica','bold'); doc.text(k+':', 25, y); doc.setFont('helvetica','normal'); doc.text(String(v||'-'), 75, y); y += 8; };
+  if (kind === '근로계약서') {
+    row('Employee', data.employee); row('Position', data.position); row('Start Date', data.startDate); row('Monthly Salary (KRW)', Number(data.salary||0).toLocaleString('en-US'));
+    y += 4; doc.text('Article 1. Working hours: 40 hours/week (Mon-Fri 09:00-18:00).', 25, y); y+=7;
+    doc.text('Article 2. Insurance: National Pension, Health, Employment, Industrial Accident.', 25, y); y+=7;
+    doc.text('Article 3. Probation: 3 months from start date.', 25, y); y+=7;
+    doc.text('Article 4. Other terms follow Korean Labor Standards Act and company rules.', 25, y);
+  } else if (kind === '용역계약서') {
+    row('Vendor', data.vendor); row('Project', data.project); row('Fee (KRW)', Number(data.fee||0).toLocaleString('en-US')); row('Due Date', data.dueDate);
+    y += 4; doc.text('Article 1. Scope of Work: As specified in attached SOW.', 25, y); y+=7;
+    doc.text('Article 2. Payment: 30% upfront, 70% on delivery.', 25, y); y+=7;
+    doc.text('Article 3. IP: Final deliverables transfer to client upon full payment.', 25, y);
+  } else {
+    row('Counterparty', data.party); row('Term (years)', data.term); row('Scope', data.scope);
+    y += 4; doc.text('Article 1. Each party shall hold the other party\'s confidential information.', 25, y); y+=7;
+    doc.text('Article 2. Term: ' + data.term + ' year(s) from execution date.', 25, y);
+  }
+  // signature area
+  doc.line(120, 250, 185, 250); doc.text('Signature', 152, 256, { align:'center' });
+  if (state.signImg) {
+    try { doc.addImage(state.signImg, 'PNG', 122, 230, 60, 18); } catch(e){}
+  }
+  doc.setFontSize(9); doc.text('Generated: ' + new Date().toLocaleString(), 20, 285);
+  return doc;
+}
+
+function buildPayslip(emp){
+  const { jsPDF } = window.jspdf;
+  const p = calcPay(emp.salary);
+  const doc = new jsPDF({ format:'a4', unit:'mm' });
+  doc.setFontSize(18); doc.setFont('helvetica','bold'); doc.text('PAY SLIP — ' + new Date().toLocaleDateString('en-US',{month:'long',year:'numeric'}), 105, 25, {align:'center'});
+  doc.setFontSize(11); doc.setFont('helvetica','normal'); doc.text('Smallbox SMB Co., Ltd.', 105, 33, {align:'center'}); doc.line(20,38,190,38);
+  let y=50; const row=(k,v)=>{doc.setFont('helvetica','bold');doc.text(k+':',25,y);doc.setFont('helvetica','normal');doc.text(String(v),85,y);y+=8;};
+  row('Employee', `${emp.name} (${emp.id})`); row('Department', emp.dept); row('Join Date', emp.join); y+=4;
+  doc.line(20,y,190,y); y+=6; doc.setFont('helvetica','bold'); doc.text('Earnings', 25, y); doc.text('Deductions', 110, y); y+=8;
+  doc.setFont('helvetica','normal');
+  doc.text('Base Salary: '+emp.salary.toLocaleString('en-US')+' KRW', 25, y);
+  doc.text('National Pension: '+p.np.toLocaleString('en-US'), 110, y); y+=7;
+  doc.text('Health Insurance: '+p.hi.toLocaleString('en-US'), 110, y); y+=7;
+  doc.text('Long-term Care: '+p.lt.toLocaleString('en-US'), 110, y); y+=7;
+  doc.text('Employment Ins: '+p.emp.toLocaleString('en-US'), 110, y); y+=7;
+  doc.text('Income Tax (+local): '+p.tax.toLocaleString('en-US'), 110, y); y+=7;
+  doc.text('Total Deductions: '+(p.ins+p.tax).toLocaleString('en-US'), 110, y); y+=12;
+  doc.line(20,y,190,y); y+=10;
+  doc.setFontSize(13); doc.setFont('helvetica','bold');
+  doc.text('NET PAY: '+p.net.toLocaleString('en-US')+' KRW', 105, y, {align:'center'});
+  doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.text('Auto-generated by SMB Backoffice on '+new Date().toLocaleString(), 20, 285);
+  return doc;
+}
+
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.remove('hidden'); setTimeout(()=>t.classList.add('hidden'),1700); }
+
+// ============== 라우팅·바인딩 ==============
+function render(){
+  renderNav();
+  document.getElementById('main').innerHTML = ({dash:vDash,contract:vContract,workflow:vWorkflow,attendance:vAttendance,payroll:vPayroll,employees:vEmployees,kakao:vKakao,docs:vDocs})[state.view]();
+  bind();
+}
+function bind(){
+  document.querySelectorAll('[data-view]').forEach(a=>a.onclick=()=>{ state.view=a.dataset.view; if (state.view!=='workflow') { state.wfStep=1; state.wfData={}; } persist(); render(); });
+  // contract list
+  document.querySelectorAll('[data-pdf]').forEach(b=>b.onclick=()=>{
+    const c = state.contracts.find(x=>x.id===b.dataset.pdf);
+    const doc = buildPdf(c.kind, { employee:c.target, vendor:c.target, party:c.target, position:'-', startDate:c.sent, salary:0, project:'-', fee:0, dueDate:'-', term:'2', scope:'-' });
+    doc.save(`${c.id}.pdf`); toast('PDF를 내려받았어요');
+  });
+  const newC = document.getElementById('new-c'); if (newC) newC.onclick=()=>{ state.view='workflow'; state.wfStep=1; state.wfData={}; persist(); render(); };
+  // workflow
+  document.querySelectorAll('[data-tpl]').forEach(b=>b.onclick=()=>{ state.wfData = { kind: b.dataset.tpl }; state.wfStep=2; persist(); render(); });
+  const next = document.querySelector('[data-next]'); if (next) next.onclick=()=>{
+    if (state.wfStep===2){ ['employee','startDate','position','salary','vendor','project','fee','dueDate','party','term','scope'].forEach(n=>{ const el=document.getElementById('wf-'+n); if (el) state.wfData[n]=el.value; }); }
+    state.wfStep++; persist(); render();
+    // Blob URL 이 datauristring 보다 iframe 렌더 안정성이 높음(특히 헤드리스 Chromium)
+    if (state.wfStep===3){ const doc = buildPdf(state.wfData.kind, state.wfData); document.getElementById('pdf-iframe').src = URL.createObjectURL(doc.output('blob')); }
+  };
+  const back = document.querySelector('[data-back]'); if (back) back.onclick=()=>{ state.wfStep=Math.max(1,state.wfStep-1); persist(); render(); };
+  const dl = document.getElementById('dl-pdf'); if (dl) dl.onclick=()=>{ const doc=buildPdf(state.wfData.kind, state.wfData); doc.save(`${state.wfData.kind}_${Date.now()}.pdf`); toast('PDF를 내려받았어요'); };
+  // signature
+  const sig = document.getElementById('sig');
+  if (sig){
+    const ctx = sig.getContext('2d'); ctx.lineWidth=2; ctx.strokeStyle='#191F28'; let d=false;
+    sig.onpointerdown=e=>{d=true;ctx.beginPath();ctx.moveTo(e.offsetX,e.offsetY);};
+    sig.onpointermove=e=>{ if(d){ctx.lineTo(e.offsetX,e.offsetY); ctx.stroke();} };
+    sig.onpointerup=()=>d=false;
+    document.getElementById('sig-clear').onclick=()=>ctx.clearRect(0,0,sig.width,sig.height);
+    document.getElementById('sig-save').onclick=()=>{ state.signImg = sig.toDataURL('image/png'); persist(); toast('서명을 저장했어요'); };
+  }
+  const sf = document.getElementById('send-final');
+  if (sf) sf.onclick=()=>{
+    if (!state.signImg){ toast('서명을 먼저 해주세요'); return; }
+    const id = 'C-' + Date.now().toString().slice(-6);
+    state.contracts.unshift({ id, kind: state.wfData.kind, target: state.wfData.employee || state.wfData.vendor || state.wfData.party, status: '서명대기', sent: new Date().toISOString().slice(0,10), signed:null });
+    state.kakao.unshift({ t: new Date().toLocaleString('ko-KR'), to: state.wfData.employee || state.wfData.vendor || state.wfData.party, tpl: state.wfData.kind+' 발송', result: '발송 완료' });
+    persist(); document.getElementById('wf-done').classList.remove('hidden'); toast('계약과 알림톡을 보냈어요');
+    state.wfStep=1; state.wfData={};
+    setTimeout(()=>{ state.view='contract'; persist(); render(); }, 1200);
+  };
+  // payslip
+  document.querySelectorAll('[data-payslip]').forEach(b=>b.onclick=()=>{
+    const e = state.employees.find(x=>x.id===b.dataset.payslip); buildPayslip(e).save(`payslip_${e.id}.pdf`); toast('명세서 PDF를 내려받았어요');
+  });
+  document.querySelectorAll('[data-notify]').forEach(b=>b.onclick=()=>{
+    const e = state.employees.find(x=>x.id===b.dataset.notify);
+    state.kakao.unshift({ t:new Date().toLocaleString('ko-KR'), to:e.name, tpl:'급여 명세 발송', result:'발송 완료' });
+    persist(); toast('알림톡을 보냈어요 (mock)');
+  });
+  // employees CRUD
+  const ea = document.getElementById('emp-add');
+  if (ea){
+    ea.onclick=()=>{ ['ef-name','ef-dept','ef-join','ef-salary','ef-email','ef-phone'].forEach(i=>document.getElementById(i).value=''); document.getElementById('emp-dlg-title').textContent='직원 추가'; window._editId=null; document.getElementById('emp-dlg').showModal(); };
+    document.getElementById('ef-save').onclick = (e)=>{
+      e.preventDefault();
+      const data = { name:val('ef-name'), dept:val('ef-dept'), join:val('ef-join'), salary:+val('ef-salary')||0, email:val('ef-email'), phone:val('ef-phone') };
+      if (!data.name) return;
+      if (window._editId){
+        const emp = state.employees.find(x=>x.id===window._editId); Object.assign(emp, data);
+      } else {
+        const id = 'E' + String(state.employees.length+1).padStart(3,'0');
+        state.employees.push({ id, ...data });
+      }
+      persist(); document.getElementById('emp-dlg').close(); render(); toast('직원 정보를 저장했어요');
+    };
+  }
+  document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{
+    const e = state.employees.find(x=>x.id===b.dataset.edit); if (!e) return;
+    document.getElementById('ef-name').value=e.name; document.getElementById('ef-dept').value=e.dept; document.getElementById('ef-join').value=e.join; document.getElementById('ef-salary').value=e.salary; document.getElementById('ef-email').value=e.email; document.getElementById('ef-phone').value=e.phone;
+    document.getElementById('emp-dlg-title').textContent='직원 편집 — '+e.name; window._editId = e.id; document.getElementById('emp-dlg').showModal();
+  });
+  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{
+    if (!confirm('이 직원을 삭제할까요?')) return;
+    state.employees = state.employees.filter(x=>x.id!==b.dataset.del); persist(); render(); toast('직원을 삭제했어요');
+  });
+}
+function val(id){ return document.getElementById(id).value; }
+
+render();
+</script>
+</body>
+</html>

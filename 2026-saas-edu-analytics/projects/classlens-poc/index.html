@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>클래스렌즈 — 학습분석 SaaS (v1 PoC)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<script>
+  // 디자인 토큰 재매핑 (Apple × Toss) — design-guide/디자인_애플_토스.md
+  tailwind.config = { theme: { extend: {
+    fontFamily: { sans: ['Pretendard','-apple-system','BlinkMacSystemFont','Apple SD Gothic Neo','sans-serif'] },
+    colors: {
+      brand:   { DEFAULT:'#3182F6', hover:'#1B64DA', light:'#E8F3FF' },
+      blue:    {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      indigo:  {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      sky:     {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      slate:   {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      gray:    {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      zinc:    {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      neutral: {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      emerald: {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      green:   {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      teal:    {50:'#E7F8EF',100:'#D2F2E0',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      amber:   {50:'#FFF6E5',100:'#FFE9C2',300:'#FFB331',400:'#FFB331',500:'#FFB331',600:'#E2991C',700:'#C77F12'},
+      yellow:  {50:'#FFF6E5',100:'#FFE9C2',300:'#FFB331',400:'#FFB331',500:'#FFB331',600:'#E2991C'},
+      orange:  {50:'#FFF6E5',100:'#FFE9C2',400:'#FFB331',500:'#FFB331',600:'#E2991C'},
+      rose:    {50:'#FEECEE',100:'#FCD9DD',300:'#F8A4AC',400:'#F04452',500:'#F04452',600:'#F04452',700:'#D6303D'},
+      red:     {50:'#FEECEE',100:'#FCD9DD',300:'#F8A4AC',400:'#F04452',500:'#F04452',600:'#F04452',700:'#D6303D'},
+    }
+  } } }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<style>
+  body { font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; }
+  .nav-active { background-color: #1B64DA; color: #fff; }
+  .heat-cell { transition: transform .1s; }
+  .heat-cell:hover { transform: scale(1.08); z-index: 5; box-shadow: 0 0 0 2px #1B64DA; }
+  ::-webkit-scrollbar { height: 8px; width: 8px; }
+  ::-webkit-scrollbar-thumb { background: #D1D6DB; border-radius: 4px; }
+  .step-done { background:#1B64DA; color:#fff; }
+  .step-cur { background:#3182F6; color:#fff; box-shadow:0 0 0 4px #C9E2FF; }
+  .step-todo { background:#E5E8EB; color:#4E5968; }
+
+  /* ===== design-tone-components (guide §6·§7) ===== */
+  button, [role="button"], a.w-full, input[type="submit"], input[type="button"] {
+    transition: transform .12s cubic-bezier(.3,0,0,1), opacity .15s ease, box-shadow .15s ease, background-color .15s ease;
+  }
+  button:active:not(:disabled), [role="button"]:active, a.w-full:active,
+  input[type="submit"]:active, input[type="button"]:active { transform: scale(.97); }
+  button:disabled, button[disabled], [role="button"][aria-disabled="true"] { opacity: .35; cursor: not-allowed; }
+  input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: none; border-color: #3182F6; box-shadow: 0 0 0 1.5px #3182F6;
+  }
+  button.w-full, button[type="submit"].w-full, a.w-full[class*="bg-"] {
+    min-height: 52px; border-radius: 12px;
+  }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800">
+
+<div class="flex h-screen overflow-hidden">
+  <!-- 좌측 내비 -->
+  <aside class="w-60 bg-slate-900 text-slate-200 flex flex-col shrink-0">
+    <div class="px-5 py-5 border-b border-slate-700">
+      <div class="text-xl font-bold text-white">클래스렌즈</div>
+      <div class="text-xs text-slate-400 mt-0.5">학습분석 SaaS · v1 PoC</div>
+    </div>
+    <nav class="flex-1 px-3 py-4 space-y-1 text-sm">
+      <button data-view="dashboard" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>📊</span> 성취 대시보드</button>
+      <button data-view="input" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>✏️</span> 평가·과제 입력</button>
+      <button data-view="heatmap" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>🔥</span> 취약개념 히트맵</button>
+      <button data-view="recommend" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>🎯</span> 맞춤 과제 추천</button>
+      <button data-view="report" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>📄</span> 학부모 리포트</button>
+      <button data-view="workflow" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>🔄</span> 워크플로</button>
+    </nav>
+    <div class="px-4 py-3 border-t border-slate-700 text-xs text-slate-400">
+      <div class="flex items-center gap-2">
+        <span class="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">교</span>
+        <div>
+          <div class="text-slate-200">게스트 교사</div>
+          <div>로그인 불요 데모</div>
+        </div>
+      </div>
+      <button id="resetBtn" class="mt-3 w-full text-center px-2 py-1.5 rounded bg-slate-800 hover:bg-rose-700 text-slate-300 hover:text-white">시드 초기화</button>
+    </div>
+  </aside>
+
+  <!-- 본문 -->
+  <main class="flex-1 overflow-y-auto">
+    <header class="bg-white border-b px-8 py-4 flex items-center justify-between sticky top-0 z-10">
+      <div>
+        <h1 id="viewTitle" class="text-lg font-bold text-slate-800">성취 대시보드</h1>
+        <p id="viewSub" class="text-xs text-slate-500">학급 전체 성취 현황을 한눈에 볼 수 있어요.</p>
+      </div>
+      <div class="flex items-center gap-3 text-sm">
+        <label class="text-slate-500">학급</label>
+        <select id="classSelect" class="border rounded-lg px-3 py-1.5 bg-white"></select>
+      </div>
+    </header>
+
+    <div class="p-8">
+      <!-- ===== 대시보드 ===== -->
+      <section id="view-dashboard" class="view space-y-6">
+        <div id="kpiCards" class="grid grid-cols-4 gap-4"></div>
+        <div class="grid grid-cols-3 gap-6">
+          <div class="col-span-2 bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-3 text-slate-700">평가 회차별 학급 평균 추세</h3>
+            <canvas id="trendChart" height="120"></canvas>
+          </div>
+          <div class="bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-3 text-slate-700">학생별 최근 성취</h3>
+            <canvas id="studentBar" height="220"></canvas>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl border p-5">
+          <h3 class="font-semibold mb-3 text-slate-700">학생 성취 현황 <span class="text-xs font-normal text-slate-400">(평균 70점 미만은 관심이 필요한 학생으로 표시돼요)</span></h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead><tr class="text-left text-slate-500 border-b">
+                <th class="py-2 px-2">학생</th><th class="py-2 px-2">최근 점수</th><th class="py-2 px-2">평균</th><th class="py-2 px-2">추세</th><th class="py-2 px-2">취약개념 수</th><th class="py-2 px-2">상태</th>
+              </tr></thead>
+              <tbody id="studentTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== 입력 ===== -->
+      <section id="view-input" class="view hidden space-y-6">
+        <div class="grid grid-cols-2 gap-6">
+          <div class="bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-4 text-slate-700">① 수기 평가 입력</h3>
+            <form id="manualForm" class="space-y-3 text-sm">
+              <div>
+                <label class="block text-slate-500 mb-1">학생</label>
+                <select id="mStudent" class="w-full border rounded-lg px-3 py-2"></select>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-slate-500 mb-1">평가명</label>
+                  <input id="mTitle" class="w-full border rounded-lg px-3 py-2" placeholder="예: 6월 단원평가" value="6월 형성평가" />
+                </div>
+                <div>
+                  <label class="block text-slate-500 mb-1">총점</label>
+                  <input id="mScore" type="number" min="0" max="100" class="w-full border rounded-lg px-3 py-2" placeholder="0-100" />
+                </div>
+              </div>
+              <div>
+                <label class="block text-slate-500 mb-1">개념별 정답 여부 (체크 = 정답)</label>
+                <div id="conceptChecks" class="grid grid-cols-2 gap-2 bg-slate-50 rounded-lg p-3 border"></div>
+              </div>
+              <button type="submit" class="w-full bg-blue-700 hover:bg-blue-800 text-white rounded-lg py-2.5 font-medium">저장하고 대시보드에 반영하기</button>
+            </form>
+          </div>
+          <div class="bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-4 text-slate-700">② CSV 업로드 (컬럼 자동 매핑)</h3>
+            <p class="text-xs text-slate-500 mb-2">형식: <code class="bg-slate-100 px-1 rounded">학생,평가명,점수,개념1정답,개념2정답,...</code> (정답=1/O, 오답=0/X)</p>
+            <textarea id="csvInput" rows="7" class="w-full border rounded-lg px-3 py-2 text-xs font-mono" placeholder="학생,평가명,점수,분수의덧셈,분수의뺄셈,약분,통분,대분수
+김민준,7월 진단평가,82,1,0,1,1,0"></textarea>
+            <div class="flex gap-2 mt-3">
+              <button id="csvSample" class="flex-1 border rounded-lg py-2 text-sm hover:bg-slate-50">샘플 채우기</button>
+              <button id="csvUpload" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg py-2 text-sm font-medium">CSV 불러와 반영하기</button>
+            </div>
+            <div id="csvLog" class="mt-3 text-xs text-slate-600 bg-slate-50 rounded-lg p-3 border max-h-32 overflow-y-auto hidden"></div>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl border p-5">
+          <h3 class="font-semibold mb-3 text-slate-700">최근 입력 이력 <span id="recordCount" class="text-xs font-normal text-slate-400"></span></h3>
+          <div class="overflow-x-auto max-h-64 overflow-y-auto">
+            <table class="w-full text-sm">
+              <thead class="sticky top-0 bg-white"><tr class="text-left text-slate-500 border-b">
+                <th class="py-2 px-2">학생</th><th class="py-2 px-2">평가명</th><th class="py-2 px-2">점수</th><th class="py-2 px-2">정답 개념</th><th class="py-2 px-2">입력시각</th>
+              </tr></thead>
+              <tbody id="recordTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== 히트맵 ===== -->
+      <section id="view-heatmap" class="view hidden space-y-6">
+        <div class="bg-white rounded-xl border p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-slate-700">개념 × 학생 정답률 히트맵</h3>
+            <div class="flex items-center gap-2 text-xs text-slate-500">
+              <span>약함</span>
+              <span class="w-5 h-4 inline-block rounded" style="background:#F04452"></span>
+              <span class="w-5 h-4 inline-block rounded" style="background:#FFB331"></span>
+              <span class="w-5 h-4 inline-block rounded" style="background:#84cc16"></span>
+              <span class="w-5 h-4 inline-block rounded" style="background:#14AE5C"></span>
+              <span>강함</span>
+            </div>
+          </div>
+          <div id="heatmap" class="overflow-x-auto"></div>
+        </div>
+        <div class="bg-white rounded-xl border p-5">
+          <h3 class="font-semibold mb-3 text-slate-700">학급 공통 약점 개념 (정답률 낮은 순)</h3>
+          <div id="weakConcepts" class="space-y-2"></div>
+        </div>
+      </section>
+
+      <!-- ===== 추천 ===== -->
+      <section id="view-recommend" class="view hidden space-y-6">
+        <div class="bg-white rounded-xl border p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="font-semibold text-slate-700">취약개념 기반 맞춤 과제 추천</h3>
+              <p class="text-xs text-slate-500">정답률이 임계값보다 낮은 개념에 대해 학생별 연습 과제를 자동으로 만들어 드려요.</p>
+            </div>
+            <div class="flex items-center gap-3 text-sm">
+              <label class="text-slate-500">임계값</label>
+              <input id="threshold" type="range" min="40" max="90" value="70" class="w-32" />
+              <span id="threshVal" class="font-semibold text-blue-700 w-10">70%</span>
+              <button id="genRecommend" class="bg-blue-700 hover:bg-blue-800 text-white rounded-lg px-4 py-2 font-medium">추천 생성</button>
+            </div>
+          </div>
+          <div id="recommendList" class="space-y-3"></div>
+        </div>
+        <div class="bg-white rounded-xl border p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-semibold text-slate-700">배포 목록 <span id="distCount" class="text-xs font-normal text-slate-400"></span></h3>
+            <button id="distributeAll" class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-1.5 text-sm font-medium">전체 배포</button>
+          </div>
+          <div id="distributeList" class="space-y-2 text-sm"></div>
+        </div>
+      </section>
+
+      <!-- ===== 리포트 ===== -->
+      <section id="view-report" class="view hidden space-y-6">
+        <div class="flex items-center gap-3">
+          <select id="reportStudent" class="border rounded-lg px-3 py-2 bg-white text-sm"></select>
+          <button id="buildReport" class="bg-blue-700 hover:bg-blue-800 text-white rounded-lg px-4 py-2 text-sm font-medium">리포트 생성</button>
+          <button id="downloadPdf" class="bg-rose-600 hover:bg-rose-700 text-white rounded-lg px-4 py-2 text-sm font-medium">PDF 저장</button>
+        </div>
+        <div id="reportCard" class="bg-white rounded-xl border max-w-3xl mx-auto p-8 hidden">
+          <div class="flex items-center justify-between border-b pb-4 mb-5">
+            <div>
+              <div class="text-xl font-bold text-slate-800">학부모 성취 리포트</div>
+              <div class="text-xs text-slate-500 mt-1">클래스렌즈 학습분석 · <span id="rpDate"></span></div>
+            </div>
+            <div class="text-right text-sm">
+              <div class="font-semibold text-blue-800" id="rpName"></div>
+              <div class="text-slate-500" id="rpClass"></div>
+            </div>
+          </div>
+          <div class="grid grid-cols-3 gap-4 mb-6" id="rpKpi"></div>
+          <h4 class="font-semibold text-slate-700 mb-2">성취 추세</h4>
+          <canvas id="rpTrend" height="90" class="mb-6"></canvas>
+          <h4 class="font-semibold text-slate-700 mb-2">취약개념</h4>
+          <div id="rpWeak" class="flex flex-wrap gap-2 mb-6"></div>
+          <h4 class="font-semibold text-slate-700 mb-2">추천 보충 과제</h4>
+          <ul id="rpRec" class="list-disc list-inside text-sm text-slate-700 space-y-1 mb-6"></ul>
+          <div class="text-sm bg-blue-50 border border-blue-100 rounded-lg p-4 text-slate-700" id="rpComment"></div>
+        </div>
+        <p id="reportHint" class="text-center text-slate-400 text-sm">학생을 선택하고 "리포트 생성"을 눌러 주세요.</p>
+      </section>
+
+      <!-- ===== 워크플로 ===== -->
+      <section id="view-workflow" class="view hidden">
+        <div class="bg-white rounded-xl border p-6 max-w-4xl mx-auto">
+          <h3 class="font-semibold text-slate-700 mb-1">평가 → 분석 → 피드백 워크플로</h3>
+          <p class="text-xs text-slate-500 mb-6">4단계를 순서대로 진행하면 입력부터 학부모 리포트까지 한 번에 끝낼 수 있어요. 진행 상태는 저장돼요.</p>
+          <div class="flex items-center justify-between mb-8" id="wfSteps"></div>
+          <div id="wfBody" class="min-h-[180px]"></div>
+          <div class="flex justify-between mt-6">
+            <button id="wfPrev" class="border rounded-lg px-5 py-2 text-sm hover:bg-slate-50">이전</button>
+            <button id="wfNext" class="bg-blue-700 hover:bg-blue-800 text-white rounded-lg px-5 py-2 text-sm font-medium">다음 단계</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- 토스트 -->
+<div id="toast" class="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-2.5 rounded-lg text-sm shadow-lg opacity-0 transition-opacity pointer-events-none z-50"></div>
+
+<script>
+const { jsPDF } = window.jspdf;
+const STORE_KEY = "classlens_v1_state";
+const CONCEPTS = ["분수의덧셈","분수의뺄셈","약분","통분","대분수","소수의곱셈"];
+
+// ---------- 시드 데이터 ----------
+function seed() {
+  const classes = [
+    { id: "c1", name: "6학년 1반" },
+    { id: "c2", name: "6학년 2반" },
+  ];
+  const names = {
+    c1: ["김민준","이서연","박지호","최예린","정우진","한소율","윤도현","강하은"],
+    c2: ["조현우","임채원","오시우","서지안","배준서","노아라"],
+  };
+  const students = [];
+  Object.entries(names).forEach(([cid, arr]) => {
+    arr.forEach((n, i) => students.push({ id: cid + "_s" + i, classId: cid, name: n }));
+  });
+  const records = [];
+  const titles = ["3월 진단평가","4월 형성평가","5월 단원평가"];
+  students.forEach((s) => {
+    // 각 학생 고유 약점 패턴
+    const weakIdx = (s.name.charCodeAt(0) + s.name.charCodeAt(1)) % CONCEPTS.length;
+    titles.forEach((t, ti) => {
+      const concepts = {};
+      let correct = 0;
+      CONCEPTS.forEach((c, ci) => {
+        let p = 0.78 - (ci === weakIdx ? 0.5 : 0) - (ci === (weakIdx + 2) % CONCEPTS.length ? 0.25 : 0);
+        p += ti * 0.05; // 회차 진행할수록 소폭 향상
+        const ok = Math.random() < Math.max(0.05, Math.min(0.97, p)) ? 1 : 0;
+        concepts[c] = ok; if (ok) correct++;
+      });
+      const base = Math.round((correct / CONCEPTS.length) * 100);
+      const score = Math.max(35, Math.min(100, base + Math.round((Math.random() - 0.5) * 12)));
+      records.push({ id: s.id + "_" + ti, studentId: s.id, classId: s.classId, title: t, score, concepts, ts: Date.now() - (3 - ti) * 86400000 });
+    });
+  });
+  return { classes, students, records, distributions: [], wfStep: 0, currentClass: "c1" };
+}
+
+// ---------- 상태 ----------
+let state = load();
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) { console.warn("load fail", e); }
+  const s = seed();
+  save(s);
+  return s;
+}
+function save(s = state) { localStorage.setItem(STORE_KEY, JSON.stringify(s)); }
+
+// ---------- 유틸 ----------
+function classStudents() { return state.students.filter((s) => s.classId === state.currentClass); }
+function studentRecords(sid) { return state.records.filter((r) => r.studentId === sid).sort((a, b) => a.ts - b.ts); }
+function classRecords() { return state.records.filter((r) => r.classId === state.currentClass); }
+function avgScore(sid) { const rs = studentRecords(sid); return rs.length ? Math.round(rs.reduce((a, r) => a + r.score, 0) / rs.length) : 0; }
+function lastScore(sid) { const rs = studentRecords(sid); return rs.length ? rs[rs.length - 1].score : 0; }
+function trend(sid) { const rs = studentRecords(sid); if (rs.length < 2) return 0; return rs[rs.length - 1].score - rs[0].score; }
+
+// 학생별 개념 정답률 (전 기록 평균)
+function conceptRate(sid, concept) {
+  const rs = studentRecords(sid).filter((r) => concept in r.concepts);
+  if (!rs.length) return null;
+  return Math.round((rs.reduce((a, r) => a + r.concepts[concept], 0) / rs.length) * 100);
+}
+function studentWeakConcepts(sid, th = 70) {
+  return CONCEPTS.filter((c) => { const r = conceptRate(sid, c); return r !== null && r < th; });
+}
+function classConceptRate(concept) {
+  const ss = classStudents();
+  const vals = ss.map((s) => conceptRate(s.id, concept)).filter((v) => v !== null);
+  return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
+}
+function heatColor(rate) {
+  if (rate === null) return "#F2F4F6";
+  if (rate < 40) return "#F04452";
+  if (rate < 60) return "#FFB331";
+  if (rate < 80) return "#84cc16";
+  return "#14AE5C";
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.style.opacity = "1";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (t.style.opacity = "0"), 2200);
+}
+
+// ---------- 차트 인스턴스 ----------
+let charts = {};
+function destroyChart(k) { if (charts[k]) { charts[k].destroy(); delete charts[k]; } }
+
+// ---------- 뷰 전환 ----------
+const VIEW_META = {
+  dashboard: ["성취 대시보드", "학급 전체 성취 현황을 한눈에 볼 수 있어요."],
+  input: ["평가·과제 입력", "수기 입력 또는 CSV 업로드로 결과를 불러올 수 있어요."],
+  heatmap: ["취약개념 히트맵", "개념별 정답률로 학급 공통 약점을 진단해요."],
+  recommend: ["맞춤 과제 추천", "취약개념 임계값을 기준으로 보충 과제를 자동으로 만들어 배포해요."],
+  report: ["학부모 리포트", "학생별 성취 리포트를 만들고 PDF로 저장할 수 있어요."],
+  workflow: ["워크플로", "평가→분석→피드백 4단계를 순서대로 진행해요."],
+};
+function setView(v) {
+  document.querySelectorAll(".view").forEach((el) => el.classList.add("hidden"));
+  document.getElementById("view-" + v).classList.remove("hidden");
+  document.querySelectorAll(".nav-btn").forEach((b) => b.classList.toggle("nav-active", b.dataset.view === v));
+  document.getElementById("viewTitle").textContent = VIEW_META[v][0];
+  document.getElementById("viewSub").textContent = VIEW_META[v][1];
+  if (v === "dashboard") renderDashboard();
+  if (v === "input") renderInput();
+  if (v === "heatmap") renderHeatmap();
+  if (v === "recommend") renderRecommend();
+  if (v === "report") renderReportControls();
+  if (v === "workflow") renderWorkflow();
+}
+document.querySelectorAll(".nav-btn").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+
+// ---------- 학급 셀렉터 ----------
+function fillClassSelect() {
+  const sel = document.getElementById("classSelect");
+  sel.innerHTML = state.classes.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
+  sel.value = state.currentClass;
+}
+document.getElementById("classSelect").addEventListener("change", (e) => {
+  state.currentClass = e.target.value; save();
+  const cur = document.querySelector(".nav-active")?.dataset.view || "dashboard";
+  setView(cur);
+});
+
+// ---------- 대시보드 ----------
+function renderDashboard() {
+  const ss = classStudents();
+  const allRecs = classRecords();
+  const classAvg = allRecs.length ? Math.round(allRecs.reduce((a, r) => a + r.score, 0) / allRecs.length) : 0;
+  const atRisk = ss.filter((s) => avgScore(s.id) < 70).length;
+  const totalWeak = ss.reduce((a, s) => a + studentWeakConcepts(s.id).length, 0);
+  const kpis = [
+    ["학생 수", ss.length, "명", "text-blue-700"],
+    ["학급 평균", classAvg, "점", classAvg < 70 ? "text-rose-600" : "text-emerald-600"],
+    ["관심 필요 학생", atRisk, "명", atRisk ? "text-rose-600" : "text-emerald-600"],
+    ["누적 취약개념", totalWeak, "건", "text-amber-600"],
+  ];
+  document.getElementById("kpiCards").innerHTML = kpis.map(([l, v, u, c]) => `
+    <div class="bg-white rounded-xl border p-4">
+      <div class="text-xs text-slate-500">${l}</div>
+      <div class="mt-1 text-2xl font-bold ${c}">${v}<span class="text-sm font-normal text-slate-400 ml-1">${u}</span></div>
+    </div>`).join("");
+
+  // 추세 차트 (회차별 학급 평균)
+  const titles = [...new Set(allRecs.map((r) => r.title))];
+  const titleAvg = titles.map((t) => {
+    const rs = allRecs.filter((r) => r.title === t);
+    return Math.round(rs.reduce((a, r) => a + r.score, 0) / rs.length);
+  });
+  destroyChart("trend");
+  charts.trend = new Chart(document.getElementById("trendChart"), {
+    type: "line",
+    data: { labels: titles, datasets: [{ label: "학급 평균", data: titleAvg, borderColor: "#1B64DA", backgroundColor: "rgba(29,78,216,.12)", fill: true, tension: .3, pointRadius: 5 }] },
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100 } } },
+  });
+
+  // 학생별 최근 점수
+  destroyChart("studentBar");
+  charts.studentBar = new Chart(document.getElementById("studentBar"), {
+    type: "bar",
+    data: { labels: ss.map((s) => s.name), datasets: [{ data: ss.map((s) => lastScore(s.id)), backgroundColor: ss.map((s) => lastScore(s.id) < 70 ? "#F04452" : "#3182F6") }] },
+    options: { indexAxis: "y", plugins: { legend: { display: false } }, scales: { x: { min: 0, max: 100 } } },
+  });
+
+  document.getElementById("studentTable").innerHTML = ss.map((s) => {
+    const av = avgScore(s.id), ls = lastScore(s.id), tr = trend(s.id), wk = studentWeakConcepts(s.id).length;
+    const risk = av < 70;
+    const trIcon = tr > 0 ? `<span class="text-emerald-600">▲ ${tr}</span>` : tr < 0 ? `<span class="text-rose-600">▼ ${Math.abs(tr)}</span>` : `<span class="text-slate-400">― 0</span>`;
+    return `<tr class="border-b ${risk ? "bg-rose-50" : ""}">
+      <td class="py-2 px-2 font-medium">${s.name}</td>
+      <td class="py-2 px-2">${ls}점</td>
+      <td class="py-2 px-2">${av}점</td>
+      <td class="py-2 px-2">${trIcon}</td>
+      <td class="py-2 px-2">${wk}개</td>
+      <td class="py-2 px-2">${risk ? '<span class="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-xs">관심 필요</span>' : '<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs">양호</span>'}</td>
+    </tr>`;
+  }).join("");
+}
+
+// ---------- 입력 ----------
+function renderInput() {
+  const ssel = document.getElementById("mStudent");
+  ssel.innerHTML = classStudents().map((s) => `<option value="${s.id}">${s.name}</option>`).join("");
+  document.getElementById("conceptChecks").innerHTML = CONCEPTS.map((c, i) => `
+    <label class="flex items-center gap-2"><input type="checkbox" class="conceptCk" data-c="${c}" checked /> ${c}</label>`).join("");
+  renderRecords();
+}
+function renderRecords() {
+  const recs = classRecords().slice().sort((a, b) => b.ts - a.ts);
+  document.getElementById("recordCount").textContent = `(${recs.length}건)`;
+  document.getElementById("recordTable").innerHTML = recs.map((r) => {
+    const name = state.students.find((s) => s.id === r.studentId)?.name || "?";
+    const ok = Object.entries(r.concepts).filter(([, v]) => v).map(([k]) => k).join(", ") || "-";
+    return `<tr class="border-b">
+      <td class="py-2 px-2 font-medium">${name}</td><td class="py-2 px-2">${r.title}</td>
+      <td class="py-2 px-2">${r.score}점</td><td class="py-2 px-2 text-xs text-slate-500">${ok}</td>
+      <td class="py-2 px-2 text-xs text-slate-400">${new Date(r.ts).toLocaleString("ko-KR")}</td></tr>`;
+  }).join("");
+}
+document.getElementById("manualForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const sid = document.getElementById("mStudent").value;
+  const title = document.getElementById("mTitle").value.trim() || "무제 평가";
+  let score = parseInt(document.getElementById("mScore").value, 10);
+  const concepts = {};
+  document.querySelectorAll(".conceptCk").forEach((ck) => (concepts[ck.dataset.c] = ck.checked ? 1 : 0));
+  if (isNaN(score)) { const c = Object.values(concepts).filter(Boolean).length; score = Math.round((c / CONCEPTS.length) * 100); }
+  state.records.push({ id: "m" + Date.now(), studentId: sid, classId: state.currentClass, title, score: Math.max(0, Math.min(100, score)), concepts, ts: Date.now() });
+  save(); renderRecords();
+  toast("저장했어요. 대시보드와 히트맵에 바로 반영돼요.");
+  document.getElementById("mScore").value = "";
+});
+document.getElementById("csvSample").addEventListener("click", () => {
+  document.getElementById("csvInput").value =
+`학생,평가명,점수,분수의덧셈,분수의뺄셈,약분,통분,대분수,소수의곱셈
+김민준,7월 진단평가,88,1,1,1,0,1,1
+이서연,7월 진단평가,72,1,0,1,1,0,1
+박지호,7월 진단평가,54,0,0,1,0,0,1`;
+});
+document.getElementById("csvUpload").addEventListener("click", () => {
+  const raw = document.getElementById("csvInput").value.trim();
+  const log = document.getElementById("csvLog");
+  log.classList.remove("hidden");
+  if (!raw) { log.innerHTML = '<span class="text-rose-600">CSV 내용이 비어 있어요. 데이터를 붙여넣고 다시 시도해 주세요.</span>'; return; }
+  const lines = raw.split(/\r?\n/).filter((l) => l.trim());
+  const header = lines[0].split(",").map((h) => h.trim());
+  const ci = { student: header.indexOf("학생"), title: header.indexOf("평가명"), score: header.indexOf("점수") };
+  const conceptCols = header.map((h, i) => ({ h, i })).filter((x) => CONCEPTS.includes(x.h));
+  let added = 0; const msgs = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(",").map((c) => c.trim());
+    const name = cols[ci.student];
+    if (!name) continue;
+    let stu = classStudents().find((s) => s.name === name);
+    if (!stu) { stu = { id: state.currentClass + "_n" + Date.now() + i, classId: state.currentClass, name }; state.students.push(stu); msgs.push(`새 학생을 추가했어요: ${name}`); }
+    const concepts = {};
+    conceptCols.forEach((cc) => { const v = cols[cc.i]; concepts[cc.h] = (v === "1" || v?.toUpperCase() === "O") ? 1 : 0; });
+    let score = parseInt(cols[ci.score], 10);
+    if (isNaN(score)) { const c = Object.values(concepts).filter(Boolean).length; score = Math.round((c / Math.max(1, conceptCols.length)) * 100); }
+    state.records.push({ id: "csv" + Date.now() + i, studentId: stu.id, classId: state.currentClass, title: cols[ci.title] || "CSV 평가", score, concepts, ts: Date.now() + i });
+    added++;
+  }
+  save(); renderRecords();
+  log.innerHTML = `<span class="text-emerald-700 font-medium">✓ ${added}건 불러왔어요</span> (개념 컬럼 ${conceptCols.length}개 자동 매핑)` + (msgs.length ? `<br>${msgs.join("<br>")}` : "");
+  toast(`CSV ${added}건 불러왔어요`);
+});
+
+// ---------- 히트맵 ----------
+function renderHeatmap() {
+  const ss = classStudents();
+  let html = '<table class="border-collapse"><thead><tr><th class="sticky left-0 bg-white px-3 py-2 text-left text-xs text-slate-500">학생 \\ 개념</th>';
+  CONCEPTS.forEach((c) => (html += `<th class="px-2 py-2 text-xs text-slate-600 font-medium" style="min-width:72px">${c}</th>`));
+  html += '<th class="px-2 py-2 text-xs text-slate-500">평균</th></tr></thead><tbody>';
+  ss.forEach((s) => {
+    html += `<tr><td class="sticky left-0 bg-white px-3 py-1.5 text-sm font-medium whitespace-nowrap">${s.name}</td>`;
+    let sum = 0, cnt = 0;
+    CONCEPTS.forEach((c) => {
+      const r = conceptRate(s.id, c);
+      if (r !== null) { sum += r; cnt++; }
+      const txtColor = (r !== null && r >= 40 && r < 80) ? "#191F28" : "#fff";
+      html += `<td class="p-1"><div class="heat-cell rounded text-center text-xs font-semibold py-2 cursor-default" style="background:${heatColor(r)};color:${r === null ? "#8B95A1" : txtColor}" title="${s.name} · ${c}: ${r === null ? "아직 데이터가 없어요" : r + "%"}">${r === null ? "-" : r}</div></td>`;
+    });
+    const avg = cnt ? Math.round(sum / cnt) : 0;
+    html += `<td class="px-2 text-center text-sm font-semibold ${avg < 60 ? "text-rose-600" : "text-slate-600"}">${avg}%</td></tr>`;
+  });
+  // 학급 평균 행
+  html += '<tr class="border-t-2"><td class="sticky left-0 bg-slate-50 px-3 py-2 text-sm font-bold">학급 평균</td>';
+  CONCEPTS.forEach((c) => {
+    const r = classConceptRate(c);
+    const txtColor = (r >= 40 && r < 80) ? "#191F28" : "#fff";
+    html += `<td class="p-1"><div class="rounded text-center text-xs font-bold py-2" style="background:${heatColor(r)};color:${txtColor}">${r}</div></td>`;
+  });
+  html += '<td></td></tr></tbody></table>';
+  document.getElementById("heatmap").innerHTML = html;
+
+  const weak = CONCEPTS.map((c) => ({ c, r: classConceptRate(c) })).sort((a, b) => a.r - b.r);
+  document.getElementById("weakConcepts").innerHTML = weak.map((w) => `
+    <div class="flex items-center gap-3">
+      <div class="w-28 text-sm font-medium">${w.c}</div>
+      <div class="flex-1 bg-slate-100 rounded-full h-4 overflow-hidden"><div class="h-4 rounded-full" style="width:${w.r}%;background:${heatColor(w.r)}"></div></div>
+      <div class="w-12 text-right text-sm font-semibold ${w.r < 60 ? "text-rose-600" : "text-slate-600"}">${w.r}%</div>
+    </div>`).join("");
+}
+
+// ---------- 추천 ----------
+const threshSlider = document.getElementById("threshold");
+threshSlider.addEventListener("input", () => (document.getElementById("threshVal").textContent = threshSlider.value + "%"));
+document.getElementById("genRecommend").addEventListener("click", renderRecommendList);
+function renderRecommend() { document.getElementById("threshVal").textContent = threshSlider.value + "%"; renderRecommendList(); renderDistribute(); }
+const TASK_BANK = {
+  "분수의덧셈": "분수의 덧셈 10문항 단계별 연습지", "분수의뺄셈": "분수의 뺄셈 받아내림 집중 워크시트",
+  "약분": "약분 최대공약수 찾기 드릴", "통분": "통분 최소공배수 연습 카드", "대분수": "대분수↔가분수 변환 퀴즈",
+  "소수의곱셈": "소수의 곱셈 소수점 위치 연습 문제",
+};
+function renderRecommendList() {
+  const th = parseInt(threshSlider.value, 10);
+  const ss = classStudents();
+  const rows = [];
+  ss.forEach((s) => {
+    CONCEPTS.forEach((c) => {
+      const r = conceptRate(s.id, c);
+      if (r !== null && r < th) rows.push({ sid: s.id, name: s.name, concept: c, rate: r, task: TASK_BANK[c] });
+    });
+  });
+  rows.sort((a, b) => a.rate - b.rate);
+  state._recRows = rows;
+  if (!rows.length) { document.getElementById("recommendList").innerHTML = '<p class="text-slate-400 text-sm">임계값보다 낮은 취약개념이 없어요. 임계값을 높여 보세요.</p>'; return; }
+  document.getElementById("recommendList").innerHTML = rows.map((row, i) => `
+    <div class="flex items-center justify-between border rounded-lg p-3 hover:bg-slate-50">
+      <div class="flex items-center gap-3">
+        <span class="px-2 py-1 rounded text-xs font-semibold text-white" style="background:${heatColor(row.rate)}">${row.rate}%</span>
+        <div><div class="font-medium text-sm">${row.name} <span class="text-slate-400">·</span> ${row.concept}</div>
+        <div class="text-xs text-slate-500">추천 과제: ${row.task}</div></div>
+      </div>
+      <button data-i="${i}" class="addDist border border-blue-600 text-blue-700 hover:bg-blue-600 hover:text-white rounded-lg px-3 py-1.5 text-xs font-medium">배포 추가</button>
+    </div>`).join("");
+  document.querySelectorAll(".addDist").forEach((b) => b.addEventListener("click", () => {
+    const row = state._recRows[+b.dataset.i];
+    addDistribution(row); toast(`${row.name} · ${row.concept} 과제를 배포 목록에 추가했어요`);
+  }));
+}
+function addDistribution(row) {
+  if (state.distributions.some((d) => d.sid === row.sid && d.concept === row.concept && d.status !== "배포완료")) return;
+  state.distributions.push({ id: "d" + Date.now() + Math.random().toString(36).slice(2, 5), sid: row.sid, name: row.name, concept: row.concept, task: row.task, status: "대기", ts: Date.now() });
+  save(); renderDistribute();
+}
+function renderDistribute() {
+  const ds = state.distributions;
+  document.getElementById("distCount").textContent = `(${ds.length}건)`;
+  if (!ds.length) { document.getElementById("distributeList").innerHTML = '<p class="text-slate-400">아직 배포 목록이 비어 있어요. 위에서 "배포 추가"를 눌러 보세요.</p>'; return; }
+  document.getElementById("distributeList").innerHTML = ds.map((d) => `
+    <div class="flex items-center justify-between border rounded-lg p-2.5">
+      <div><span class="font-medium">${d.name}</span> <span class="text-slate-400">·</span> ${d.task}
+        <span class="text-xs text-slate-400 ml-1">(${d.concept})</span></div>
+      <span class="px-2 py-0.5 rounded-full text-xs ${d.status === "배포완료" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}">${d.status}</span>
+    </div>`).join("");
+}
+document.getElementById("distributeAll").addEventListener("click", () => {
+  if (!state.distributions.length) { toast("배포할 과제가 없어요. 먼저 과제를 추가해 주세요."); return; }
+  state.distributions.forEach((d) => (d.status = "배포완료"));
+  save(); renderDistribute();
+  toast(`${state.distributions.length}건 배포했어요 (mock 발송 로그 기록)`);
+});
+
+// ---------- 리포트 ----------
+function renderReportControls() {
+  document.getElementById("reportStudent").innerHTML = classStudents().map((s) => `<option value="${s.id}">${s.name}</option>`).join("");
+}
+document.getElementById("buildReport").addEventListener("click", () => buildReport(document.getElementById("reportStudent").value));
+function buildReport(sid) {
+  const s = state.students.find((x) => x.id === sid);
+  const cls = state.classes.find((c) => c.id === s.classId);
+  const recs = studentRecords(sid);
+  const av = avgScore(sid), ls = lastScore(sid), tr = trend(sid);
+  document.getElementById("reportCard").classList.remove("hidden");
+  document.getElementById("reportHint").classList.add("hidden");
+  document.getElementById("rpName").textContent = s.name;
+  document.getElementById("rpClass").textContent = cls.name;
+  document.getElementById("rpDate").textContent = new Date().toLocaleDateString("ko-KR");
+  document.getElementById("rpKpi").innerHTML = [
+    ["최근 점수", ls + "점"], ["평균 점수", av + "점"], ["성취 변화", (tr >= 0 ? "+" : "") + tr + "점"],
+  ].map(([l, v]) => `<div class="bg-slate-50 rounded-lg p-3 text-center"><div class="text-xs text-slate-500">${l}</div><div class="text-lg font-bold text-blue-800">${v}</div></div>`).join("");
+
+  destroyChart("rpTrend");
+  charts.rpTrend = new Chart(document.getElementById("rpTrend"), {
+    type: "line",
+    data: { labels: recs.map((r) => r.title), datasets: [{ label: s.name, data: recs.map((r) => r.score), borderColor: "#1B64DA", backgroundColor: "rgba(29,78,216,.1)", fill: true, tension: .3, pointRadius: 4 }] },
+    options: { plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100 } }, animation: false },
+  });
+
+  const weak = studentWeakConcepts(sid);
+  document.getElementById("rpWeak").innerHTML = weak.length
+    ? weak.map((c) => { const r = conceptRate(sid, c); return `<span class="px-2.5 py-1 rounded-full text-xs font-medium text-white" style="background:${heatColor(r)}">${c} ${r}%</span>`; }).join("")
+    : '<span class="text-sm text-emerald-600">두드러진 취약개념이 없어요. 전반적으로 안정적이에요.</span>';
+  document.getElementById("rpRec").innerHTML = weak.length
+    ? weak.map((c) => `<li>${TASK_BANK[c]}</li>`).join("")
+    : '<li>현 수준을 유지하도록 심화 문제에 도전해 보길 권해요.</li>';
+
+  let comment = `${s.name} 학생은 최근 평가에서 ${ls}점, 평균 ${av}점을 기록했어요. `;
+  comment += tr > 0 ? `초기 대비 ${tr}점 향상되어 꾸준히 성장하고 있어요. ` : tr < 0 ? `초기 대비 ${Math.abs(tr)}점 하락해 보충 학습이 필요해요. ` : `성취가 유지되고 있어요. `;
+  comment += weak.length ? `특히 ${weak.join(", ")} 개념에서 추가 연습이 필요하니, 위 추천 과제로 보완해 보길 권해요.` : `취약개념이 거의 없어 심화 학습으로 확장할 시점이에요.`;
+  document.getElementById("rpComment").textContent = comment;
+  state._lastReport = sid;
+}
+document.getElementById("downloadPdf").addEventListener("click", () => {
+  const sid = state._lastReport || document.getElementById("reportStudent").value;
+  if (document.getElementById("reportCard").classList.contains("hidden")) { buildReport(sid); }
+  const s = state.students.find((x) => x.id === sid);
+  const cls = state.classes.find((c) => c.id === s.classId);
+  const recs = studentRecords(sid);
+  const av = avgScore(sid), ls = lastScore(sid), tr = trend(sid);
+  const weak = studentWeakConcepts(sid);
+  // jsPDF 한글: 캔버스에 텍스트 렌더 후 이미지로 삽입 (폰트 임베드 없이 한글 깨짐 방지)
+  const C = document.createElement("canvas");
+  const W = 1240, H = 1754; C.width = W; C.height = H;
+  const ctx = C.getContext("2d");
+  ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = "#1B64DA"; ctx.fillRect(0, 0, W, 14);
+  let y = 90;
+  ctx.fillStyle = "#191F28"; ctx.font = "bold 46px 'Apple SD Gothic Neo', sans-serif";
+  ctx.fillText("학부모 성취 리포트", 70, y);
+  ctx.fillStyle = "#4E5968"; ctx.font = "24px 'Apple SD Gothic Neo', sans-serif";
+  ctx.fillText("클래스렌즈 학습분석 · " + new Date().toLocaleDateString("ko-KR"), 70, y + 40);
+  ctx.fillStyle = "#1B64DA"; ctx.font = "bold 34px 'Apple SD Gothic Neo', sans-serif";
+  ctx.fillText(`${cls.name}  ${s.name}`, 70, y + 100);
+  ctx.strokeStyle = "#E5E8EB"; ctx.beginPath(); ctx.moveTo(70, y + 130); ctx.lineTo(W - 70, y + 130); ctx.stroke();
+  y += 210;
+  const kpis = [["최근 점수", ls + "점"], ["평균 점수", av + "점"], ["성취 변화", (tr >= 0 ? "+" : "") + tr + "점"]];
+  kpis.forEach((k, i) => {
+    const bx = 70 + i * 370;
+    ctx.fillStyle = "#F2F4F6"; ctx.fillRect(bx, y, 340, 130);
+    ctx.fillStyle = "#4E5968"; ctx.font = "24px 'Apple SD Gothic Neo', sans-serif"; ctx.fillText(k[0], bx + 30, y + 50);
+    ctx.fillStyle = "#1B64DA"; ctx.font = "bold 48px 'Apple SD Gothic Neo', sans-serif"; ctx.fillText(k[1], bx + 30, y + 105);
+  });
+  y += 200;
+  // 추세 막대
+  ctx.fillStyle = "#191F28"; ctx.font = "bold 30px 'Apple SD Gothic Neo', sans-serif"; ctx.fillText("성취 추세", 70, y);
+  y += 40;
+  const maxBar = 300;
+  recs.forEach((r, i) => {
+    const bx = 70 + i * 250;
+    const bh = (r.score / 100) * maxBar;
+    ctx.fillStyle = r.score < 70 ? "#F04452" : "#3182F6";
+    ctx.fillRect(bx, y + maxBar - bh, 150, bh);
+    ctx.fillStyle = "#333D4B"; ctx.font = "22px 'Apple SD Gothic Neo', sans-serif";
+    ctx.fillText(r.score + "점", bx + 35, y + maxBar - bh - 12);
+    ctx.fillStyle = "#4E5968"; ctx.font = "20px 'Apple SD Gothic Neo', sans-serif";
+    ctx.fillText(r.title, bx, y + maxBar + 35);
+  });
+  y += maxBar + 90;
+  ctx.fillStyle = "#191F28"; ctx.font = "bold 30px 'Apple SD Gothic Neo', sans-serif"; ctx.fillText("취약개념", 70, y);
+  y += 45;
+  ctx.font = "24px 'Apple SD Gothic Neo', sans-serif";
+  const weakText = weak.length ? weak.map((c) => `${c}(${conceptRate(sid, c)}%)`).join("  ") : "두드러진 취약개념 없음";
+  ctx.fillStyle = "#b91c1c"; ctx.fillText(weakText, 70, y);
+  y += 60;
+  ctx.fillStyle = "#191F28"; ctx.font = "bold 30px 'Apple SD Gothic Neo', sans-serif"; ctx.fillText("추천 보충 과제", 70, y);
+  y += 45;
+  ctx.fillStyle = "#333D4B"; ctx.font = "24px 'Apple SD Gothic Neo', sans-serif";
+  const recTasks = weak.length ? weak.map((c) => TASK_BANK[c]) : ["현 수준 유지를 위한 심화 문제 도전 권해요"];
+  recTasks.forEach((t) => { ctx.fillText("• " + t, 70, y); y += 38; });
+  y += 30;
+  // 코멘트 (줄바꿈)
+  ctx.fillStyle = "#1B64DA"; ctx.font = "24px 'Apple SD Gothic Neo', sans-serif";
+  let comment = `${s.name} 학생은 최근 ${ls}점, 평균 ${av}점을 기록했어요. `;
+  comment += tr > 0 ? `초기 대비 ${tr}점 향상되어 성장하고 있어요. ` : tr < 0 ? `초기 대비 ${Math.abs(tr)}점 하락해 보충이 필요해요. ` : `성취가 유지되고 있어요. `;
+  comment += weak.length ? `${weak.join(", ")} 개념을 보완해 보길 권해요.` : `심화 학습으로 확장할 시점이에요.`;
+  const words = comment.split(" "); let line = "";
+  ctx.fillStyle = "#f1f5ff"; ctx.fillRect(70, y - 20, W - 140, 140); ctx.fillStyle = "#1B64DA";
+  words.forEach((w) => {
+    if (ctx.measureText(line + w).width > W - 200) { ctx.fillText(line, 90, y + 10); line = ""; y += 38; }
+    line += w + " ";
+  });
+  ctx.fillText(line, 90, y + 10);
+
+  const img = C.toDataURL("image/png");
+  const pdf = new jsPDF({ unit: "px", format: [W, H] });
+  pdf.addImage(img, "PNG", 0, 0, W, H);
+  pdf.save(`클래스렌즈_리포트_${s.name}.pdf`);
+  toast(`${s.name} 학부모 리포트를 PDF로 저장했어요`);
+});
+
+// ---------- 워크플로 ----------
+const WF = [
+  { t: "① 평가 입력", d: "evaluation" },
+  { t: "② 취약개념 분석", d: "analysis" },
+  { t: "③ 과제 추천", d: "recommend" },
+  { t: "④ 학부모 리포트", d: "report" },
+];
+function renderWorkflow() {
+  const step = state.wfStep || 0;
+  document.getElementById("wfSteps").innerHTML = WF.map((w, i) => `
+    <div class="flex-1 flex items-center ${i < WF.length - 1 ? "" : ""}">
+      <div class="flex flex-col items-center flex-1">
+        <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold ${i < step ? "step-done" : i === step ? "step-cur" : "step-todo"}">${i < step ? "✓" : i + 1}</div>
+        <div class="text-xs mt-2 ${i === step ? "text-blue-700 font-semibold" : "text-slate-500"}">${w.t}</div>
+      </div>
+      ${i < WF.length - 1 ? `<div class="h-0.5 flex-1 ${i < step ? "bg-blue-700" : "bg-slate-200"}"></div>` : ""}
+    </div>`).join("");
+
+  const ss = classStudents();
+  const totalRecs = classRecords().length;
+  let body = "";
+  if (step === 0) {
+    body = `<div class="text-sm text-slate-600 space-y-3">
+      <p>현재 <b>${ss.length}</b>명 학생, 누적 평가 기록 <b>${totalRecs}</b>건이 입력돼 있어요.</p>
+      <p class="text-slate-500">"평가·과제 입력" 화면에서 결과를 추가하거나, 시드 데이터로 바로 다음 단계로 진행할 수 있어요.</p>
+      <button onclick="setView('input')" class="border rounded-lg px-4 py-2 text-sm hover:bg-slate-50">입력 화면으로 이동</button></div>`;
+  } else if (step === 1) {
+    const weak = CONCEPTS.map((c) => ({ c, r: classConceptRate(c) })).sort((a, b) => a.r - b.r).slice(0, 3);
+    body = `<div class="text-sm text-slate-600 space-y-3">
+      <p>학급 전체 정답률을 분석해 보니 <b>공통 약점 개념 TOP 3</b>은 다음과 같아요:</p>
+      <div class="flex gap-2">${weak.map((w) => `<span class="px-3 py-1.5 rounded-lg text-white text-sm font-medium" style="background:${heatColor(w.r)}">${w.c} ${w.r}%</span>`).join("")}</div>
+      <p class="text-slate-500">관심이 필요한 학생 <b>${ss.filter((s) => avgScore(s.id) < 70).length}</b>명을 찾았어요.</p></div>`;
+  } else if (step === 2) {
+    const th = 70;
+    let cnt = 0; ss.forEach((s) => CONCEPTS.forEach((c) => { const r = conceptRate(s.id, c); if (r !== null && r < th) cnt++; }));
+    body = `<div class="text-sm text-slate-600 space-y-3">
+      <p>임계값 ${th}% 기준으로 <b>${cnt}건</b>의 맞춤 보충 과제를 추천할 수 있어요.</p>
+      <button id="wfGenRec" class="bg-blue-700 text-white rounded-lg px-4 py-2 text-sm font-medium">추천 과제 한 번에 만들고 배포하기</button>
+      <p id="wfRecResult" class="text-emerald-700"></p></div>`;
+    setTimeout(() => {
+      const btn = document.getElementById("wfGenRec");
+      if (btn) btn.addEventListener("click", () => {
+        let added = 0;
+        ss.forEach((s) => CONCEPTS.forEach((c) => { const r = conceptRate(s.id, c); if (r !== null && r < th) { addDistribution({ sid: s.id, name: s.name, concept: c, rate: r, task: TASK_BANK[c] }); added++; } }));
+        state.distributions.forEach((d) => (d.status = "배포완료")); save();
+        document.getElementById("wfRecResult").textContent = `✓ ${added}건 추천하고 배포했어요 (mock 발송 로그 기록)`;
+        toast(`워크플로: ${added}건 과제를 배포했어요`);
+      });
+    }, 0);
+  } else if (step === 3) {
+    body = `<div class="text-sm text-slate-600 space-y-3">
+      <p>학생별 학부모 리포트를 만들고 PDF로 저장할 수 있어요.</p>
+      <div class="flex items-center gap-2">
+        <select id="wfRpStudent" class="border rounded-lg px-3 py-2 text-sm">${ss.map((s) => `<option value="${s.id}">${s.name}</option>`).join("")}</select>
+        <button id="wfBuildRep" class="bg-blue-700 text-white rounded-lg px-4 py-2 text-sm font-medium">리포트 보기</button>
+        <button id="wfPdf" class="bg-rose-600 text-white rounded-lg px-4 py-2 text-sm font-medium">PDF 저장</button>
+      </div>
+      <p class="text-emerald-700 font-medium">🎉 워크플로를 완주했어요! 평가 입력 → 분석 → 추천 → 리포트까지 한 사이클을 마쳤어요.</p></div>`;
+    setTimeout(() => {
+      document.getElementById("wfBuildRep")?.addEventListener("click", () => { const sid = document.getElementById("wfRpStudent").value; setView("report"); document.getElementById("reportStudent").value = sid; buildReport(sid); });
+      document.getElementById("wfPdf")?.addEventListener("click", () => { const sid = document.getElementById("wfRpStudent").value; state._lastReport = sid; document.getElementById("downloadPdf").click(); });
+    }, 0);
+  }
+  document.getElementById("wfBody").innerHTML = body;
+  document.getElementById("wfPrev").disabled = step === 0;
+  document.getElementById("wfPrev").classList.toggle("opacity-40", step === 0);
+  document.getElementById("wfNext").textContent = step === WF.length - 1 ? "워크플로 재시작" : "다음 단계";
+}
+document.getElementById("wfNext").addEventListener("click", () => {
+  state.wfStep = (state.wfStep || 0) >= WF.length - 1 ? 0 : (state.wfStep || 0) + 1;
+  save(); renderWorkflow();
+});
+document.getElementById("wfPrev").addEventListener("click", () => {
+  if ((state.wfStep || 0) > 0) { state.wfStep--; save(); renderWorkflow(); }
+});
+
+// ---------- 초기화 ----------
+document.getElementById("resetBtn").addEventListener("click", () => {
+  if (confirm("시드 데이터로 초기화할까요? 입력한 데이터가 사라져요.")) {
+    state = seed(); save(); fillClassSelect(); setView("dashboard"); toast("시드 데이터로 초기화했어요.");
+  }
+});
+
+// ---------- 부트 ----------
+fillClassSelect();
+setView("dashboard");
+</script>
+</body>
+</html>

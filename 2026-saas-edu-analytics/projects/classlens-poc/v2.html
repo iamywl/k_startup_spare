@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>클래스렌즈 — 학습분석 SaaS (v2 Beta)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<script>
+  // 디자인 토큰 재매핑 (Apple × Toss) — design-guide/디자인_애플_토스.md
+  tailwind.config = { theme: { extend: {
+    fontFamily: { sans: ['Pretendard','-apple-system','BlinkMacSystemFont','Apple SD Gothic Neo','sans-serif'] },
+    colors: {
+      brand:   { DEFAULT:'#3182F6', hover:'#1B64DA', light:'#E8F3FF' },
+      blue:    {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      indigo:  {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      sky:     {50:'#E8F3FF',100:'#E8F3FF',200:'#C9E2FF',300:'#9AC8FF',400:'#5B9DF9',500:'#3182F6',600:'#3182F6',700:'#1B64DA',800:'#1B64DA',900:'#1B64DA'},
+      slate:   {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      gray:    {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      zinc:    {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      neutral: {50:'#F9FAFB',100:'#F2F4F6',200:'#E5E8EB',300:'#D1D6DB',400:'#8B95A1',500:'#8B95A1',600:'#4E5968',700:'#333D4B',800:'#191F28',900:'#191F28'},
+      emerald: {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      green:   {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      teal:    {50:'#E7F8EF',100:'#D2F2E0',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
+      amber:   {50:'#FFF6E5',100:'#FFE9C2',300:'#FFB331',400:'#FFB331',500:'#FFB331',600:'#E2991C',700:'#C77F12'},
+      yellow:  {50:'#FFF6E5',100:'#FFE9C2',300:'#FFB331',400:'#FFB331',500:'#FFB331',600:'#E2991C'},
+      orange:  {50:'#FFF6E5',100:'#FFE9C2',400:'#FFB331',500:'#FFB331',600:'#E2991C'},
+      rose:    {50:'#FEECEE',100:'#FCD9DD',300:'#F8A4AC',400:'#F04452',500:'#F04452',600:'#F04452',700:'#D6303D'},
+      red:     {50:'#FEECEE',100:'#FCD9DD',300:'#F8A4AC',400:'#F04452',500:'#F04452',600:'#F04452',700:'#D6303D'},
+    }
+  } } }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  body { font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; }
+  .nav-active { background-color: #1B64DA; color: #fff; }
+  .heat-cell { transition: transform .1s; }
+  .heat-cell:hover { transform: scale(1.08); z-index: 5; box-shadow: 0 0 0 2px #1B64DA; }
+  ::-webkit-scrollbar { height: 8px; width: 8px; }
+  ::-webkit-scrollbar-thumb { background: #D1D6DB; border-radius: 4px; }
+  .badge { @apply px-2 py-0.5 rounded-full text-xs; }
+  /* 모바일 학부모 레이아웃 — 좁은 뷰포트에서 데스크톱 셸 숨김 */
+  @media (max-width: 640px) {
+    .desktop-shell { display: none !important; }
+    .mobile-shell { display: flex !important; }
+  }
+  .mobile-shell { display: none; }
+
+  /* ===== design-tone-components (guide §6·§7) ===== */
+  button, [role="button"], a.w-full, input[type="submit"], input[type="button"] {
+    transition: transform .12s cubic-bezier(.3,0,0,1), opacity .15s ease, box-shadow .15s ease, background-color .15s ease;
+  }
+  button:active:not(:disabled), [role="button"]:active, a.w-full:active,
+  input[type="submit"]:active, input[type="button"]:active { transform: scale(.97); }
+  button:disabled, button[disabled], [role="button"][aria-disabled="true"] { opacity: .35; cursor: not-allowed; }
+  input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: none; border-color: #3182F6; box-shadow: 0 0 0 1.5px #3182F6;
+  }
+  button.w-full, button[type="submit"].w-full, a.w-full[class*="bg-"] {
+    min-height: 52px; border-radius: 12px;
+  }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800">
+
+<!-- ============ 데스크톱 셸 (교사·관리자) ============ -->
+<div id="desktopShell" class="desktop-shell flex h-screen overflow-hidden">
+  <aside class="w-60 bg-slate-900 text-slate-200 flex flex-col shrink-0">
+    <div class="px-5 py-5 border-b border-slate-700">
+      <div class="text-xl font-bold text-white">클래스렌즈</div>
+      <div class="text-xs text-slate-400 mt-0.5">학습분석 SaaS · v2 Beta</div>
+    </div>
+    <nav id="navTeacher" class="flex-1 px-3 py-4 space-y-1 text-sm overflow-y-auto">
+      <div class="px-2 text-[10px] uppercase tracking-wider text-slate-500 mb-1">분석</div>
+      <button data-view="dashboard" class="nav-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>📊</span> 성취 대시보드</button>
+      <button data-view="risk" class="nav-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>🚨</span> 위험학생 조기경보</button>
+      <button data-view="cluster" class="nav-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>🧩</span> 취약개념 군집</button>
+      <button data-view="heatmap" class="nav-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>🔥</span> 취약개념 히트맵</button>
+      <button data-view="compare" class="nav-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>📈</span> 학급 비교·추세</button>
+      <div class="px-2 text-[10px] uppercase tracking-wider text-slate-500 mb-1 mt-3">운영</div>
+      <button data-view="ingest" class="nav-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>🔌</span> AIDT 로그 연동</button>
+      <button data-view="recommend" class="nav-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>🎯</span> 맞춤 과제 추천</button>
+      <button data-view="report" class="nav-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>📄</span> 학부모 리포트·알림</button>
+      <button data-view="privacy" class="nav-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>🔒</span> 개인정보·동의</button>
+      <button data-view="workflow" class="nav-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>🔄</span> 워크플로</button>
+      <button data-view="admin" class="nav-btn navAdmin w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 flex items-center gap-2"><span>🏫</span> 관리자(학교 전체)</button>
+    </nav>
+    <div class="px-4 py-3 border-t border-slate-700 text-xs">
+      <div class="mb-2">
+        <label class="text-slate-400 block mb-1">역할 전환 (데모)</label>
+        <select id="roleSelect" class="w-full bg-slate-800 text-slate-100 rounded px-2 py-1.5 border border-slate-700">
+          <option value="teacher">교사 (담당 학급)</option>
+          <option value="admin">관리자 (학교 전체)</option>
+          <option value="parent">학부모 (모바일)</option>
+        </select>
+      </div>
+      <div class="flex items-center gap-2 text-slate-400">
+        <span id="userAvatar" class="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">교</span>
+        <div>
+          <div id="userName" class="text-slate-200"></div>
+          <div id="userScope"></div>
+        </div>
+      </div>
+      <button id="resetBtn" class="mt-3 w-full text-center px-2 py-1.5 rounded bg-slate-800 hover:bg-rose-700 text-slate-300 hover:text-white">시드 초기화</button>
+    </div>
+  </aside>
+
+  <main class="flex-1 overflow-y-auto">
+    <header class="bg-white border-b px-8 py-4 flex items-center justify-between sticky top-0 z-10">
+      <div>
+        <h1 id="viewTitle" class="text-lg font-bold text-slate-800">성취 대시보드</h1>
+        <p id="viewSub" class="text-xs text-slate-500"></p>
+      </div>
+      <div class="flex items-center gap-3 text-sm">
+        <span id="tenantBadge" class="px-2 py-1 rounded bg-indigo-50 text-indigo-700 text-xs font-medium"></span>
+        <label class="text-slate-500">학급</label>
+        <select id="classSelect" class="border rounded-lg px-3 py-1.5 bg-white"></select>
+      </div>
+    </header>
+
+    <div class="p-8">
+      <!-- 대시보드 -->
+      <section id="view-dashboard" class="view space-y-6">
+        <div id="kpiCards" class="grid grid-cols-4 gap-4"></div>
+        <div class="grid grid-cols-3 gap-6">
+          <div class="col-span-2 bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-3 text-slate-700">평가 회차별 학급 평균 추세</h3>
+            <canvas id="trendChart" height="120"></canvas>
+          </div>
+          <div class="bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-3 text-slate-700">학생별 최근 성취</h3>
+            <canvas id="studentBar" height="220"></canvas>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl border p-5">
+          <h3 class="font-semibold mb-3 text-slate-700">학생 성취 현황 <span class="text-xs font-normal text-slate-400">(조기경보 위험도가 반영돼 있어요)</span></h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead><tr class="text-left text-slate-500 border-b">
+                <th class="py-2 px-2">학생</th><th class="py-2 px-2">최근</th><th class="py-2 px-2">평균</th><th class="py-2 px-2">추세(회귀)</th><th class="py-2 px-2">취약</th><th class="py-2 px-2">위험점수</th><th class="py-2 px-2">상태</th>
+              </tr></thead>
+              <tbody id="studentTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 위험학생 조기경보 -->
+      <section id="view-risk" class="view hidden space-y-6">
+        <div class="bg-white rounded-xl border p-5">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <h3 class="font-semibold text-slate-700">위험학생 조기경보</h3>
+              <p class="text-xs text-slate-500">선형회귀 기울기·평균·취약개념 수·결손(미응시)을 가중합한 위험점수로 조기에 찾아내요. 판단 근거도 모두 보여드려요.</p>
+            </div>
+            <span class="text-xs text-slate-400">알고리즘: weighted risk score</span>
+          </div>
+          <div id="riskCards" class="grid grid-cols-3 gap-4 mb-4"></div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead><tr class="text-left text-slate-500 border-b">
+                <th class="py-2 px-2">학생</th><th class="py-2 px-2">위험점수</th><th class="py-2 px-2">등급</th><th class="py-2 px-2">추세기울기</th><th class="py-2 px-2">평균</th><th class="py-2 px-2">취약개념</th><th class="py-2 px-2">근거</th>
+              </tr></thead>
+              <tbody id="riskTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 취약개념 군집 -->
+      <section id="view-cluster" class="view hidden space-y-6">
+        <div class="bg-white rounded-xl border p-5">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="font-semibold text-slate-700">취약개념 군집 (k-means)</h3>
+              <p class="text-xs text-slate-500">학생을 개념 정답률 벡터로 표현하고 k-means로 묶어, 비슷한 학생끼리의 지도그룹을 만들어 드려요.</p>
+            </div>
+            <div class="flex items-center gap-2 text-sm">
+              <label class="text-slate-500">군집 수 k</label>
+              <input id="kVal" type="range" min="2" max="4" value="3" class="w-28" />
+              <span id="kLabel" class="font-semibold text-blue-700 w-6">3</span>
+              <button id="runCluster" class="bg-blue-700 hover:bg-blue-800 text-white rounded-lg px-4 py-2 font-medium">군집 실행</button>
+            </div>
+          </div>
+          <div id="clusterResult" class="space-y-4"></div>
+        </div>
+      </section>
+
+      <!-- 히트맵 -->
+      <section id="view-heatmap" class="view hidden space-y-6">
+        <div class="bg-white rounded-xl border p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-slate-700">개념 × 학생 정답률 히트맵</h3>
+            <div class="flex items-center gap-2 text-xs text-slate-500">
+              <span>약함</span>
+              <span class="w-5 h-4 inline-block rounded" style="background:#F04452"></span>
+              <span class="w-5 h-4 inline-block rounded" style="background:#FFB331"></span>
+              <span class="w-5 h-4 inline-block rounded" style="background:#84cc16"></span>
+              <span class="w-5 h-4 inline-block rounded" style="background:#14AE5C"></span>
+              <span>강함</span>
+            </div>
+          </div>
+          <div id="heatmap" class="overflow-x-auto"></div>
+        </div>
+        <div class="bg-white rounded-xl border p-5">
+          <h3 class="font-semibold mb-3 text-slate-700">학급 공통 약점 개념 (정답률 낮은 순)</h3>
+          <div id="weakConcepts" class="space-y-2"></div>
+        </div>
+      </section>
+
+      <!-- 학급 비교·추세 -->
+      <section id="view-compare" class="view hidden space-y-6">
+        <div class="grid grid-cols-2 gap-6">
+          <div class="bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-3 text-slate-700">반 간 평균 성취 비교 (학교 전체)</h3>
+            <canvas id="compareBar" height="160"></canvas>
+          </div>
+          <div class="bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-3 text-slate-700">시점 간 추세 비교 (반별 회차 평균)</h3>
+            <canvas id="compareTrend" height="160"></canvas>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl border p-5">
+          <h3 class="font-semibold mb-3 text-slate-700">개념별 반 간 비교</h3>
+          <canvas id="compareConcept" height="90"></canvas>
+        </div>
+      </section>
+
+      <!-- AIDT 로그 연동 -->
+      <section id="view-ingest" class="view hidden space-y-6">
+        <div class="grid grid-cols-2 gap-6">
+          <div class="bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-2 text-slate-700">AI 디지털교과서 학습로그 연동 (mock)</h3>
+            <p class="text-xs text-slate-500 mb-3">표준 학습로그(JSON Lines: student_ext_id·content·concept·correct·ts)를 파싱해 학생 마스터에 매핑하고 불러와요. 실 API 키가 없으면 시드 로그로 동작해요.</p>
+            <div class="flex gap-2 mb-2">
+              <button id="loadMockLog" class="flex-1 border rounded-lg py-2 text-sm hover:bg-slate-50">샘플 로그 불러오기</button>
+              <button id="pullApi" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg py-2 text-sm font-medium">API Pull (mock)</button>
+            </div>
+            <textarea id="logInput" rows="8" class="w-full border rounded-lg px-3 py-2 text-[11px] font-mono" placeholder='{"student_ext_id":"AIDT-1001","content":"분수단원","concept":"분수의뺄셈","correct":1,"ts":"2026-06-05"}'></textarea>
+            <button id="ingestLog" class="mt-2 w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg py-2.5 text-sm font-medium">로그 불러와 대시보드에 반영하기</button>
+          </div>
+          <div class="bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-2 text-slate-700">연동 파이프라인 로그</h3>
+            <div id="ingestLogView" class="text-xs font-mono bg-slate-900 text-emerald-300 rounded-lg p-3 h-72 overflow-y-auto whitespace-pre-wrap">아직 연동된 로그가 없어요.</div>
+            <div class="mt-3 flex items-center justify-between text-xs">
+              <span class="text-slate-500">매핑 테이블: 외부ID ↔ 내부 학생</span>
+              <button id="exportIngestCsv" class="border rounded px-3 py-1.5 hover:bg-slate-50">연동 결과 CSV 내보내기</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 추천 -->
+      <section id="view-recommend" class="view hidden space-y-6">
+        <div class="bg-white rounded-xl border p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="font-semibold text-slate-700">취약개념 기반 맞춤 과제 추천</h3>
+              <p class="text-xs text-slate-500">정답률이 임계값보다 낮은 개념에 학생별 연습 과제를 자동으로 만들어 드려요.</p>
+            </div>
+            <div class="flex items-center gap-3 text-sm">
+              <label class="text-slate-500">임계값</label>
+              <input id="threshold" type="range" min="40" max="90" value="70" class="w-32" />
+              <span id="threshVal" class="font-semibold text-blue-700 w-10">70%</span>
+              <button id="genRecommend" class="bg-blue-700 hover:bg-blue-800 text-white rounded-lg px-4 py-2 font-medium">추천 생성</button>
+            </div>
+          </div>
+          <div id="recommendList" class="space-y-3 max-h-96 overflow-y-auto"></div>
+        </div>
+        <div class="bg-white rounded-xl border p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-semibold text-slate-700">배포 목록 <span id="distCount" class="text-xs font-normal text-slate-400"></span></h3>
+            <button id="distributeAll" class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-1.5 text-sm font-medium">전체 배포</button>
+          </div>
+          <div id="distributeList" class="space-y-2 text-sm max-h-64 overflow-y-auto"></div>
+        </div>
+      </section>
+
+      <!-- 리포트·알림 -->
+      <section id="view-report" class="view hidden space-y-6">
+        <div class="flex items-center gap-3 flex-wrap">
+          <select id="reportStudent" class="border rounded-lg px-3 py-2 bg-white text-sm"></select>
+          <button id="buildReport" class="bg-blue-700 hover:bg-blue-800 text-white rounded-lg px-4 py-2 text-sm font-medium">리포트 생성</button>
+          <button id="sendAlim" class="bg-amber-500 hover:bg-amber-600 text-white rounded-lg px-4 py-2 text-sm font-medium">카카오 알림톡 발송 (mock)</button>
+        </div>
+        <div class="grid grid-cols-3 gap-6">
+          <div id="reportCard" class="col-span-2 bg-white rounded-xl border p-8 hidden">
+            <div class="flex items-center justify-between border-b pb-4 mb-5">
+              <div>
+                <div class="text-xl font-bold text-slate-800">학부모 성취 리포트</div>
+                <div class="text-xs text-slate-500 mt-1">클래스렌즈 학습분석 · <span id="rpDate"></span></div>
+              </div>
+              <div class="text-right text-sm">
+                <div class="font-semibold text-blue-800" id="rpName"></div>
+                <div class="text-slate-500" id="rpClass"></div>
+              </div>
+            </div>
+            <div class="grid grid-cols-3 gap-4 mb-6" id="rpKpi"></div>
+            <h4 class="font-semibold text-slate-700 mb-2">성취 추세</h4>
+            <canvas id="rpTrend" height="90" class="mb-6"></canvas>
+            <h4 class="font-semibold text-slate-700 mb-2">취약개념</h4>
+            <div id="rpWeak" class="flex flex-wrap gap-2 mb-6"></div>
+            <h4 class="font-semibold text-slate-700 mb-2">추천 보충 과제</h4>
+            <ul id="rpRec" class="list-disc list-inside text-sm text-slate-700 space-y-1 mb-6"></ul>
+            <div class="text-sm bg-blue-50 border border-blue-100 rounded-lg p-4 text-slate-700" id="rpComment"></div>
+          </div>
+          <div class="bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-2 text-slate-700">알림톡 발송 로그</h3>
+            <p class="text-xs text-slate-500 mb-3">동의한 보호자에게만 보내요. 실패하면 SMS로 다시 보내요.</p>
+            <div id="alimLogView" class="text-xs font-mono bg-slate-900 text-amber-200 rounded-lg p-3 h-80 overflow-y-auto whitespace-pre-wrap">아직 보낸 알림톡이 없어요.</div>
+          </div>
+        </div>
+        <p id="reportHint" class="text-center text-slate-400 text-sm">학생을 선택하고 "리포트 생성"을 눌러 주세요.</p>
+      </section>
+
+      <!-- 개인정보·동의 -->
+      <section id="view-privacy" class="view hidden space-y-6">
+        <div class="grid grid-cols-2 gap-6">
+          <div class="bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-2 text-slate-700">학생 식별자 가명처리</h3>
+            <p class="text-xs text-slate-500 mb-3">실명·외부ID는 따로 저장하고 분석 화면에는 가명(예: S-7F3A)만 보여드려요. 토글로 마스킹 상태를 확인해 보세요.</p>
+            <label class="flex items-center gap-2 mb-3 text-sm">
+              <input type="checkbox" id="pseudoToggle" /> 분석 화면에 가명 적용(전 학급)
+            </label>
+            <div class="overflow-x-auto max-h-72 overflow-y-auto">
+              <table class="w-full text-sm">
+                <thead><tr class="text-left text-slate-500 border-b"><th class="py-2 px-2">실명(보호 저장)</th><th class="py-2 px-2">가명</th><th class="py-2 px-2">외부ID</th></tr></thead>
+                <tbody id="pseudoTable"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl border p-5">
+            <h3 class="font-semibold mb-2 text-slate-700">보호자 동의 관리</h3>
+            <p class="text-xs text-slate-500 mb-3">분석·알림 활용 동의를 기록하거나 철회해요. 미동의·철회 학생은 알림톡 발송에서 자동으로 빠져요.</p>
+            <div class="overflow-x-auto max-h-72 overflow-y-auto">
+              <table class="w-full text-sm">
+                <thead><tr class="text-left text-slate-500 border-b"><th class="py-2 px-2">학생</th><th class="py-2 px-2">동의 상태</th><th class="py-2 px-2">갱신시각</th><th class="py-2 px-2">조치</th></tr></thead>
+                <tbody id="consentTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 워크플로 -->
+      <section id="view-workflow" class="view hidden">
+        <div class="bg-white rounded-xl border p-6 max-w-5xl mx-auto">
+          <div class="flex items-center gap-2 mb-4 text-sm">
+            <span class="text-slate-500">워크플로 선택:</span>
+            <select id="wfPick" class="border rounded-lg px-3 py-1.5">
+              <option value="A">A. 평가→분석→피드백</option>
+              <option value="B">B. 로그연동→군집진단→경보</option>
+              <option value="C">C. 동의관리→가명처리→리포트발송</option>
+            </select>
+          </div>
+          <h3 id="wfTitle" class="font-semibold text-slate-700 mb-1"></h3>
+          <p id="wfDesc" class="text-xs text-slate-500 mb-6"></p>
+          <div class="flex items-center justify-between mb-8" id="wfSteps"></div>
+          <div id="wfBody" class="min-h-[180px]"></div>
+          <div class="flex justify-between mt-6">
+            <button id="wfPrev" class="border rounded-lg px-5 py-2 text-sm hover:bg-slate-50">이전</button>
+            <button id="wfNext" class="bg-blue-700 hover:bg-blue-800 text-white rounded-lg px-5 py-2 text-sm font-medium">다음 단계</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 관리자 -->
+      <section id="view-admin" class="view hidden space-y-6">
+        <div id="adminKpi" class="grid grid-cols-4 gap-4"></div>
+        <div class="bg-white rounded-xl border p-5">
+          <h3 class="font-semibold mb-3 text-slate-700">학교 전체 학급·교사 현황 (멀티테넌트)</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead><tr class="text-left text-slate-500 border-b">
+                <th class="py-2 px-2">학급</th><th class="py-2 px-2">담당 교사</th><th class="py-2 px-2">학생 수</th><th class="py-2 px-2">학급 평균</th><th class="py-2 px-2">관심군</th><th class="py-2 px-2">위험경보</th>
+              </tr></thead>
+              <tbody id="adminTable"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl border p-5">
+          <h3 class="font-semibold mb-2 text-slate-700">테넌트 격리 검증</h3>
+          <p class="text-xs text-slate-500 mb-2">교사 계정은 담당 학급 외 데이터에 접근할 수 없어요. 아래는 격리 시뮬레이션 결과예요.</p>
+          <div id="isolationResult" class="text-sm"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- ============ 모바일 셸 (학부모) ============ -->
+<div id="mobileShell" class="mobile-shell flex-col min-h-screen bg-slate-50">
+  <header class="bg-blue-700 text-white px-4 py-4 sticky top-0 z-10">
+    <div class="text-base font-bold">클래스렌즈 학부모</div>
+    <div class="text-xs text-blue-200 mt-0.5" id="pmHeaderSub">자녀 학습 리포트</div>
+  </header>
+  <div class="flex-1 p-4 space-y-4" id="parentBody"></div>
+  <nav class="bg-white border-t flex text-xs sticky bottom-0">
+    <button data-ptab="home" class="ptab flex-1 py-3 text-blue-700 font-semibold">🏠 홈</button>
+    <button data-ptab="trend" class="ptab flex-1 py-3 text-slate-500">📈 추세</button>
+    <button data-ptab="alim" class="ptab flex-1 py-3 text-slate-500">🔔 알림</button>
+    <button data-ptab="consent" class="ptab flex-1 py-3 text-slate-500">🔒 동의</button>
+  </nav>
+</div>
+
+<div id="toast" class="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-2.5 rounded-lg text-sm shadow-lg opacity-0 transition-opacity pointer-events-none z-50"></div>
+
+<script>
+const STORE_KEY = "classlens_v2_state";
+const CONCEPTS = ["분수의덧셈","분수의뺄셈","약분","통분","대분수","소수의곱셈"];
+const SCHOOL = "한빛초등학교";
+
+// ---------- 시드 데이터 ----------
+function pseudoId(seedStr) {
+  let h = 0; for (let i = 0; i < seedStr.length; i++) h = (h * 31 + seedStr.charCodeAt(i)) >>> 0;
+  return "S-" + h.toString(16).toUpperCase().slice(0, 4).padStart(4, "0");
+}
+function seed() {
+  // 학교=테넌트. 교사 2명, 학급 3개(멀티 학급/멀티 교사)
+  const teachers = [
+    { id: "t1", name: "김교사", classes: ["c1", "c2"] },
+    { id: "t2", name: "이교사", classes: ["c3"] },
+  ];
+  const classes = [
+    { id: "c1", name: "6학년 1반", teacherId: "t1" },
+    { id: "c2", name: "6학년 2반", teacherId: "t1" },
+    { id: "c3", name: "6학년 3반", teacherId: "t2" },
+  ];
+  const names = {
+    c1: ["김민준","이서연","박지호","최예린","정우진","한소율","윤도현","강하은"],
+    c2: ["조현우","임채원","오시우","서지안","배준서","노아라"],
+    c3: ["문가온","신라온","권하진","유은재","장도윤","홍시현","고나윤"],
+  };
+  const students = [];
+  Object.entries(names).forEach(([cid, arr]) => {
+    arr.forEach((n, i) => {
+      const id = cid + "_s" + i;
+      students.push({
+        id, classId: cid, name: n,
+        pseudo: pseudoId(id + n),
+        extId: "AIDT-" + (1000 + students.length),
+        consent: i % 5 === 0 ? "미동의" : "동의", // 일부 미동의로 동의관리 데모
+        consentTs: Date.now() - i * 3600000,
+      });
+    });
+  });
+  const records = [];
+  const titles = ["3월 진단평가","4월 형성평가","5월 단원평가"];
+  let rng = 12345;
+  const rand = () => { rng = (rng * 1103515245 + 12345) & 0x7fffffff; return rng / 0x7fffffff; };
+  students.forEach((s) => {
+    const weakIdx = (s.name.charCodeAt(0) + s.name.charCodeAt(1)) % CONCEPTS.length;
+    // 일부 학생은 하락 패턴(위험학생 데모)
+    const declining = (s.name.charCodeAt(0) % 7) === 0;
+    titles.forEach((t, ti) => {
+      const concepts = {};
+      let correct = 0;
+      CONCEPTS.forEach((c, ci) => {
+        let p = 0.78 - (ci === weakIdx ? 0.5 : 0) - (ci === (weakIdx + 2) % CONCEPTS.length ? 0.25 : 0);
+        p += declining ? -ti * 0.08 : ti * 0.05;
+        const ok = rand() < Math.max(0.05, Math.min(0.97, p)) ? 1 : 0;
+        concepts[c] = ok; if (ok) correct++;
+      });
+      const base = Math.round((correct / CONCEPTS.length) * 100);
+      const score = Math.max(30, Math.min(100, base + Math.round((rand() - 0.5) * 12)));
+      records.push({ id: s.id + "_" + ti, studentId: s.id, classId: s.classId, title: t, score, concepts, ts: Date.now() - (3 - ti) * 86400000, src: "수기" });
+    });
+  });
+  return {
+    school: SCHOOL, teachers, classes, students, records,
+    distributions: [], wfStep: { A: 0, B: 0, C: 0 }, wfPick: "A",
+    currentClass: "c1", role: "teacher", currentTeacher: "t1",
+    pseudoOn: false, alimLog: [], ingestLog: [], ingestedCount: 0,
+    parentStudent: "c1_s0", parentTab: "home",
+  };
+}
+
+// ---------- 상태 ----------
+let state = load();
+function load() {
+  try { const raw = localStorage.getItem(STORE_KEY); if (raw) return migrate(JSON.parse(raw)); }
+  catch (e) { console.warn("load fail", e); }
+  const s = seed(); save(s); return s;
+}
+function migrate(s) {
+  // 누락 필드 안전 보강
+  if (!s.wfStep || typeof s.wfStep !== "object") s.wfStep = { A: 0, B: 0, C: 0 };
+  if (!s.alimLog) s.alimLog = []; if (!s.ingestLog) s.ingestLog = [];
+  return s;
+}
+function save(s = state) { localStorage.setItem(STORE_KEY, JSON.stringify(s)); }
+
+// ---------- 권한 (RBAC) ----------
+function currentTeacherClasses() {
+  const t = state.teachers.find((x) => x.id === state.currentTeacher);
+  return t ? t.classes : [];
+}
+// 교사는 담당 학급만, 관리자는 전체
+function accessibleClasses() {
+  if (state.role === "admin") return state.classes.map((c) => c.id);
+  return currentTeacherClasses();
+}
+function canAccessClass(cid) { return accessibleClasses().includes(cid); }
+
+// ---------- 유틸 ----------
+function dispName(s) { return state.pseudoOn ? s.pseudo : s.name; }
+function classStudents(cid = state.currentClass) { return state.students.filter((s) => s.classId === cid); }
+function studentRecords(sid) { return state.records.filter((r) => r.studentId === sid).sort((a, b) => a.ts - b.ts); }
+function classRecords(cid = state.currentClass) { return state.records.filter((r) => r.classId === cid); }
+function avgScore(sid) { const rs = studentRecords(sid); return rs.length ? Math.round(rs.reduce((a, r) => a + r.score, 0) / rs.length) : 0; }
+function lastScore(sid) { const rs = studentRecords(sid); return rs.length ? rs[rs.length - 1].score : 0; }
+
+// 선형회귀 기울기 (성취 추세 알고리즘 — 최소제곱법)
+function regressionSlope(sid) {
+  const rs = studentRecords(sid);
+  if (rs.length < 2) return 0;
+  const xs = rs.map((_, i) => i), ys = rs.map((r) => r.score);
+  const n = xs.length, mx = xs.reduce((a, b) => a + b) / n, my = ys.reduce((a, b) => a + b) / n;
+  let num = 0, den = 0;
+  for (let i = 0; i < n; i++) { num += (xs[i] - mx) * (ys[i] - my); den += (xs[i] - mx) ** 2; }
+  return den ? +(num / den).toFixed(1) : 0;
+}
+function conceptRate(sid, concept) {
+  const rs = studentRecords(sid).filter((r) => concept in r.concepts);
+  if (!rs.length) return null;
+  return Math.round((rs.reduce((a, r) => a + r.concepts[concept], 0) / rs.length) * 100);
+}
+function studentWeakConcepts(sid, th = 70) {
+  return CONCEPTS.filter((c) => { const r = conceptRate(sid, c); return r !== null && r < th; });
+}
+function classConceptRate(concept, cid = state.currentClass) {
+  const vals = classStudents(cid).map((s) => conceptRate(s.id, concept)).filter((v) => v !== null);
+  return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
+}
+function classAvg(cid) { const rs = classRecords(cid); return rs.length ? Math.round(rs.reduce((a, r) => a + r.score, 0) / rs.length) : 0; }
+
+// 위험점수 알고리즘 (가중합) — 근거 포함 반환
+function riskScore(sid) {
+  const slope = regressionSlope(sid);
+  const av = avgScore(sid);
+  const weak = studentWeakConcepts(sid).length;
+  const recs = studentRecords(sid);
+  // 결손(미응시 회차) 추정: 학급 전체 평가 회차 대비 누락
+  const allTitles = [...new Set(classRecords(state.classes.find(c=>c.id===recs[0]?.classId)?.id || state.currentClass).map(r => r.title))];
+  const taken = new Set(recs.map((r) => r.title));
+  const missing = allTitles.filter((t) => !taken.has(t)).length;
+  // 위험점수 = 하락(기울기 음수) * 4 + 저평균 + 취약개념 * 5 + 결손 * 8
+  let score = 0;
+  const reasons = [];
+  if (slope < 0) { score += Math.abs(slope) * 4; reasons.push(`성취 하락(기울기 ${slope})`); }
+  if (av < 70) { score += (70 - av); reasons.push(`평균 미달(${av}점)`); }
+  if (weak > 0) { score += weak * 5; reasons.push(`취약개념 ${weak}개`); }
+  if (missing > 0) { score += missing * 8; reasons.push(`평가 결손 ${missing}회`); }
+  score = Math.round(score);
+  const grade = score >= 40 ? "고위험" : score >= 20 ? "주의" : "안정";
+  return { score, grade, slope, av, weak, missing, reasons: reasons.length ? reasons : ["특이사항 없음"] };
+}
+
+function heatColor(rate) {
+  if (rate === null) return "#F2F4F6";
+  if (rate < 40) return "#F04452";
+  if (rate < 60) return "#FFB331";
+  if (rate < 80) return "#84cc16";
+  return "#14AE5C";
+}
+function gradeColor(g) { return g === "고위험" ? "bg-rose-100 text-rose-700" : g === "주의" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"; }
+
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.style.opacity = "1";
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.style.opacity = "0"), 2400);
+}
+
+let charts = {};
+function destroyChart(k) { if (charts[k]) { charts[k].destroy(); delete charts[k]; } }
+
+// ---------- 역할/셸 전환 ----------
+function applyRole() {
+  document.getElementById("roleSelect").value = state.role;
+  const desk = document.getElementById("desktopShell");
+  const mob = document.getElementById("mobileShell");
+  if (state.role === "parent") {
+    desk.style.display = "none"; mob.style.display = "flex";
+    renderParent();
+    return;
+  }
+  desk.style.display = "flex"; mob.style.display = "none";
+  // 관리자 메뉴 노출
+  document.querySelectorAll(".navAdmin").forEach((b) => b.classList.toggle("hidden", state.role !== "admin"));
+  // 사용자 표시
+  if (state.role === "admin") {
+    document.getElementById("userAvatar").textContent = "관"; document.getElementById("userAvatar").className = "w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold";
+    document.getElementById("userName").textContent = "학교 관리자";
+    document.getElementById("userScope").textContent = SCHOOL + " 전체";
+  } else {
+    const t = state.teachers.find((x) => x.id === state.currentTeacher);
+    document.getElementById("userAvatar").textContent = "교"; document.getElementById("userAvatar").className = "w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold";
+    document.getElementById("userName").textContent = t.name;
+    document.getElementById("userScope").textContent = "담당: " + t.classes.map((c) => state.classes.find((x) => x.id === c).name).join(", ");
+  }
+  // 현재 학급이 접근 불가면 첫 접근가능 학급으로
+  if (!canAccessClass(state.currentClass)) state.currentClass = accessibleClasses()[0];
+  fillClassSelect();
+  document.getElementById("tenantBadge").textContent = SCHOOL + " · " + (state.role === "admin" ? "관리자" : "교사");
+  const cur = document.querySelector(".nav-active")?.dataset.view || "dashboard";
+  setView(cur === "admin" && state.role !== "admin" ? "dashboard" : cur);
+}
+document.getElementById("roleSelect").addEventListener("change", (e) => {
+  state.role = e.target.value;
+  if (state.role === "teacher") state.currentTeacher = "t1";
+  save(); applyRole();
+});
+
+// ---------- 뷰 전환 ----------
+const VIEW_META = {
+  dashboard: ["성취 대시보드", "담당 학급 성취 현황을 추세·위험점수와 함께 보여드려요."],
+  risk: ["위험학생 조기경보", "가중 위험점수로 조기에 찾고, 판단 근거를 모두 보여드려요."],
+  cluster: ["취약개념 군집", "k-means로 비슷한 학생끼리 묶어 지도그룹을 만들어 드려요."],
+  heatmap: ["취약개념 히트맵", "개념별 정답률로 학급 공통 약점을 진단해요."],
+  compare: ["학급 비교·추세", "반 간, 시점 간 성취를 비교해요."],
+  ingest: ["AIDT 로그 연동", "AI 디지털교과서 학습로그를 불러와요 (mock)."],
+  recommend: ["맞춤 과제 추천", "취약개념 임계값을 기준으로 보충 과제를 자동으로 만들어 배포해요."],
+  report: ["학부모 리포트·알림", "리포트를 만들고 알림톡을 보내요 (mock, 동의한 보호자만)."],
+  privacy: ["개인정보·동의", "가명처리와 보호자 동의를 관리해요."],
+  workflow: ["워크플로", "핵심 워크플로 3가지를 진행해요."],
+  admin: ["관리자(학교 전체)", "학교 전체 학급·교사 현황과 격리 검증을 보여드려요."],
+};
+function setView(v) {
+  document.querySelectorAll(".view").forEach((el) => el.classList.add("hidden"));
+  document.getElementById("view-" + v).classList.remove("hidden");
+  document.querySelectorAll(".nav-btn").forEach((b) => b.classList.toggle("nav-active", b.dataset.view === v));
+  document.getElementById("viewTitle").textContent = VIEW_META[v][0];
+  document.getElementById("viewSub").textContent = VIEW_META[v][1];
+  const R = { dashboard: renderDashboard, risk: renderRisk, cluster: renderClusterView, heatmap: renderHeatmap, compare: renderCompare, ingest: renderIngest, recommend: renderRecommend, report: renderReportControls, privacy: renderPrivacy, workflow: renderWorkflow, admin: renderAdmin };
+  R[v] && R[v]();
+}
+document.querySelectorAll(".nav-btn").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+
+function fillClassSelect() {
+  const sel = document.getElementById("classSelect");
+  const cls = state.classes.filter((c) => canAccessClass(c.id));
+  sel.innerHTML = cls.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
+  sel.value = state.currentClass;
+}
+document.getElementById("classSelect").addEventListener("change", (e) => {
+  if (!canAccessClass(e.target.value)) { toast("담당 학급이 아니라 열 수 없어요."); fillClassSelect(); return; }
+  state.currentClass = e.target.value; save();
+  const cur = document.querySelector(".nav-active")?.dataset.view || "dashboard";
+  setView(cur);
+});
+
+// ---------- 대시보드 ----------
+function renderDashboard() {
+  const ss = classStudents();
+  const allRecs = classRecords();
+  const cAvg = allRecs.length ? Math.round(allRecs.reduce((a, r) => a + r.score, 0) / allRecs.length) : 0;
+  const risks = ss.map((s) => ({ s, r: riskScore(s.id) }));
+  const atRisk = risks.filter((x) => x.r.grade !== "안정").length;
+  const totalWeak = ss.reduce((a, s) => a + studentWeakConcepts(s.id).length, 0);
+  const kpis = [
+    ["학생 수", ss.length, "명", "text-blue-700"],
+    ["학급 평균", cAvg, "점", cAvg < 70 ? "text-rose-600" : "text-emerald-600"],
+    ["조기경보 대상", atRisk, "명", atRisk ? "text-rose-600" : "text-emerald-600"],
+    ["누적 취약개념", totalWeak, "건", "text-amber-600"],
+  ];
+  document.getElementById("kpiCards").innerHTML = kpis.map(([l, v, u, c]) => `
+    <div class="bg-white rounded-xl border p-4"><div class="text-xs text-slate-500">${l}</div>
+    <div class="mt-1 text-2xl font-bold ${c}">${v}<span class="text-sm font-normal text-slate-400 ml-1">${u}</span></div></div>`).join("");
+
+  const titles = [...new Set(allRecs.map((r) => r.title))];
+  const titleAvg = titles.map((t) => { const rs = allRecs.filter((r) => r.title === t); return Math.round(rs.reduce((a, r) => a + r.score, 0) / rs.length); });
+  destroyChart("trend");
+  charts.trend = new Chart(document.getElementById("trendChart"), {
+    type: "line", data: { labels: titles, datasets: [{ label: "학급 평균", data: titleAvg, borderColor: "#1B64DA", backgroundColor: "rgba(29,78,216,.12)", fill: true, tension: .3, pointRadius: 5 }] },
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100 } }, animation: false },
+  });
+  destroyChart("studentBar");
+  charts.studentBar = new Chart(document.getElementById("studentBar"), {
+    type: "bar", data: { labels: ss.map((s) => dispName(s)), datasets: [{ data: ss.map((s) => lastScore(s.id)), backgroundColor: ss.map((s) => lastScore(s.id) < 70 ? "#F04452" : "#3182F6") }] },
+    options: { indexAxis: "y", plugins: { legend: { display: false } }, scales: { x: { min: 0, max: 100 } }, animation: false },
+  });
+  document.getElementById("studentTable").innerHTML = risks.map(({ s, r }) => {
+    const slope = r.slope;
+    const trIcon = slope > 0 ? `<span class="text-emerald-600">▲ ${slope}</span>` : slope < 0 ? `<span class="text-rose-600">▼ ${Math.abs(slope)}</span>` : `<span class="text-slate-400">― 0</span>`;
+    return `<tr class="border-b ${r.grade === "고위험" ? "bg-rose-50" : ""}">
+      <td class="py-2 px-2 font-medium">${dispName(s)}</td><td class="py-2 px-2">${lastScore(s.id)}점</td>
+      <td class="py-2 px-2">${avgScore(s.id)}점</td><td class="py-2 px-2">${trIcon}</td>
+      <td class="py-2 px-2">${r.weak}개</td><td class="py-2 px-2 font-semibold">${r.score}</td>
+      <td class="py-2 px-2"><span class="px-2 py-0.5 rounded-full text-xs ${gradeColor(r.grade)}">${r.grade}</span></td></tr>`;
+  }).join("");
+}
+
+// ---------- 위험학생 조기경보 ----------
+function renderRisk() {
+  const ss = classStudents();
+  const risks = ss.map((s) => ({ s, r: riskScore(s.id) })).sort((a, b) => b.r.score - a.r.score);
+  const counts = { 고위험: 0, 주의: 0, 안정: 0 };
+  risks.forEach((x) => counts[x.r.grade]++);
+  document.getElementById("riskCards").innerHTML = [
+    ["고위험", counts["고위험"], "bg-rose-50 text-rose-700"], ["주의", counts["주의"], "bg-amber-50 text-amber-700"], ["안정", counts["안정"], "bg-emerald-50 text-emerald-700"],
+  ].map(([l, v, c]) => `<div class="rounded-xl border p-4 ${c}"><div class="text-xs">${l}</div><div class="text-2xl font-bold mt-1">${v}명</div></div>`).join("");
+  document.getElementById("riskTable").innerHTML = risks.map(({ s, r }) => `
+    <tr class="border-b ${r.grade === "고위험" ? "bg-rose-50" : ""}">
+      <td class="py-2 px-2 font-medium">${dispName(s)}</td>
+      <td class="py-2 px-2 font-bold">${r.score}</td>
+      <td class="py-2 px-2"><span class="px-2 py-0.5 rounded-full text-xs ${gradeColor(r.grade)}">${r.grade}</span></td>
+      <td class="py-2 px-2 ${r.slope < 0 ? "text-rose-600" : "text-emerald-600"}">${r.slope}</td>
+      <td class="py-2 px-2">${r.av}점</td>
+      <td class="py-2 px-2">${r.weak}개</td>
+      <td class="py-2 px-2 text-xs text-slate-600">${r.reasons.join(" · ")}</td>
+    </tr>`).join("");
+}
+
+// ---------- 취약개념 군집 (k-means) ----------
+function kmeans(vectors, k, iters = 20) {
+  if (vectors.length < k) k = Math.max(1, vectors.length);
+  const dim = vectors[0].vec.length;
+  // 결정적 초기화: 균등 간격 샘플
+  let centroids = [];
+  for (let i = 0; i < k; i++) centroids.push(vectors[Math.floor(i * vectors.length / k)].vec.slice());
+  let assign = new Array(vectors.length).fill(0);
+  const dist = (a, b) => Math.sqrt(a.reduce((s, v, i) => s + (v - b[i]) ** 2, 0));
+  for (let it = 0; it < iters; it++) {
+    let changed = false;
+    vectors.forEach((p, idx) => {
+      let best = 0, bd = Infinity;
+      centroids.forEach((c, ci) => { const d = dist(p.vec, c); if (d < bd) { bd = d; best = ci; } });
+      if (assign[idx] !== best) { assign[idx] = best; changed = true; }
+    });
+    for (let ci = 0; ci < k; ci++) {
+      const members = vectors.filter((_, i) => assign[i] === ci);
+      if (!members.length) continue;
+      for (let d = 0; d < dim; d++) centroids[ci][d] = members.reduce((s, m) => s + m.vec[d], 0) / members.length;
+    }
+    if (!changed) break;
+  }
+  return { assign, centroids, k };
+}
+function renderClusterView() {
+  document.getElementById("kLabel").textContent = document.getElementById("kVal").value;
+  runClusterRender();
+}
+document.getElementById("kVal").addEventListener("input", (e) => (document.getElementById("kLabel").textContent = e.target.value));
+document.getElementById("runCluster").addEventListener("click", runClusterRender);
+function runClusterRender() {
+  const k = +document.getElementById("kVal").value;
+  const ss = classStudents();
+  const vectors = ss.map((s) => ({ s, vec: CONCEPTS.map((c) => (conceptRate(s.id, c) ?? 70) / 100) }));
+  if (vectors.length < 2) { document.getElementById("clusterResult").innerHTML = '<p class="text-slate-400 text-sm">군집을 만들기에 학생이 부족해요.</p>'; return; }
+  const { assign, centroids } = kmeans(vectors, k);
+  const colors = ["#1B64DA", "#db2777", "#14AE5C", "#FFB331"];
+  let html = "";
+  for (let ci = 0; ci < centroids.length; ci++) {
+    const members = vectors.filter((_, i) => assign[i] === ci);
+    if (!members.length) continue;
+    // 군집 중심에서 가장 약한 개념 2개 = 그룹 특성
+    const weakIdx = centroids[ci].map((v, i) => ({ i, v })).sort((a, b) => a.v - b.v).slice(0, 2).map((x) => CONCEPTS[x.i]);
+    html += `<div class="border rounded-lg p-4">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="w-3 h-3 rounded-full" style="background:${colors[ci]}"></span>
+        <span class="font-semibold text-slate-700">군집 ${ci + 1} · ${members.length}명</span>
+        <span class="text-xs text-slate-500">공통 취약: ${weakIdx.join(", ")}</span>
+      </div>
+      <div class="flex flex-wrap gap-2 mb-2">${members.map((m) => `<span class="px-2 py-1 rounded bg-slate-100 text-xs">${dispName(m.s)}</span>`).join("")}</div>
+      <div class="text-xs text-slate-500">중심 정답률: ${centroids[ci].map((v, i) => `${CONCEPTS[i]} ${Math.round(v * 100)}%`).join(" · ")}</div>
+      <div class="text-xs text-blue-700 mt-1">👉 권장 지도: ${weakIdx.join(", ")} 집중 보충 그룹 편성</div>
+    </div>`;
+  }
+  document.getElementById("clusterResult").innerHTML = html;
+}
+
+// ---------- 히트맵 ----------
+function renderHeatmap() {
+  const ss = classStudents();
+  let html = '<table class="border-collapse"><thead><tr><th class="sticky left-0 bg-white px-3 py-2 text-left text-xs text-slate-500">학생 \\ 개념</th>';
+  CONCEPTS.forEach((c) => (html += `<th class="px-2 py-2 text-xs text-slate-600 font-medium" style="min-width:72px">${c}</th>`));
+  html += '<th class="px-2 py-2 text-xs text-slate-500">평균</th></tr></thead><tbody>';
+  ss.forEach((s) => {
+    html += `<tr><td class="sticky left-0 bg-white px-3 py-1.5 text-sm font-medium whitespace-nowrap">${dispName(s)}</td>`;
+    let sum = 0, cnt = 0;
+    CONCEPTS.forEach((c) => {
+      const r = conceptRate(s.id, c);
+      if (r !== null) { sum += r; cnt++; }
+      const txtColor = (r !== null && r >= 40 && r < 80) ? "#191F28" : "#fff";
+      html += `<td class="p-1"><div class="heat-cell rounded text-center text-xs font-semibold py-2 cursor-default" style="background:${heatColor(r)};color:${r === null ? "#8B95A1" : txtColor}">${r === null ? "-" : r}</div></td>`;
+    });
+    const avg = cnt ? Math.round(sum / cnt) : 0;
+    html += `<td class="px-2 text-center text-sm font-semibold ${avg < 60 ? "text-rose-600" : "text-slate-600"}">${avg}%</td></tr>`;
+  });
+  html += '<tr class="border-t-2"><td class="sticky left-0 bg-slate-50 px-3 py-2 text-sm font-bold">학급 평균</td>';
+  CONCEPTS.forEach((c) => {
+    const r = classConceptRate(c);
+    const txtColor = (r >= 40 && r < 80) ? "#191F28" : "#fff";
+    html += `<td class="p-1"><div class="rounded text-center text-xs font-bold py-2" style="background:${heatColor(r)};color:${txtColor}">${r}</div></td>`;
+  });
+  html += '<td></td></tr></tbody></table>';
+  document.getElementById("heatmap").innerHTML = html;
+  const weak = CONCEPTS.map((c) => ({ c, r: classConceptRate(c) })).sort((a, b) => a.r - b.r);
+  document.getElementById("weakConcepts").innerHTML = weak.map((w) => `
+    <div class="flex items-center gap-3"><div class="w-28 text-sm font-medium">${w.c}</div>
+    <div class="flex-1 bg-slate-100 rounded-full h-4 overflow-hidden"><div class="h-4 rounded-full" style="width:${w.r}%;background:${heatColor(w.r)}"></div></div>
+    <div class="w-12 text-right text-sm font-semibold ${w.r < 60 ? "text-rose-600" : "text-slate-600"}">${w.r}%</div></div>`).join("");
+}
+
+// ---------- 학급 비교·추세 ----------
+function renderCompare() {
+  const cls = state.classes.filter((c) => canAccessClass(c.id));
+  destroyChart("compareBar");
+  charts.compareBar = new Chart(document.getElementById("compareBar"), {
+    type: "bar", data: { labels: cls.map((c) => c.name), datasets: [{ label: "학급 평균", data: cls.map((c) => classAvg(c.id)), backgroundColor: ["#1B64DA", "#db2777", "#14AE5C", "#FFB331"] }] },
+    options: { plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100 } }, animation: false },
+  });
+  const titles = ["3월 진단평가", "4월 형성평가", "5월 단원평가"];
+  destroyChart("compareTrend");
+  charts.compareTrend = new Chart(document.getElementById("compareTrend"), {
+    type: "line",
+    data: { labels: titles, datasets: cls.map((c, i) => ({
+      label: c.name,
+      data: titles.map((t) => { const rs = classRecords(c.id).filter((r) => r.title === t); return rs.length ? Math.round(rs.reduce((a, r) => a + r.score, 0) / rs.length) : null; }),
+      borderColor: ["#1B64DA", "#db2777", "#14AE5C", "#FFB331"][i], tension: .3, pointRadius: 4,
+    })) },
+    options: { plugins: { legend: { position: "bottom" } }, scales: { y: { min: 0, max: 100 } }, animation: false },
+  });
+  destroyChart("compareConcept");
+  charts.compareConcept = new Chart(document.getElementById("compareConcept"), {
+    type: "bar",
+    data: { labels: CONCEPTS, datasets: cls.map((c, i) => ({ label: c.name, data: CONCEPTS.map((cn) => classConceptRate(cn, c.id)), backgroundColor: ["#93c5fd", "#f9a8d4", "#6ee7b7", "#fcd34d"][i] })) },
+    options: { plugins: { legend: { position: "bottom" } }, scales: { y: { min: 0, max: 100 } }, animation: false },
+  });
+}
+
+// ---------- AIDT 로그 연동 ----------
+const SAMPLE_LOG = [
+  { student_ext_id: "AIDT-1000", content: "분수단원3차시", concept: "분수의뺄셈", correct: 1, ts: "2026-06-05" },
+  { student_ext_id: "AIDT-1000", content: "분수단원4차시", concept: "통분", correct: 0, ts: "2026-06-05" },
+  { student_ext_id: "AIDT-1001", content: "소수단원2차시", concept: "소수의곱셈", correct: 1, ts: "2026-06-05" },
+  { student_ext_id: "AIDT-1002", content: "분수단원3차시", concept: "약분", correct: 0, ts: "2026-06-06" },
+  { student_ext_id: "AIDT-9999", content: "외부미등록", concept: "통분", correct: 1, ts: "2026-06-06" },
+];
+function renderIngest() {
+  if (!document.getElementById("logInput").value && !state.ingestLog.length)
+    document.getElementById("ingestLogView").textContent = "아직 연동된 로그가 없어요.\n[샘플 로그 불러오기] 또는 [API Pull (mock)]을 눌러 시작해 보세요.";
+  else if (state.ingestLog.length)
+    document.getElementById("ingestLogView").textContent = state.ingestLog.slice(-40).join("\n");
+}
+function appendIngestLog(line) { state.ingestLog.push(`[${new Date().toLocaleTimeString("ko-KR")}] ${line}`); document.getElementById("ingestLogView").textContent = state.ingestLog.slice(-40).join("\n"); document.getElementById("ingestLogView").scrollTop = 1e9; }
+document.getElementById("loadMockLog").addEventListener("click", () => {
+  document.getElementById("logInput").value = SAMPLE_LOG.map((l) => JSON.stringify(l)).join("\n");
+  appendIngestLog("샘플 학습로그 5건 로드됨 (JSON Lines)");
+});
+document.getElementById("pullApi").addEventListener("click", () => {
+  appendIngestLog("AIDT API 연결 시도... (key 부재 → mock 모드)");
+  appendIngestLog("GET /v1/learning-logs?school=" + SCHOOL + " → 200 OK (mock)");
+  document.getElementById("logInput").value = SAMPLE_LOG.map((l) => JSON.stringify(l)).join("\n");
+  appendIngestLog("응답 5건 수신, 텍스트영역에 적재");
+  toast("AIDT API에서 5건을 받았어요 (mock)");
+});
+document.getElementById("ingestLog").addEventListener("click", () => {
+  const raw = document.getElementById("logInput").value.trim();
+  if (!raw) { appendIngestLog("ERROR: 로그가 비어있음"); return; }
+  const lines = raw.split(/\r?\n/).filter((l) => l.trim());
+  appendIngestLog(`파싱 시작: ${lines.length}행`);
+  let mapped = 0, unmatched = 0;
+  // 외부ID→내부학생 매핑, 회차 누적용 임시 그룹
+  const byStudent = {};
+  lines.forEach((ln, i) => {
+    let o; try { o = JSON.parse(ln); } catch (e) { appendIngestLog(`row ${i + 1}: JSON 파싱 실패, skip`); return; }
+    const stu = state.students.find((s) => s.extId === o.student_ext_id);
+    if (!stu) { appendIngestLog(`row ${i + 1}: 외부ID ${o.student_ext_id} 미등록 → 매핑 실패(격리)`); unmatched++; return; }
+    if (!canAccessClass(stu.classId)) { appendIngestLog(`row ${i + 1}: ${o.student_ext_id} 타 학급 → 권한 차단`); return; }
+    (byStudent[stu.id] = byStudent[stu.id] || { stu, concepts: {} });
+    if (CONCEPTS.includes(o.concept)) byStudent[stu.id].concepts[o.concept] = o.correct ? 1 : 0;
+    appendIngestLog(`row ${i + 1}: ${o.student_ext_id} → ${stu.name}(${stu.classId}) · ${o.concept}=${o.correct}`);
+    mapped++;
+  });
+  // 인입된 개념을 새 평가 기록으로 추가
+  let recAdded = 0;
+  Object.values(byStudent).forEach(({ stu, concepts }) => {
+    if (!Object.keys(concepts).length) return;
+    const full = {}; CONCEPTS.forEach((c) => (full[c] = c in concepts ? concepts[c] : (conceptRate(stu.id, c) >= 50 ? 1 : 0)));
+    const score = Math.round((Object.values(full).filter(Boolean).length / CONCEPTS.length) * 100);
+    state.records.push({ id: "aidt" + Date.now() + stu.id, studentId: stu.id, classId: stu.classId, title: "AIDT 6월 학습로그", score, concepts: full, ts: Date.now(), src: "AIDT" });
+    recAdded++;
+  });
+  state.ingestedCount += mapped;
+  appendIngestLog(`완료: 매핑 ${mapped}건 · 미등록 ${unmatched}건 · 평가기록 ${recAdded}건 생성. 대시보드 반영됨.`);
+  save();
+  toast(`AIDT 로그를 불러왔어요: ${mapped}건 매핑, 평가기록 ${recAdded}건 생성`);
+});
+document.getElementById("exportIngestCsv").addEventListener("click", () => {
+  const rows = [["학생", "학급", "출처", "평가명", "점수"]];
+  state.records.filter((r) => r.src === "AIDT" && canAccessClass(r.classId)).forEach((r) => {
+    const s = state.students.find((x) => x.id === r.studentId);
+    rows.push([s.name, r.classId, r.src, r.title, r.score]);
+  });
+  if (rows.length === 1) { toast("내보낼 AIDT 연동 결과가 아직 없어요."); return; }
+  const csv = rows.map((r) => r.join(",")).join("\n");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "aidt_ingest_result.csv"; a.click();
+  appendIngestLog(`CSV 내보내기: ${rows.length - 1}행`);
+  toast(`연동 결과 CSV를 내보냈어요 (${rows.length - 1}행)`);
+});
+
+// ---------- 추천 ----------
+const threshSlider = document.getElementById("threshold");
+threshSlider.addEventListener("input", () => (document.getElementById("threshVal").textContent = threshSlider.value + "%"));
+document.getElementById("genRecommend").addEventListener("click", renderRecommendList);
+function renderRecommend() { document.getElementById("threshVal").textContent = threshSlider.value + "%"; renderRecommendList(); renderDistribute(); }
+const TASK_BANK = {
+  "분수의덧셈": "분수의 덧셈 10문항 단계별 연습지", "분수의뺄셈": "분수의 뺄셈 받아내림 집중 워크시트",
+  "약분": "약분 최대공약수 찾기 드릴", "통분": "통분 최소공배수 연습 카드", "대분수": "대분수↔가분수 변환 퀴즈",
+  "소수의곱셈": "소수의 곱셈 소수점 위치 연습 문제",
+};
+function renderRecommendList() {
+  const th = parseInt(threshSlider.value, 10);
+  const ss = classStudents(); const rows = [];
+  ss.forEach((s) => CONCEPTS.forEach((c) => { const r = conceptRate(s.id, c); if (r !== null && r < th) rows.push({ sid: s.id, name: dispName(s), concept: c, rate: r, task: TASK_BANK[c] }); }));
+  rows.sort((a, b) => a.rate - b.rate); state._recRows = rows;
+  if (!rows.length) { document.getElementById("recommendList").innerHTML = '<p class="text-slate-400 text-sm">임계값보다 낮은 취약개념이 없어요. 임계값을 높여 보세요.</p>'; return; }
+  document.getElementById("recommendList").innerHTML = rows.map((row, i) => `
+    <div class="flex items-center justify-between border rounded-lg p-3 hover:bg-slate-50">
+      <div class="flex items-center gap-3"><span class="px-2 py-1 rounded text-xs font-semibold text-white" style="background:${heatColor(row.rate)}">${row.rate}%</span>
+      <div><div class="font-medium text-sm">${row.name} <span class="text-slate-400">·</span> ${row.concept}</div>
+      <div class="text-xs text-slate-500">추천 과제: ${row.task}</div></div></div>
+      <button data-i="${i}" class="addDist border border-blue-600 text-blue-700 hover:bg-blue-600 hover:text-white rounded-lg px-3 py-1.5 text-xs font-medium">배포 추가</button></div>`).join("");
+  document.querySelectorAll(".addDist").forEach((b) => b.addEventListener("click", () => { const row = state._recRows[+b.dataset.i]; addDistribution(row); toast(`${row.name} · ${row.concept} 과제를 배포 목록에 추가했어요`); }));
+}
+function addDistribution(row) {
+  if (state.distributions.some((d) => d.sid === row.sid && d.concept === row.concept && d.status !== "배포완료")) return;
+  state.distributions.push({ id: "d" + Date.now() + Math.random().toString(36).slice(2, 5), sid: row.sid, name: row.name, concept: row.concept, task: row.task, status: "대기", ts: Date.now() });
+  save(); renderDistribute();
+}
+function renderDistribute() {
+  const ds = state.distributions;
+  document.getElementById("distCount").textContent = `(${ds.length}건)`;
+  if (!ds.length) { document.getElementById("distributeList").innerHTML = '<p class="text-slate-400">아직 배포 목록이 비어 있어요. 위에서 "배포 추가"를 눌러 보세요.</p>'; return; }
+  document.getElementById("distributeList").innerHTML = ds.map((d) => `
+    <div class="flex items-center justify-between border rounded-lg p-2.5"><div><span class="font-medium">${d.name}</span> <span class="text-slate-400">·</span> ${d.task}
+    <span class="text-xs text-slate-400 ml-1">(${d.concept})</span></div>
+    <span class="px-2 py-0.5 rounded-full text-xs ${d.status === "배포완료" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}">${d.status}</span></div>`).join("");
+}
+document.getElementById("distributeAll").addEventListener("click", () => {
+  if (!state.distributions.length) { toast("배포할 과제가 없어요. 먼저 과제를 추가해 주세요."); return; }
+  state.distributions.forEach((d) => (d.status = "배포완료")); save(); renderDistribute();
+  toast(`${state.distributions.length}건 배포했어요 (mock 발송 로그 기록)`);
+});
+
+// ---------- 리포트·알림톡 ----------
+function renderReportControls() {
+  document.getElementById("reportStudent").innerHTML = classStudents().map((s) => `<option value="${s.id}">${dispName(s)}</option>`).join("");
+  if (state.alimLog.length) document.getElementById("alimLogView").textContent = state.alimLog.slice(-30).join("\n");
+}
+document.getElementById("buildReport").addEventListener("click", () => buildReport(document.getElementById("reportStudent").value));
+function buildReport(sid) {
+  const s = state.students.find((x) => x.id === sid);
+  const cls = state.classes.find((c) => c.id === s.classId);
+  const recs = studentRecords(sid);
+  const av = avgScore(sid), ls = lastScore(sid), slope = regressionSlope(sid);
+  document.getElementById("reportCard").classList.remove("hidden");
+  document.getElementById("reportHint").classList.add("hidden");
+  document.getElementById("rpName").textContent = dispName(s);
+  document.getElementById("rpClass").textContent = cls.name;
+  document.getElementById("rpDate").textContent = new Date().toLocaleDateString("ko-KR");
+  document.getElementById("rpKpi").innerHTML = [["최근 점수", ls + "점"], ["평균 점수", av + "점"], ["추세(회귀)", (slope >= 0 ? "+" : "") + slope]]
+    .map(([l, v]) => `<div class="bg-slate-50 rounded-lg p-3 text-center"><div class="text-xs text-slate-500">${l}</div><div class="text-lg font-bold text-blue-800">${v}</div></div>`).join("");
+  destroyChart("rpTrend");
+  charts.rpTrend = new Chart(document.getElementById("rpTrend"), {
+    type: "line", data: { labels: recs.map((r) => r.title), datasets: [{ label: dispName(s), data: recs.map((r) => r.score), borderColor: "#1B64DA", backgroundColor: "rgba(29,78,216,.1)", fill: true, tension: .3, pointRadius: 4 }] },
+    options: { plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100 } }, animation: false },
+  });
+  const weak = studentWeakConcepts(sid);
+  document.getElementById("rpWeak").innerHTML = weak.length ? weak.map((c) => { const r = conceptRate(sid, c); return `<span class="px-2.5 py-1 rounded-full text-xs font-medium text-white" style="background:${heatColor(r)}">${c} ${r}%</span>`; }).join("") : '<span class="text-sm text-emerald-600">두드러진 취약개념이 없어요.</span>';
+  document.getElementById("rpRec").innerHTML = weak.length ? weak.map((c) => `<li>${TASK_BANK[c]}</li>`).join("") : '<li>심화 문제에 도전해 보길 권해요.</li>';
+  let comment = `${dispName(s)} 학생은 최근 ${ls}점, 평균 ${av}점을 기록했어요. `;
+  comment += slope > 0 ? `회귀 기울기 +${slope}로 상승하고 있어요. ` : slope < 0 ? `회귀 기울기 ${slope}로 하락세라 보충이 필요해요. ` : `성취가 유지되고 있어요. `;
+  comment += weak.length ? `${weak.join(", ")} 개념을 보완해 보길 권해요.` : `심화 학습으로 확장할 시점이에요.`;
+  document.getElementById("rpComment").textContent = comment;
+  state._lastReport = sid;
+}
+document.getElementById("sendAlim").addEventListener("click", () => {
+  const sid = state._lastReport || document.getElementById("reportStudent").value;
+  if (document.getElementById("reportCard").classList.contains("hidden")) buildReport(sid);
+  const s = state.students.find((x) => x.id === sid);
+  const t = new Date().toLocaleTimeString("ko-KR");
+  if (s.consent !== "동의") {
+    state.alimLog.push(`[${t}] ✗ ${s.name}: 보호자 미동의/철회 → 발송 제외 (개인정보 보호)`);
+  } else {
+    // 알림톡 발송 mock — 5% 확률 실패 시 SMS 폴백 시뮬레이션
+    const fail = (s.name.charCodeAt(1) % 9) === 0;
+    if (fail) {
+      state.alimLog.push(`[${t}] ⚠ ${s.name}: 카카오 알림톡 발송 실패 → SMS 폴백 발송 성공`);
+    } else {
+      state.alimLog.push(`[${t}] ✓ ${s.name}: 카카오 알림톡 발송 성공 (템플릿 CL_REPORT_01, 보호자번호 010-****-${(1000 + s.name.charCodeAt(0) % 9000)})`);
+    }
+  }
+  document.getElementById("alimLogView").textContent = state.alimLog.slice(-30).join("\n");
+  document.getElementById("alimLogView").scrollTop = 1e9;
+  save();
+  toast(`${s.name} 알림톡 발송을 처리했어요 (mock)`);
+});
+
+// ---------- 개인정보·동의 ----------
+function renderPrivacy() {
+  document.getElementById("pseudoToggle").checked = state.pseudoOn;
+  const ss = state.students.filter((s) => canAccessClass(s.classId));
+  document.getElementById("pseudoTable").innerHTML = ss.map((s) => `
+    <tr class="border-b"><td class="py-2 px-2">${state.pseudoOn ? '<span class="text-slate-300">■■■(보호)</span>' : s.name}</td>
+    <td class="py-2 px-2 font-mono text-indigo-700">${s.pseudo}</td><td class="py-2 px-2 text-xs text-slate-500">${s.extId}</td></tr>`).join("");
+  document.getElementById("consentTable").innerHTML = ss.map((s) => `
+    <tr class="border-b"><td class="py-2 px-2 font-medium">${dispName(s)}</td>
+    <td class="py-2 px-2"><span class="px-2 py-0.5 rounded-full text-xs ${s.consent === "동의" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}">${s.consent}</span></td>
+    <td class="py-2 px-2 text-xs text-slate-400">${new Date(s.consentTs).toLocaleDateString("ko-KR")}</td>
+    <td class="py-2 px-2"><button data-sid="${s.id}" class="consentToggle text-xs border rounded px-2 py-1 hover:bg-slate-50">${s.consent === "동의" ? "동의 철회" : "동의 기록"}</button></td></tr>`).join("");
+  document.querySelectorAll(".consentToggle").forEach((b) => b.addEventListener("click", () => {
+    const s = state.students.find((x) => x.id === b.dataset.sid);
+    s.consent = s.consent === "동의" ? "철회" : "동의"; s.consentTs = Date.now(); save(); renderPrivacy();
+    toast(`${s.name} 보호자 동의를 '${s.consent}'(으)로 바꿨어요`);
+  }));
+}
+document.getElementById("pseudoToggle").addEventListener("change", (e) => { state.pseudoOn = e.target.checked; save(); renderPrivacy(); toast(`가명처리를 ${state.pseudoOn ? "적용했어요" : "해제했어요"} — 분석 화면 전체에 반영돼요`); });
+
+// ---------- 관리자 ----------
+function renderAdmin() {
+  const allRecs = state.records;
+  const totalStudents = state.students.length;
+  const schoolAvg = allRecs.length ? Math.round(allRecs.reduce((a, r) => a + r.score, 0) / allRecs.length) : 0;
+  let totalRisk = 0; state.students.forEach((s) => { if (riskScore(s.id).grade !== "안정") totalRisk++; });
+  document.getElementById("adminKpi").innerHTML = [
+    ["학급 수", state.classes.length, "개", "text-indigo-700"], ["전체 학생", totalStudents, "명", "text-blue-700"],
+    ["학교 평균", schoolAvg, "점", "text-slate-700"], ["전체 경보대상", totalRisk, "명", "text-rose-600"],
+  ].map(([l, v, u, c]) => `<div class="bg-white rounded-xl border p-4"><div class="text-xs text-slate-500">${l}</div><div class="mt-1 text-2xl font-bold ${c}">${v}<span class="text-sm font-normal text-slate-400 ml-1">${u}</span></div></div>`).join("");
+  document.getElementById("adminTable").innerHTML = state.classes.map((c) => {
+    const ss = classStudents(c.id);
+    const teacher = state.teachers.find((t) => t.id === c.teacherId);
+    const risk = ss.filter((s) => riskScore(s.id).grade === "고위험").length;
+    const atRisk = ss.filter((s) => avgScore(s.id) < 70).length;
+    return `<tr class="border-b"><td class="py-2 px-2 font-medium">${c.name}</td><td class="py-2 px-2">${teacher.name}</td>
+      <td class="py-2 px-2">${ss.length}명</td><td class="py-2 px-2">${classAvg(c.id)}점</td>
+      <td class="py-2 px-2">${atRisk}명</td><td class="py-2 px-2 ${risk ? "text-rose-600 font-semibold" : "text-slate-400"}">${risk}명</td></tr>`;
+  }).join("");
+  // 격리 시뮬레이션: 교사 t1 관점에서 c3(이교사 담당) 접근 시도
+  const t1Classes = state.teachers.find((t) => t.id === "t1").classes;
+  const blocked = state.classes.filter((c) => !t1Classes.includes(c.id)).map((c) => c.name);
+  document.getElementById("isolationResult").innerHTML = `
+    <div class="bg-slate-50 rounded-lg p-3 text-xs font-mono space-y-1">
+      <div>교사 t1(김교사) 담당: ${t1Classes.map((c) => state.classes.find((x) => x.id === c).name).join(", ")}</div>
+      <div class="text-rose-600">접근 차단된 학급(타 교사): ${blocked.join(", ")} → 조회 시도 결과 <b>0건 반환</b> ✅</div>
+      <div class="text-emerald-700">타 학교(타 테넌트) 데이터: school_id 격리 → <b>0건 (격리 통과)</b> ✅</div>
+    </div>`;
+}
+
+// ---------- 워크플로 (3종) ----------
+const WORKFLOWS = {
+  A: { title: "A. 평가 → 분석 → 피드백", desc: "성취 입력부터 학부모 리포트까지 한 사이클을 진행해요.", steps: ["① 평가 확인", "② 취약개념 분석", "③ 과제 추천·배포", "④ 학부모 리포트"] },
+  B: { title: "B. 로그 연동 → 군집 진단 → 경보", desc: "AIDT 학습로그를 불러와 군집과 위험경보를 도출해요.", steps: ["① 로그 연동", "② 취약개념 군집", "③ 위험학생 경보"] },
+  C: { title: "C. 동의 관리 → 가명처리 → 리포트 발송", desc: "개인정보 동의를 확인하고 가명처리한 뒤 알림톡을 보내요.", steps: ["① 보호자 동의 확인", "② 가명처리 적용", "③ 알림톡 발송"] },
+};
+document.getElementById("wfPick").addEventListener("change", (e) => { state.wfPick = e.target.value; save(); renderWorkflow(); });
+function renderWorkflow() {
+  document.getElementById("wfPick").value = state.wfPick;
+  const wf = WORKFLOWS[state.wfPick];
+  const step = (state.wfStep[state.wfPick] || 0);
+  document.getElementById("wfTitle").textContent = wf.title;
+  document.getElementById("wfDesc").textContent = wf.desc;
+  document.getElementById("wfSteps").innerHTML = wf.steps.map((t, i) => `
+    <div class="flex-1 flex items-center"><div class="flex flex-col items-center flex-1">
+      <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold ${i < step ? "step-done" : i === step ? "step-cur" : "step-todo"}" style="${i < step ? "background:#1B64DA;color:#fff" : i === step ? "background:#3182F6;color:#fff;box-shadow:0 0 0 4px #C9E2FF" : "background:#E5E8EB;color:#4E5968"}">${i < step ? "✓" : i + 1}</div>
+      <div class="text-xs mt-2 ${i === step ? "text-blue-700 font-semibold" : "text-slate-500"}">${t}</div></div>
+      ${i < wf.steps.length - 1 ? `<div class="h-0.5 flex-1 ${i < step ? "bg-blue-700" : "bg-slate-200"}"></div>` : ""}</div>`).join("");
+  document.getElementById("wfBody").innerHTML = wfBody(state.wfPick, step);
+  bindWfBody(state.wfPick, step);
+  document.getElementById("wfPrev").disabled = step === 0;
+  document.getElementById("wfPrev").classList.toggle("opacity-40", step === 0);
+  const last = wf.steps.length - 1;
+  document.getElementById("wfNext").textContent = step >= last ? "워크플로 재시작" : "다음 단계";
+}
+function wfBody(p, step) {
+  const ss = classStudents();
+  if (p === "A") {
+    if (step === 0) return `<div class="text-sm text-slate-600 space-y-3"><p>담당 학급 <b>${ss.length}</b>명, 누적 평가 <b>${classRecords().length}</b>건을 확인했어요.</p><button onclick="setView('input2nav')" class="hidden"></button><p class="text-slate-500">다음 단계로 진행해 주세요.</p></div>`;
+    if (step === 1) { const weak = CONCEPTS.map((c) => ({ c, r: classConceptRate(c) })).sort((a, b) => a.r - b.r).slice(0, 3); return `<div class="text-sm text-slate-600 space-y-3"><p>학급 공통 약점 TOP 3이에요:</p><div class="flex gap-2">${weak.map((w) => `<span class="px-3 py-1.5 rounded-lg text-white text-sm font-medium" style="background:${heatColor(w.r)}">${w.c} ${w.r}%</span>`).join("")}</div><p class="text-slate-500">관심이 필요한 학생 <b>${ss.filter((s) => avgScore(s.id) < 70).length}</b>명을 찾았어요.</p></div>`; }
+    if (step === 2) { let cnt = 0; ss.forEach((s) => CONCEPTS.forEach((c) => { const r = conceptRate(s.id, c); if (r !== null && r < 70) cnt++; })); return `<div class="text-sm text-slate-600 space-y-3"><p>임계값 70% 기준으로 <b>${cnt}건</b>을 추천할 수 있어요.</p><button id="wfGenRec" class="bg-blue-700 text-white rounded-lg px-4 py-2 text-sm font-medium">추천 과제 한 번에 만들고 배포하기</button><p id="wfRecResult" class="text-emerald-700"></p></div>`; }
+    if (step === 3) return `<div class="text-sm text-slate-600 space-y-3"><p>학부모 리포트를 만들어요.</p><div class="flex items-center gap-2"><select id="wfRpStudent" class="border rounded-lg px-3 py-2 text-sm">${ss.map((s) => `<option value="${s.id}">${dispName(s)}</option>`).join("")}</select><button id="wfBuildRep" class="bg-blue-700 text-white rounded-lg px-4 py-2 text-sm font-medium">리포트 보기</button></div><p class="text-emerald-700 font-medium">🎉 워크플로 A를 완주했어요! 평가→분석→추천→리포트 한 사이클을 마쳤어요.</p></div>`;
+  }
+  if (p === "B") {
+    if (step === 0) return `<div class="text-sm text-slate-600 space-y-3"><p>AIDT 학습로그 연동 화면에서 mock API Pull로 파싱·매핑을 해요.</p><button id="wfGoIngest" class="border rounded-lg px-4 py-2 text-sm hover:bg-slate-50">로그 연동 화면으로 이동</button><p class="text-slate-500">지금까지 불러온 AIDT 로그: <b>${state.ingestedCount}</b>건</p></div>`;
+    if (step === 1) return `<div class="text-sm text-slate-600 space-y-3"><p>불러온 정답률 벡터로 학생을 군집으로 묶어요.</p><button id="wfRunCluster" class="bg-blue-700 text-white rounded-lg px-4 py-2 text-sm font-medium">군집 진단 실행(k=3)</button><div id="wfClusterOut" class="text-emerald-700"></div></div>`;
+    if (step === 2) { const high = ss.map((s) => ({ s, r: riskScore(s.id) })).filter((x) => x.r.grade === "고위험"); return `<div class="text-sm text-slate-600 space-y-3"><p>위험점수를 산출한 결과 <b>고위험 ${high.length}명</b>을 조기경보로 찾았어요:</p><div class="space-y-1">${high.length ? high.map((x) => `<div class="text-rose-600">• ${dispName(x.s)} (위험점수 ${x.r.score}) — ${x.r.reasons.join(", ")}</div>`).join("") : '<span class="text-emerald-600">고위험 학생이 없어요</span>'}</div><p class="text-emerald-700 font-medium">🎉 워크플로 B를 완주했어요! 로그 연동→군집→경보를 마쳤어요.</p></div>`; }
+  }
+  if (p === "C") {
+    if (step === 0) { const cons = ss.filter((s) => s.consent === "동의").length; return `<div class="text-sm text-slate-600 space-y-3"><p>보호자 동의 현황: 동의 <b>${cons}</b>명 / 전체 ${ss.length}명. 미동의 학생은 발송에서 빠져요.</p><button id="wfGoConsent" class="border rounded-lg px-4 py-2 text-sm hover:bg-slate-50">동의 관리 화면으로 이동</button></div>`; }
+    if (step === 1) return `<div class="text-sm text-slate-600 space-y-3"><p>분석·리포트에 가명처리를 적용해요 (실명은 따로 보호 저장).</p><button id="wfApplyPseudo" class="bg-blue-700 text-white rounded-lg px-4 py-2 text-sm font-medium">가명처리 적용</button><p id="wfPseudoOut" class="text-emerald-700"></p></div>`;
+    if (step === 2) return `<div class="text-sm text-slate-600 space-y-3"><p>동의한 보호자에게만 알림톡을 한 번에 보내요 (미동의 제외, 실패하면 SMS로 다시 보내요).</p><button id="wfSendAll" class="bg-amber-500 text-white rounded-lg px-4 py-2 text-sm font-medium">학급 전체 알림톡 발송(mock)</button><div id="wfSendOut" class="text-xs font-mono bg-slate-900 text-amber-200 rounded p-2 mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap"></div><p class="text-emerald-700 font-medium mt-2">🎉 워크플로 C를 완주했어요! 동의→가명→발송을 마쳤어요.</p></div>`;
+  }
+  return "";
+}
+function bindWfBody(p, step) {
+  if (p === "A" && step === 2) document.getElementById("wfGenRec")?.addEventListener("click", () => {
+    const ss = classStudents(); let added = 0;
+    ss.forEach((s) => CONCEPTS.forEach((c) => { const r = conceptRate(s.id, c); if (r !== null && r < 70) { addDistribution({ sid: s.id, name: dispName(s), concept: c, rate: r, task: TASK_BANK[c] }); added++; } }));
+    state.distributions.forEach((d) => (d.status = "배포완료")); save();
+    document.getElementById("wfRecResult").textContent = `✓ ${added}건 추천하고 배포했어요 (mock 발송 로그 기록)`; toast(`워크플로: ${added}건 배포했어요`);
+  });
+  if (p === "A" && step === 3) document.getElementById("wfBuildRep")?.addEventListener("click", () => { const sid = document.getElementById("wfRpStudent").value; setView("report"); document.getElementById("reportStudent").value = sid; buildReport(sid); });
+  if (p === "B" && step === 0) document.getElementById("wfGoIngest")?.addEventListener("click", () => setView("ingest"));
+  if (p === "B" && step === 1) document.getElementById("wfRunCluster")?.addEventListener("click", () => {
+    const ss = classStudents(); const vectors = ss.map((s) => ({ s, vec: CONCEPTS.map((c) => (conceptRate(s.id, c) ?? 70) / 100) }));
+    const { assign } = kmeans(vectors, 3); const groups = {}; assign.forEach((a) => (groups[a] = (groups[a] || 0) + 1));
+    document.getElementById("wfClusterOut").textContent = `✓ k=3 군집을 만들었어요: ${Object.entries(groups).map(([g, n]) => `군집${+g + 1} ${n}명`).join(", ")}`; toast("군집 진단을 마쳤어요");
+  });
+  if (p === "C" && step === 0) document.getElementById("wfGoConsent")?.addEventListener("click", () => setView("privacy"));
+  if (p === "C" && step === 1) document.getElementById("wfApplyPseudo")?.addEventListener("click", () => { state.pseudoOn = true; save(); document.getElementById("wfPseudoOut").textContent = "✓ 가명처리를 적용했어요 — 분석·리포트에 가명만 보여요"; toast("가명처리를 적용했어요"); });
+  if (p === "C" && step === 2) document.getElementById("wfSendAll")?.addEventListener("click", () => {
+    const ss = classStudents(); const out = []; const t = new Date().toLocaleTimeString("ko-KR");
+    ss.forEach((s) => {
+      if (s.consent !== "동의") { out.push(`✗ ${s.name}: 미동의/철회 → 제외`); state.alimLog.push(`[${t}] ✗ ${s.name}: 미동의 제외`); return; }
+      const fail = (s.name.charCodeAt(1) % 9) === 0;
+      out.push(fail ? `⚠ ${s.name}: 알림톡 실패→SMS 폴백 성공` : `✓ ${s.name}: 알림톡 발송 성공`);
+      state.alimLog.push(`[${t}] ${fail ? "⚠ SMS폴백" : "✓ 알림톡"} ${s.name}`);
+    });
+    save(); document.getElementById("wfSendOut").textContent = out.join("\n"); toast(`학급 전체 알림톡을 보냈어요 (mock)`);
+  });
+}
+document.getElementById("wfNext").addEventListener("click", () => {
+  const wf = WORKFLOWS[state.wfPick]; const last = wf.steps.length - 1;
+  state.wfStep[state.wfPick] = (state.wfStep[state.wfPick] || 0) >= last ? 0 : (state.wfStep[state.wfPick] || 0) + 1;
+  save(); renderWorkflow();
+});
+document.getElementById("wfPrev").addEventListener("click", () => { if ((state.wfStep[state.wfPick] || 0) > 0) { state.wfStep[state.wfPick]--; save(); renderWorkflow(); } });
+
+// ---------- 학부모 모바일 ----------
+document.querySelectorAll(".ptab").forEach((b) => b.addEventListener("click", () => { state.parentTab = b.dataset.ptab; save(); renderParent(); }));
+function renderParent() {
+  document.querySelectorAll(".ptab").forEach((b) => { const on = b.dataset.ptab === state.parentTab; b.className = `ptab flex-1 py-3 ${on ? "text-blue-700 font-semibold" : "text-slate-500"}`; });
+  const sid = state.parentStudent;
+  const s = state.students.find((x) => x.id === sid);
+  const cls = state.classes.find((c) => c.id === s.classId);
+  document.getElementById("pmHeaderSub").textContent = `${s.name} · ${cls.name}`;
+  const av = avgScore(sid), ls = lastScore(sid), slope = regressionSlope(sid), weak = studentWeakConcepts(sid);
+  const body = document.getElementById("parentBody");
+  if (state.parentTab === "home") {
+    body.innerHTML = `
+      <div class="bg-white rounded-xl border p-4">
+        <div class="text-sm text-slate-500">우리 아이 최근 성취</div>
+        <div class="flex items-end gap-2 mt-1"><div class="text-3xl font-bold text-blue-700">${ls}점</div><div class="text-xs text-slate-400 mb-1">(평균 ${av}점)</div></div>
+        <div class="mt-2 text-sm ${slope >= 0 ? "text-emerald-600" : "text-rose-600"}">추세 ${slope >= 0 ? "▲ 상승" : "▼ 하락"} (기울기 ${slope})</div>
+      </div>
+      <div class="grid grid-cols-3 gap-2">
+        <div class="bg-white rounded-xl border p-3 text-center"><div class="text-xs text-slate-500">최근</div><div class="text-lg font-bold text-blue-700">${ls}</div></div>
+        <div class="bg-white rounded-xl border p-3 text-center"><div class="text-xs text-slate-500">평균</div><div class="text-lg font-bold text-slate-700">${av}</div></div>
+        <div class="bg-white rounded-xl border p-3 text-center"><div class="text-xs text-slate-500">취약</div><div class="text-lg font-bold text-amber-600">${weak.length}</div></div>
+      </div>
+      <div class="bg-white rounded-xl border p-4">
+        <div class="font-semibold text-sm mb-2">취약개념</div>
+        <div class="flex flex-wrap gap-2">${weak.length ? weak.map((c) => `<span class="px-2.5 py-1 rounded-full text-xs text-white" style="background:${heatColor(conceptRate(sid, c))}">${c}</span>`).join("") : '<span class="text-emerald-600 text-sm">취약개념이 없어요 — 안정적이에요</span>'}</div>
+      </div>
+      <div class="bg-white rounded-xl border p-4">
+        <div class="font-semibold text-sm mb-2">추천 가정 학습</div>
+        <ul class="list-disc list-inside text-sm text-slate-600 space-y-1">${(weak.length ? weak.map((c) => TASK_BANK[c]) : ["심화 문제에 도전해 보길 권해요"]).map((t) => `<li>${t}</li>`).join("")}</ul>
+      </div>`;
+  } else if (state.parentTab === "trend") {
+    body.innerHTML = `<div class="bg-white rounded-xl border p-4"><div class="font-semibold text-sm mb-3">성취 추세</div><canvas id="pmTrend" height="160"></canvas></div>
+      <div class="bg-white rounded-xl border p-4"><div class="font-semibold text-sm mb-2">회차별 점수</div>${studentRecords(sid).map((r) => `<div class="flex justify-between text-sm py-1 border-b last:border-0"><span class="text-slate-600">${r.title}</span><span class="font-semibold ${r.score < 70 ? "text-rose-600" : "text-blue-700"}">${r.score}점</span></div>`).join("")}</div>`;
+    setTimeout(() => {
+      const recs = studentRecords(sid);
+      destroyChart("pmTrend");
+      charts.pmTrend = new Chart(document.getElementById("pmTrend"), { type: "line", data: { labels: recs.map((r) => r.title), datasets: [{ data: recs.map((r) => r.score), borderColor: "#1B64DA", backgroundColor: "rgba(29,78,216,.12)", fill: true, tension: .3, pointRadius: 4 }] }, options: { plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100 } }, animation: false } });
+    }, 30);
+  } else if (state.parentTab === "alim") {
+    const mine = state.alimLog.filter((l) => l.includes(s.name));
+    body.innerHTML = `<div class="bg-white rounded-xl border p-4"><div class="font-semibold text-sm mb-2">받은 알림톡</div>
+      ${mine.length ? mine.slice(-10).reverse().map((l) => `<div class="text-xs border rounded-lg p-2 mb-2 ${l.includes("✓") || l.includes("⚠") ? "bg-amber-50" : "bg-slate-50"}">${l}</div>`).join("") : '<p class="text-sm text-slate-400">아직 받은 알림이 없어요. 선생님이 리포트를 보내면 여기에 표시돼요.</p>'}</div>`;
+  } else if (state.parentTab === "consent") {
+    body.innerHTML = `<div class="bg-white rounded-xl border p-4">
+      <div class="font-semibold text-sm mb-1">개인정보 활용 동의</div>
+      <p class="text-xs text-slate-500 mb-3">자녀 학습데이터의 분석·알림 활용 동의를 직접 관리할 수 있어요.</p>
+      <div class="flex items-center justify-between mb-3"><span class="text-sm">현재 상태</span>
+        <span class="px-2.5 py-1 rounded-full text-xs ${s.consent === "동의" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}">${s.consent}</span></div>
+      <button id="pmConsentBtn" class="w-full ${s.consent === "동의" ? "bg-rose-600" : "bg-emerald-600"} text-white rounded-lg py-2.5 text-sm font-medium">${s.consent === "동의" ? "동의 철회" : "동의하기"}</button>
+      <p class="text-xs text-slate-400 mt-3">철회하면 알림톡 발송 대상에서 바로 빠져요.</p></div>`;
+    setTimeout(() => document.getElementById("pmConsentBtn")?.addEventListener("click", () => { s.consent = s.consent === "동의" ? "철회" : "동의"; s.consentTs = Date.now(); save(); renderParent(); toast(`동의 상태를 '${s.consent}'(으)로 바꿨어요`); }), 20);
+  }
+}
+
+// ---------- 초기화 ----------
+document.getElementById("resetBtn").addEventListener("click", () => {
+  if (confirm("시드 데이터로 초기화할까요? 입력한 데이터가 사라져요.")) { state = seed(); save(); applyRole(); toast("시드 데이터로 초기화했어요."); }
+});
+
+// ---------- 부트 ----------
+applyRole();
+if (state.role !== "parent") setView("dashboard");
+</script>
+</body>
+</html>
