@@ -14,10 +14,10 @@
       blue:    {50:'#EEF3FE',100:'#E0E9FD',200:'#C3D4FB',300:'#96B2F7',400:'#5C84F1',500:'#2F62EA',600:'#1D4FD8',700:'#1B45C4',800:'#1C3DA0',900:'#1B377F'},
       indigo:  {50:'#EEF3FE',100:'#E0E9FD',200:'#C3D4FB',300:'#96B2F7',400:'#5C84F1',500:'#2F62EA',600:'#1D4FD8',700:'#1B45C4',800:'#1C3DA0',900:'#1B377F'},
       sky:     {50:'#EEF3FE',100:'#E0E9FD',200:'#C3D4FB',300:'#96B2F7',400:'#5C84F1',500:'#2F62EA',600:'#1D4FD8',700:'#1B45C4',800:'#1C3DA0',900:'#1B377F'},
-      slate:   {50:'#F6F8FC',100:'#EFF1F7',200:'#DFE3EC',300:'#CDD3E0',400:'#8C96AB',500:'#7E889E',600:'#46506B',700:'#323C55',800:'#18203A',900:'#151B2B'},
-      gray:    {50:'#F6F8FC',100:'#EFF1F7',200:'#DFE3EC',300:'#CDD3E0',400:'#8C96AB',500:'#7E889E',600:'#46506B',700:'#323C55',800:'#18203A',900:'#151B2B'},
-      zinc:    {50:'#F6F8FC',100:'#EFF1F7',200:'#DFE3EC',300:'#CDD3E0',400:'#8C96AB',500:'#7E889E',600:'#46506B',700:'#323C55',800:'#18203A',900:'#151B2B'},
-      neutral: {50:'#F6F8FC',100:'#EFF1F7',200:'#DFE3EC',300:'#CDD3E0',400:'#8C96AB',500:'#7E889E',600:'#46506B',700:'#323C55',800:'#18203A',900:'#151B2B'},
+      slate:   {50:'#F6F8FC',100:'#EFF1F7',200:'#DFE3EC',300:'#CDD3E0',400:'#69758F',500:'#626C83',600:'#46506B',700:'#323C55',800:'#18203A',900:'#151B2B'},
+      gray:    {50:'#F6F8FC',100:'#EFF1F7',200:'#DFE3EC',300:'#CDD3E0',400:'#69758F',500:'#626C83',600:'#46506B',700:'#323C55',800:'#18203A',900:'#151B2B'},
+      zinc:    {50:'#F6F8FC',100:'#EFF1F7',200:'#DFE3EC',300:'#CDD3E0',400:'#69758F',500:'#626C83',600:'#46506B',700:'#323C55',800:'#18203A',900:'#151B2B'},
+      neutral: {50:'#F6F8FC',100:'#EFF1F7',200:'#DFE3EC',300:'#CDD3E0',400:'#69758F',500:'#626C83',600:'#46506B',700:'#323C55',800:'#18203A',900:'#151B2B'},
       emerald: {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
       green:   {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
       teal:    {50:'#E7F8EF',100:'#D2F2E0',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
@@ -46,7 +46,7 @@
   button:active:not(:disabled), [role="button"]:active, a.w-full:active,
   input[type="submit"]:active, input[type="button"]:active { transform: scale(.97); }
   button:disabled, button[disabled], [role="button"][aria-disabled="true"] { opacity: .35; cursor: not-allowed; }
-  input:focus-visible, textarea:focus-visible, select:focus-visible {
+  button:focus-visible, [role="button"]:focus-visible, a.w-full:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
     outline: none; border-color: #1D4FD8; box-shadow: 0 0 0 1.5px #1D4FD8;
   }
   button.w-full, button[type="submit"].w-full, a.w-full[class*="bg-"] {
@@ -432,7 +432,7 @@ function vSchedule(){
   <div class="toss-card p-6 mb-5">
     <div class="font-bold mb-3">발송 채널 + 시간</div>
     <div class="grid lg:grid-cols-3 gap-3">
-      <select id="sch-ch" class="p-3 rounded-xl border bg-white"><option value="">선택...</option><option value="email">이메일</option><option value="slack">Slack</option><option value="kakao">카카오톡 알림톡</option></select>
+      <select id="sch-ch" class="p-3 rounded-xl border bg-white">${[['','선택...'],['email','이메일'],['slack','Slack'],['kakao','카카오톡 알림톡']].map(([v,l])=>`<option value="${v}" ${state.schDraftCh===v?'selected':''}>${l}</option>`).join('')}</select>
       <select id="sch-day" class="p-3 rounded-xl border bg-white"><option value="daily">매일</option><option value="monday" selected>매주 월요일</option><option value="month1">매월 1일</option></select>
       <input id="sch-time" type="time" value="${s.when}" class="p-3 rounded-xl border bg-white">
     </div>
@@ -537,8 +537,9 @@ function bind(){
   document.querySelectorAll('[data-oauth]').forEach(b=>b.onclick=()=>{ const name=b.dataset.oauth; const sp=cur().spend.find(s=>s.name===name); if(sp.oauth){ sp.oauth=false; delete sp.token; persist(); render(); toast(`${name} 연결을 해제했어요`); } else { startOAuth(name); } });
   // Schedule
   const chLabel = v=>({email:'이메일',slack:'Slack',kakao:'카카오 알림톡'})[v]||v;
-  const ss=document.getElementById('sch-save'); if(ss) ss.onclick=()=>{ const ch=document.getElementById('sch-ch').value; if(!ch){ toast('발송 채널을 선택해 주세요'); return; } state.schedule={channel:chLabel(ch), day:document.getElementById('sch-day').value, when:document.getElementById('sch-time').value}; persist(); render(); toast('스케줄을 저장했어요'); };
-  const st=document.getElementById('sch-test'); if(st) st.onclick=()=>{ const ch=document.getElementById('sch-ch').value; if(!ch){ toast('먼저 발송 채널을 선택해 주세요'); return; } const target=({email:'growth@'+state.brand+'.kr',slack:'#마케팅-리포트',kakao:'담당자 010-****-****'})[ch]; const now=new Date().toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}); state.sendLog=(state.sendLog||[]).concat([{at:now,channel:chLabel(ch),target,status:'발송 성공'}]); persist(); render(); toast(chLabel(ch)+' 리포트를 보냈어요! (mock)'); };
+  const sc=document.getElementById('sch-ch'); if(sc) sc.onchange=()=>{ state.schDraftCh=sc.value; persist(); };
+  const ss=document.getElementById('sch-save'); if(ss) ss.onclick=()=>{ const ch=document.getElementById('sch-ch').value; if(!ch){ toast('발송 채널을 선택해 주세요'); return; } state.schDraftCh=ch; state.schedule={channel:chLabel(ch), day:document.getElementById('sch-day').value, when:document.getElementById('sch-time').value}; persist(); render(); toast('스케줄을 저장했어요'); };
+  const st=document.getElementById('sch-test'); if(st) st.onclick=()=>{ const ch=document.getElementById('sch-ch').value; if(!ch){ toast('먼저 발송 채널을 선택해 주세요'); return; } state.schDraftCh=ch; const target=({email:'growth@'+state.brand+'.kr',slack:'#마케팅-리포트',kakao:'담당자 010-****-****'})[ch]; const now=new Date().toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}); state.sendLog=(state.sendLog||[]).concat([{at:now,channel:chLabel(ch),target,status:'발송 성공'}]); persist(); render(); toast(chLabel(ch)+' 리포트를 보냈어요! (mock)'); };
 }
 
 restoreFromUrl();

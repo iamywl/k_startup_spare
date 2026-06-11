@@ -277,7 +277,9 @@ const BOTTOM = [['dash','📊','nav_dash'],['tax','🧾','nav_tax'],['payroll','
 function renderNav(){
   const nav = NAV.filter(([k])=>canAccess(k));
   document.getElementById('nav').innerHTML = nav.map(([k,i,n])=>`<a data-view="${k}" class="block px-3 py-2 rounded text-sm cursor-pointer ${state.view===k?'bg-blue-50 text-blue-700 font-semibold':'text-slate-700 hover:bg-slate-50'}">${i} ${L(n)}</a>`).join('');
-  document.getElementById('bottomnav').innerHTML = BOTTOM.filter(([k])=>canAccess(k)).map(([k,i,n])=>`<button data-view="${k}" class="flex flex-col items-center px-1 py-1 ${state.view===k?'text-blue-600 font-semibold':'text-slate-500'}"><span class="text-lg leading-none">${i}</span><span class="text-[10px]">${L(n)}</span></button>`).join('');
+  const moreActive = NAV.some(([k])=>k===state.view&&canAccess(k)) && !BOTTOM.some(([k])=>k===state.view&&canAccess(k));
+  document.getElementById('bottomnav').innerHTML = BOTTOM.filter(([k])=>canAccess(k)).map(([k,i,n])=>`<button data-view="${k}" class="flex flex-col items-center justify-center min-h-[44px] px-1 py-1 ${state.view===k?'text-blue-600 font-semibold':'text-slate-500'}"><span class="text-lg leading-none">${i}</span><span class="text-[10px]">${L(n)}</span></button>`).join('')
+    + `<button id="moreBtn" class="flex flex-col items-center justify-center min-h-[44px] px-1 py-1 ${moreActive?'text-blue-600 font-semibold':'text-slate-500'}"><span class="text-lg leading-none">⋯</span><span class="text-[10px]">${B('더보기','More')}</span></button>`;
   // 테넌트
   const sel=document.getElementById('tenant-switch');
   sel.innerHTML = Object.values(state.tenants).map(t=>`<option value="${t.id}" ${t.id===state.activeTenant?'selected':''}>${tName(t)}</option>`).join('');
@@ -661,8 +663,31 @@ function render(){
   bind();
 }
 
+// 모바일 bottomnav '더보기' — RBAC 허용 범위 내 전체 메뉴 접근(좁은 화면에서 숨겨진 사이드바 메뉴 복구)
+function openMoreSheet(){
+  const old=document.getElementById('moreSheet'); if(old) old.remove();
+  const sheet=document.createElement('div');
+  sheet.id='moreSheet';
+  sheet.className='fixed inset-0 z-[60] flex items-end';
+  sheet.innerHTML=`<div class="absolute inset-0 bg-black/40" data-close="1"></div>
+    <div class="relative w-full bg-white rounded-t-2xl p-4 pb-6 max-h-[72vh] overflow-auto">
+      <div class="w-10 h-1 bg-slate-300 rounded-full mx-auto mb-4"></div>
+      <div class="text-sm font-bold text-slate-700 mb-3 px-1">${B('전체 메뉴','All menus')}</div>
+      <div class="grid grid-cols-3 gap-2">
+        ${NAV.filter(([k])=>canAccess(k)).map(([k,i,n])=>`<button data-goto="${k}" class="flex flex-col items-center justify-center gap-1 min-h-[64px] p-2 rounded-xl border ${state.view===k?'border-blue-500 bg-blue-50 text-blue-700':'border-slate-200 text-slate-600'}"><span class="text-xl leading-none">${i}</span><span class="text-[11px] text-center leading-tight">${L(n)}</span></button>`).join('')}
+      </div>
+    </div>`;
+  document.body.appendChild(sheet);
+  sheet.addEventListener('click',(e)=>{
+    if(e.target.closest('[data-close]')){ sheet.remove(); return; }
+    const g=e.target.closest('[data-goto]');
+    if(g){ state.view=g.dataset.goto; persist(); sheet.remove(); render(); }
+  });
+}
+
 function bind(){
   document.querySelectorAll('[data-view]').forEach(a=>a.onclick=()=>{ state.view=a.dataset.view; persist(); render(); });
+  const moreBtn=document.getElementById('moreBtn'); if(moreBtn) moreBtn.onclick=openMoreSheet;
   const ts=document.getElementById('tenant-switch'); if(ts) ts.onchange=()=>{ state.activeTenant=ts.value; persist(); render(); toast(B('회사 전환: ','Switched: ')+tName(T())); };
   const rs=document.getElementById('role-switch'); if(rs) rs.onchange=()=>{ state.role=rs.value; persist(); render(); toast(B('권한 전환: ','Role: ')+L(state.role)); };
   const lb=document.getElementById('lang-btn'); if(lb) lb.onclick=()=>{ state.lang= state.lang==='ko'?'en':'ko'; persist(); render(); };

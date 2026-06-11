@@ -141,7 +141,8 @@ const BOTTOM = [['dash','📊','홈'],['contract','📝','계약'],['payroll','�
 
 function renderNav(){
   document.getElementById('nav').innerHTML = NAV.map(([k,i,n])=>`<a data-view="${k}" class="block px-3 py-2 rounded text-sm cursor-pointer ${state.view===k?'bg-blue-50 text-blue-700 font-semibold':'text-slate-700 hover:bg-slate-50'}">${i} ${n}</a>`).join('');
-  document.getElementById('bottomnav').innerHTML = BOTTOM.map(([k,i,n])=>`<button data-view="${k}" class="flex flex-col items-center px-2 py-1 ${state.view===k?'text-blue-600 font-semibold':'text-slate-500'}"><span class="text-lg leading-none">${i}</span><span>${n}</span></button>`).join('');
+  document.getElementById('bottomnav').innerHTML = BOTTOM.map(([k,i,n])=>`<button data-view="${k}" class="flex flex-col items-center justify-center min-h-[44px] px-2 py-1 ${state.view===k?'text-blue-600 font-semibold':'text-slate-500'}"><span class="text-lg leading-none">${i}</span><span>${n}</span></button>`).join('')
+    + `<button id="moreBtn" class="flex flex-col items-center justify-center min-h-[44px] px-2 py-1 ${NAV.some(([k])=>k===state.view)&&!BOTTOM.some(([k])=>k===state.view)?'text-blue-600 font-semibold':'text-slate-500'}"><span class="text-lg leading-none">⋯</span><span>더보기</span></button>`;
   // 테넌트 스위처
   const sel = document.getElementById('tenant-switch');
   sel.innerHTML = Object.values(state.tenants).map(t=>`<option value="${t.id}" ${t.id===state.activeTenant?'selected':''}>${t.name}</option>`).join('');
@@ -580,8 +581,31 @@ function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.
 const VIEWS={dash:vDash,contract:vContract,workflow:vWorkflow,verify:vVerify,attendance:vAttendance,payroll:vPayroll,employees:vEmployees,portal:vPortal,kakao:vKakao,advisor:vAdvisor,docs:vDocs};
 function render(){ renderNav(); document.getElementById('main').innerHTML=VIEWS[state.view](); bind(); }
 
+// 모바일 bottomnav '더보기' — 사이드바 전용 메뉴까지 전체 접근(좁은 화면에서 사이드바가 숨겨져 접근 불가하던 메뉴 복구)
+function openMoreSheet(){
+  const old=document.getElementById('moreSheet'); if(old) old.remove();
+  const sheet=document.createElement('div');
+  sheet.id='moreSheet';
+  sheet.className='fixed inset-0 z-[60] flex items-end';
+  sheet.innerHTML=`<div class="absolute inset-0 bg-black/40" data-close="1"></div>
+    <div class="relative w-full bg-white rounded-t-2xl p-4 pb-6 max-h-[72vh] overflow-auto">
+      <div class="w-10 h-1 bg-slate-300 rounded-full mx-auto mb-4"></div>
+      <div class="text-sm font-bold text-slate-700 mb-3 px-1">전체 메뉴</div>
+      <div class="grid grid-cols-3 gap-2">
+        ${NAV.map(([k,i,n])=>`<button data-goto="${k}" class="flex flex-col items-center justify-center gap-1 min-h-[64px] p-2 rounded-xl border ${state.view===k?'border-blue-500 bg-blue-50 text-blue-700':'border-slate-200 text-slate-600'}"><span class="text-xl leading-none">${i}</span><span class="text-[11px] text-center leading-tight">${n}</span></button>`).join('')}
+      </div>
+    </div>`;
+  document.body.appendChild(sheet);
+  sheet.addEventListener('click',(e)=>{
+    if(e.target.closest('[data-close]')){ sheet.remove(); return; }
+    const g=e.target.closest('[data-goto]');
+    if(g){ state.view=g.dataset.goto; if(state.view!=='workflow'){ state.wfStep=1; state.wfData={}; } persist(); sheet.remove(); render(); }
+  });
+}
+
 function bind(){
   document.querySelectorAll('[data-view]').forEach(a=>a.onclick=()=>{ state.view=a.dataset.view; if(state.view!=='workflow'){ state.wfStep=1; state.wfData={}; } persist(); render(); });
+  const moreBtn=document.getElementById('moreBtn'); if(moreBtn) moreBtn.onclick=openMoreSheet;
   // 테넌트 스위처
   const ts=document.getElementById('tenant-switch'); if(ts) ts.onchange=()=>{ state.activeTenant=ts.value; state.empView=null; state.verifyResult=null; persist(); render(); toast('회사 전환: '+T().name); };
 

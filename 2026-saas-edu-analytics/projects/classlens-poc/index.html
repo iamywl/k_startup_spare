@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=1280, initial-scale=1" />
 <title>클래스렌즈 — 학습분석 SaaS (v1 PoC)</title>
 <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
@@ -15,10 +15,10 @@
       blue:    {50:'#F0F9FF',100:'#E5F4FD',200:'#BAE6FD',300:'#7DD3FC',400:'#38BDF8',500:'#0EA5E9',600:'#0A8FCF',700:'#0A78B8',800:'#0A6BA3',900:'#0A547E'},
       indigo:  {50:'#F0F9FF',100:'#E5F4FD',200:'#BAE6FD',300:'#7DD3FC',400:'#38BDF8',500:'#0EA5E9',600:'#0A8FCF',700:'#0A78B8',800:'#0A6BA3',900:'#0A547E'},
       sky:     {50:'#F0F9FF',100:'#E5F4FD',200:'#BAE6FD',300:'#7DD3FC',400:'#38BDF8',500:'#0EA5E9',600:'#0A8FCF',700:'#0A78B8',800:'#0A6BA3',900:'#0A547E'},
-      slate:   {50:'#F4F7FA',100:'#EBF0F5',200:'#DCE3EB',300:'#C3CDD8',400:'#9AA8B4',500:'#7B8A97',600:'#475866',700:'#2B3A47',800:'#16242F',900:'#0F1B26'},
-      gray:    {50:'#F4F7FA',100:'#EBF0F5',200:'#DCE3EB',300:'#C3CDD8',400:'#9AA8B4',500:'#7B8A97',600:'#475866',700:'#2B3A47',800:'#16242F',900:'#0F1B26'},
-      zinc:    {50:'#F4F7FA',100:'#EBF0F5',200:'#DCE3EB',300:'#C3CDD8',400:'#9AA8B4',500:'#7B8A97',600:'#475866',700:'#2B3A47',800:'#16242F',900:'#0F1B26'},
-      neutral: {50:'#F4F7FA',100:'#EBF0F5',200:'#DCE3EB',300:'#C3CDD8',400:'#9AA8B4',500:'#7B8A97',600:'#475866',700:'#2B3A47',800:'#16242F',900:'#0F1B26'},
+      slate:   {50:'#F4F7FA',100:'#EBF0F5',200:'#DCE3EB',300:'#C3CDD8',400:'#657787',500:'#606E7A',600:'#475866',700:'#2B3A47',800:'#16242F',900:'#0F1B26'},
+      gray:    {50:'#F4F7FA',100:'#EBF0F5',200:'#DCE3EB',300:'#C3CDD8',400:'#657787',500:'#606E7A',600:'#475866',700:'#2B3A47',800:'#16242F',900:'#0F1B26'},
+      zinc:    {50:'#F4F7FA',100:'#EBF0F5',200:'#DCE3EB',300:'#C3CDD8',400:'#657787',500:'#606E7A',600:'#475866',700:'#2B3A47',800:'#16242F',900:'#0F1B26'},
+      neutral: {50:'#F4F7FA',100:'#EBF0F5',200:'#DCE3EB',300:'#C3CDD8',400:'#657787',500:'#606E7A',600:'#475866',700:'#2B3A47',800:'#16242F',900:'#0F1B26'},
       emerald: {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
       green:   {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
       teal:    {50:'#E7F8EF',100:'#D2F2E0',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
@@ -50,7 +50,7 @@
   button:active:not(:disabled), [role="button"]:active, a.w-full:active,
   input[type="submit"]:active, input[type="button"]:active { transform: scale(.97); }
   button:disabled, button[disabled], [role="button"][aria-disabled="true"] { opacity: .35; cursor: not-allowed; }
-  input:focus-visible, textarea:focus-visible, select:focus-visible {
+  button:focus-visible, [role="button"]:focus-visible, a.w-full:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
     outline: none; border-color: #0A78B8; box-shadow: 0 0 0 1.5px #0A78B8;
   }
   button.w-full, button[type="submit"].w-full, a.w-full[class*="bg-"] {

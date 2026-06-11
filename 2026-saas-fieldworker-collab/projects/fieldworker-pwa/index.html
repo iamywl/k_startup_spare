@@ -17,10 +17,10 @@
       indigo:  {50:'#EAF1FC',100:'#D3E2F9',200:'#A8C5F2',300:'#7AA4E9',400:'#4A7FDF',500:'#1E5FD6',600:'#1A54BE',700:'#16469E',800:'#123A82',900:'#0E2C63'},
       sky:     {50:'#EAF1FC',100:'#D3E2F9',200:'#A8C5F2',300:'#7AA4E9',400:'#4A7FDF',500:'#1E5FD6',600:'#1A54BE',700:'#16469E',800:'#123A82',900:'#0E2C63'},
       // 잉크 그레이 — 순흑 금지, 딥블루 hue 미세 혼합 (ink 17.36:1, ink-2 8.13:1)
-      slate:   {50:'#F6F8FB',100:'#EEF1F6',200:'#DDE3EC',300:'#C2CBD8',400:'#7C879B',500:'#7C879B',600:'#41506B',700:'#28344B',800:'#141A29',900:'#141A29'},
-      gray:    {50:'#F6F8FB',100:'#EEF1F6',200:'#DDE3EC',300:'#C2CBD8',400:'#7C879B',500:'#7C879B',600:'#41506B',700:'#28344B',800:'#141A29',900:'#141A29'},
-      zinc:    {50:'#F6F8FB',100:'#EEF1F6',200:'#DDE3EC',300:'#C2CBD8',400:'#7C879B',500:'#7C879B',600:'#41506B',700:'#28344B',800:'#141A29',900:'#141A29'},
-      neutral: {50:'#F6F8FB',100:'#EEF1F6',200:'#DDE3EC',300:'#C2CBD8',400:'#7C879B',500:'#7C879B',600:'#41506B',700:'#28344B',800:'#141A29',900:'#141A29'},
+      slate:   {50:'#F6F8FB',100:'#EEF1F6',200:'#DDE3EC',300:'#C2CBD8',400:'#6A758B',500:'#626D80',600:'#41506B',700:'#28344B',800:'#141A29',900:'#141A29'},
+      gray:    {50:'#F6F8FB',100:'#EEF1F6',200:'#DDE3EC',300:'#C2CBD8',400:'#6A758B',500:'#626D80',600:'#41506B',700:'#28344B',800:'#141A29',900:'#141A29'},
+      zinc:    {50:'#F6F8FB',100:'#EEF1F6',200:'#DDE3EC',300:'#C2CBD8',400:'#6A758B',500:'#626D80',600:'#41506B',700:'#28344B',800:'#141A29',900:'#141A29'},
+      neutral: {50:'#F6F8FB',100:'#EEF1F6',200:'#DDE3EC',300:'#C2CBD8',400:'#6A758B',500:'#626D80',600:'#41506B',700:'#28344B',800:'#141A29',900:'#141A29'},
       emerald: {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
       green:   {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
       teal:    {50:'#E7F8EF',100:'#D2F2E0',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
@@ -45,7 +45,7 @@
   button:active:not(:disabled), [role="button"]:active, a.w-full:active,
   input[type="submit"]:active, input[type="button"]:active { transform: scale(.97); }
   button:disabled, button[disabled], [role="button"][aria-disabled="true"] { opacity: .35; cursor: not-allowed; }
-  input:focus-visible, textarea:focus-visible, select:focus-visible {
+  button:focus-visible, [role="button"]:focus-visible, a.w-full:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
     outline: none; border-color: #1E5FD6; box-shadow: 0 0 0 1.5px #1E5FD6;
   }
   button.w-full, button[type="submit"].w-full, a.w-full[class*="bg-"] {
@@ -159,7 +159,7 @@ function header(){
         <div class="text-lg font-semibold">${state.worker.name}</div>
       </div>
       <div class="flex items-center gap-2">
-        <button id="role-toggle" class="text-xs px-2 py-1 rounded-full ${state.role==='manager'?'bg-amber-400 text-slate-900':'bg-slate-700 text-white'}">${state.role==='manager'?'관리자':'작업자'}</button>
+        <button id="role-toggle" class="text-xs px-3 min-h-[44px] inline-flex items-center rounded-full ${state.role==='manager'?'bg-amber-400 text-slate-900':'bg-slate-700 text-white'}">${state.role==='manager'?'관리자':'작업자'}</button>
         <span class="text-xs ${state.online?'text-emerald-400':'text-amber-400'}">${state.online?'● online':'● offline'}</span>
       </div>
     </div>
@@ -249,12 +249,16 @@ function vHistory(){
 
 // ============== Manager views ==============
 function vAdmin(){
-  const lines = ['A-라인','B-라인','C-라인'].map(name=>{
-    const total = 8 + Math.floor(Math.random()*6);
-    const done = Math.min(total, 5 + Math.floor(Math.random()*4));
-    const issues = state.reports.filter(r=>true).length; // simplified
-    return { name, total, done, issues };
-  });
+  // 라인별 진척은 1회만 산출해 state에 고정 — 매 렌더 랜덤 변동(데이터처럼 보이는 mock 함정) 방지
+  if (!state.adminLines) {
+    state.adminLines = ['A-라인','B-라인','C-라인'].map(name=>{
+      const total = 8 + Math.floor(Math.random()*6);
+      const done = Math.min(total, 5 + Math.floor(Math.random()*4));
+      return { name, total, done };
+    });
+    persist();
+  }
+  const lines = state.adminLines.map(l=>({ ...l, issues: state.reports.length }));
   const total = state.orders.length, done = state.orders.filter(o=>o.status==='done').length, issues = state.reports.length;
   return `<div class="p-4 space-y-4">
     <div class="text-sm text-slate-500">관리자 대시보드</div>

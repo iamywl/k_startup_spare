@@ -21,10 +21,10 @@
       indigo:  {50:'#EAF1FC',100:'#D3E2F9',200:'#A8C5F2',300:'#7AA4E9',400:'#4A7FDF',500:'#1E5FD6',600:'#1A54BE',700:'#16469E',800:'#123A82',900:'#0E2C63'},
       sky:     {50:'#EAF1FC',100:'#D3E2F9',200:'#A8C5F2',300:'#7AA4E9',400:'#4A7FDF',500:'#1E5FD6',600:'#1A54BE',700:'#16469E',800:'#123A82',900:'#0E2C63'},
       // 잉크 그레이 — 순흑 금지, 딥블루 hue 미세 혼합 (ink 17.36:1, ink-2 8.13:1)
-      slate:   {50:'#F6F8FB',100:'#EEF1F6',200:'#DDE3EC',300:'#C2CBD8',400:'#7C879B',500:'#7C879B',600:'#41506B',700:'#28344B',800:'#141A29',900:'#141A29'},
-      gray:    {50:'#F6F8FB',100:'#EEF1F6',200:'#DDE3EC',300:'#C2CBD8',400:'#7C879B',500:'#7C879B',600:'#41506B',700:'#28344B',800:'#141A29',900:'#141A29'},
-      zinc:    {50:'#F6F8FB',100:'#EEF1F6',200:'#DDE3EC',300:'#C2CBD8',400:'#7C879B',500:'#7C879B',600:'#41506B',700:'#28344B',800:'#141A29',900:'#141A29'},
-      neutral: {50:'#F6F8FB',100:'#EEF1F6',200:'#DDE3EC',300:'#C2CBD8',400:'#7C879B',500:'#7C879B',600:'#41506B',700:'#28344B',800:'#141A29',900:'#141A29'},
+      slate:   {50:'#F6F8FB',100:'#EEF1F6',200:'#DDE3EC',300:'#C2CBD8',400:'#6A758B',500:'#626D80',600:'#41506B',700:'#28344B',800:'#141A29',900:'#141A29'},
+      gray:    {50:'#F6F8FB',100:'#EEF1F6',200:'#DDE3EC',300:'#C2CBD8',400:'#6A758B',500:'#626D80',600:'#41506B',700:'#28344B',800:'#141A29',900:'#141A29'},
+      zinc:    {50:'#F6F8FB',100:'#EEF1F6',200:'#DDE3EC',300:'#C2CBD8',400:'#6A758B',500:'#626D80',600:'#41506B',700:'#28344B',800:'#141A29',900:'#141A29'},
+      neutral: {50:'#F6F8FB',100:'#EEF1F6',200:'#DDE3EC',300:'#C2CBD8',400:'#6A758B',500:'#626D80',600:'#41506B',700:'#28344B',800:'#141A29',900:'#141A29'},
       emerald: {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
       green:   {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
       teal:    {50:'#E7F8EF',100:'#D2F2E0',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
@@ -83,7 +83,7 @@
   button:active:not(:disabled), [role="button"]:active, a.w-full:active,
   input[type="submit"]:active, input[type="button"]:active { transform: scale(.97); }
   button:disabled, button[disabled], [role="button"][aria-disabled="true"] { opacity: .35; cursor: not-allowed; }
-  input:focus-visible, textarea:focus-visible, select:focus-visible {
+  button:focus-visible, [role="button"]:focus-visible, a.w-full:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
     outline: none; border-color: #1E5FD6; box-shadow: 0 0 0 1.5px #1E5FD6;
   }
   button.w-full, button[type="submit"].w-full, a.w-full[class*="bg-"] {
@@ -363,8 +363,14 @@ function trySync(){
     render();
   });
 }
-window.addEventListener('online', ()=>{ state.online=true; persist(); trySync(); render(); });
-window.addEventListener('offline', ()=>{ state.online=false; persist(); render(); toast('오프라인이에요. 입력은 큐에 저장해 뒀다가 연결되면 보낼게요'); });
+// 연결 상태 변화로 전체 재렌더 시 사용자가 입력 중이던 폼 값을 보존(현장: 연결 불안정 환경)
+function renderKeepInputs(){
+  const draft={}; document.querySelectorAll('input[id],textarea[id],select[id]').forEach(e=>{ if(e.type!=='file') draft[e.id]=e.value; });
+  render();
+  Object.entries(draft).forEach(([id,v])=>{ const e=document.getElementById(id); if(e && v!=='') e.value=v; });
+}
+window.addEventListener('online', ()=>{ state.online=true; persist(); trySync(); renderKeepInputs(); });
+window.addEventListener('offline', ()=>{ state.online=false; persist(); renderKeepInputs(); toast('오프라인이에요. 입력은 큐에 저장해 뒀다가 연결되면 보낼게요'); });
 
 // ============================================================================
 // PWA Service Worker (inline blob) + install prompt (기능 4)
@@ -581,7 +587,7 @@ function header(){
       </div>
       <div class="flex items-center gap-2">
         ${state.online?'<span class="pill bg-emerald-50 text-emerald-700">online</span>':'<span class="pill bg-amber-50 text-amber-700">offline</span>'}
-        <button id="role-cycle" class="text-xs px-3 py-1.5 rounded-full bg-slate-100">역할 전환</button>
+        <button id="role-cycle" class="text-xs px-3 min-h-[44px] inline-flex items-center rounded-full bg-slate-100">역할 전환</button>
       </div>
     </div>
   </header>`;

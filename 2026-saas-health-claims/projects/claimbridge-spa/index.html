@@ -16,10 +16,10 @@
       blue:    {50:'#E6FAF6',100:'#C6F1E9',200:'#97E2D6',300:'#5FCBBC',400:'#27AE9F',500:'#0E9488',600:'#0B7A70',700:'#0A645C',800:'#0A504A',900:'#0A413C'},
       indigo:  {50:'#E6FAF6',100:'#C6F1E9',200:'#97E2D6',300:'#5FCBBC',400:'#27AE9F',500:'#0E9488',600:'#0B7A70',700:'#0A645C',800:'#0A504A',900:'#0A413C'},
       sky:     {50:'#E6FAF6',100:'#C6F1E9',200:'#97E2D6',300:'#5FCBBC',400:'#27AE9F',500:'#0E9488',600:'#0B7A70',700:'#0A645C',800:'#0A504A',900:'#0A413C'},
-      slate:   {50:'#F7FAF9',100:'#EFF3F2',200:'#E0E7E5',300:'#CBD4D2',400:'#8595A0',500:'#8595A0',600:'#48595C',700:'#2E3F40',800:'#18272A',900:'#11201F'},
-      gray:    {50:'#F7FAF9',100:'#EFF3F2',200:'#E0E7E5',300:'#CBD4D2',400:'#8595A0',500:'#8595A0',600:'#48595C',700:'#2E3F40',800:'#18272A',900:'#11201F'},
-      zinc:    {50:'#F7FAF9',100:'#EFF3F2',200:'#E0E7E5',300:'#CBD4D2',400:'#8595A0',500:'#8595A0',600:'#48595C',700:'#2E3F40',800:'#18272A',900:'#11201F'},
-      neutral: {50:'#F7FAF9',100:'#EFF3F2',200:'#E0E7E5',300:'#CBD4D2',400:'#8595A0',500:'#8595A0',600:'#48595C',700:'#2E3F40',800:'#18272A',900:'#11201F'},
+      slate:   {50:'#F7FAF9',100:'#EFF3F2',200:'#E0E7E5',300:'#CBD4D2',400:'#657782',500:'#5E6E79',600:'#48595C',700:'#2E3F40',800:'#18272A',900:'#11201F'},
+      gray:    {50:'#F7FAF9',100:'#EFF3F2',200:'#E0E7E5',300:'#CBD4D2',400:'#657782',500:'#5E6E79',600:'#48595C',700:'#2E3F40',800:'#18272A',900:'#11201F'},
+      zinc:    {50:'#F7FAF9',100:'#EFF3F2',200:'#E0E7E5',300:'#CBD4D2',400:'#657782',500:'#5E6E79',600:'#48595C',700:'#2E3F40',800:'#18272A',900:'#11201F'},
+      neutral: {50:'#F7FAF9',100:'#EFF3F2',200:'#E0E7E5',300:'#CBD4D2',400:'#657782',500:'#5E6E79',600:'#48595C',700:'#2E3F40',800:'#18272A',900:'#11201F'},
       emerald: {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
       green:   {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
       teal:    {50:'#E6FAF6',100:'#C6F1E9',400:'#0E9488',500:'#0E9488',600:'#0B7A70',700:'#0A645C'},
@@ -48,7 +48,7 @@
   button:active:not(:disabled), [role="button"]:active, a.w-full:active,
   input[type="submit"]:active, input[type="button"]:active { transform: scale(.97); }
   button:disabled, button[disabled], [role="button"][aria-disabled="true"] { opacity: .35; cursor: not-allowed; }
-  input:focus-visible, textarea:focus-visible, select:focus-visible {
+  button:focus-visible, [role="button"]:focus-visible, a.w-full:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
     outline: none; border-color: #0B7A70; box-shadow: 0 0 0 1.5px #0B7A70;
   }
   button.w-full, button[type="submit"].w-full, a.w-full[class*="bg-"] {
@@ -134,6 +134,14 @@
   /* 반응형: 390px 좁은 폭에서 4열 통계 그리드 overflow 보정 */
   @media (max-width: 480px) {
     .grid.grid-cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  /* 반응형: 좁은 화면(≤767px)에서 사이드바가 본문을 압살하지 않도록 상단 패널로 전환 */
+  @media (max-width: 767px) {
+    .min-h-screen.flex { flex-direction: column; }
+    .min-h-screen.flex > aside { width: 100%; max-height: 46vh; overflow-y: auto; }
+    .min-h-screen.flex > aside nav { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 0.25rem; }
+    .min-h-screen.flex > aside button, .min-h-screen.flex > aside select { min-height: 44px; }
+    .min-h-screen.flex > main { width: 100%; min-width: 0; }
   }
   </style>
 </head>

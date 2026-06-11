@@ -15,10 +15,10 @@
       blue:    {50:'#EEF2FF',100:'#E0E7FF',200:'#C7D0FE',300:'#A5B0FB',400:'#7C82F2',500:'#5B54E0',600:'#4338CA',700:'#3730A3',800:'#2E2882',900:'#252065'},
       indigo:  {50:'#EEF2FF',100:'#E0E7FF',200:'#C7D0FE',300:'#A5B0FB',400:'#7C82F2',500:'#5B54E0',600:'#4338CA',700:'#3730A3',800:'#2E2882',900:'#252065'},
       sky:     {50:'#EEF2FF',100:'#E0E7FF',200:'#C7D0FE',300:'#A5B0FB',400:'#7C82F2',500:'#5B54E0',600:'#4338CA',700:'#3730A3',800:'#2E2882',900:'#252065'},
-      slate:   {50:'#F7F8FB',100:'#EEF0F6',200:'#E0E2EE',300:'#CBCEDF',400:'#8A8CA8',500:'#7B7D98',600:'#56577A',700:'#3B3C5E',800:'#26273F',900:'#1F1B36'},
-      gray:    {50:'#F7F8FB',100:'#EEF0F6',200:'#E0E2EE',300:'#CBCEDF',400:'#8A8CA8',500:'#7B7D98',600:'#56577A',700:'#3B3C5E',800:'#26273F',900:'#1F1B36'},
-      zinc:    {50:'#F7F8FB',100:'#EEF0F6',200:'#E0E2EE',300:'#CBCEDF',400:'#8A8CA8',500:'#7B7D98',600:'#56577A',700:'#3B3C5E',800:'#26273F',900:'#1F1B36'},
-      neutral: {50:'#F7F8FB',100:'#EEF0F6',200:'#E0E2EE',300:'#CBCEDF',400:'#8A8CA8',500:'#7B7D98',600:'#56577A',700:'#3B3C5E',800:'#26273F',900:'#1F1B36'},
+      slate:   {50:'#F7F8FB',100:'#EEF0F6',200:'#E0E2EE',300:'#CBCEDF',400:'#6F7294',500:'#686A86',600:'#56577A',700:'#3B3C5E',800:'#26273F',900:'#1F1B36'},
+      gray:    {50:'#F7F8FB',100:'#EEF0F6',200:'#E0E2EE',300:'#CBCEDF',400:'#6F7294',500:'#686A86',600:'#56577A',700:'#3B3C5E',800:'#26273F',900:'#1F1B36'},
+      zinc:    {50:'#F7F8FB',100:'#EEF0F6',200:'#E0E2EE',300:'#CBCEDF',400:'#6F7294',500:'#686A86',600:'#56577A',700:'#3B3C5E',800:'#26273F',900:'#1F1B36'},
+      neutral: {50:'#F7F8FB',100:'#EEF0F6',200:'#E0E2EE',300:'#CBCEDF',400:'#6F7294',500:'#686A86',600:'#56577A',700:'#3B3C5E',800:'#26273F',900:'#1F1B36'},
       emerald: {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
       green:   {50:'#E7F8EF',100:'#D2F2E0',300:'#7BD9A6',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
       teal:    {50:'#E7F8EF',100:'#D2F2E0',400:'#14AE5C',500:'#14AE5C',600:'#14AE5C',700:'#0E8A48'},
@@ -43,7 +43,7 @@
   button:active:not(:disabled), [role="button"]:active, a.w-full:active,
   input[type="submit"]:active, input[type="button"]:active { transform: scale(.97); }
   button:disabled, button[disabled], [role="button"][aria-disabled="true"] { opacity: .35; cursor: not-allowed; }
-  input:focus-visible, textarea:focus-visible, select:focus-visible {
+  button:focus-visible, [role="button"]:focus-visible, a.w-full:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
     outline: none; border-color: #4338CA; box-shadow: 0 0 0 1.5px #4338CA;
   }
   button.w-full, button[type="submit"].w-full, a.w-full[class*="bg-"] {
