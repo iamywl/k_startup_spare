@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=1440,initial-scale=1" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>CDP-KR — D2C 통합 ROAS·세그먼트·코호트</title>
 <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
@@ -35,6 +35,7 @@
 <style>
   .nav-active { background:#18203A; color:white; }
   .ring-fade { box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 1px 3px rgba(0,0,0,.06); }
+  @media print { aside, #nav-bottom, .no-print { display:none !important; } main { padding:0 !important; } }
 
   /* ===== design-tone-components (guide §6·§7) ===== */
   button, [role="button"], a.w-full, input[type="submit"], input[type="button"] {
@@ -111,11 +112,32 @@
     dialog#seg-dlg { background:#fff !important; -webkit-backdrop-filter:none; backdrop-filter:none; }
     dialog#seg-dlg::backdrop { background: rgba(0,0,0,0.40); -webkit-backdrop-filter:none; backdrop-filter:none; }
   }
+
+  /* 모바일 하단 내비 — frosted (떠 있는 바) — v2/v3 패턴 이식 */
+  #nav-bottom {
+    background: rgba(21,27,43,0.72) !important;
+    -webkit-backdrop-filter: saturate(200%) blur(26px);
+            backdrop-filter: saturate(200%) blur(26px);
+    border-top: 1px solid rgba(255,255,255,0.10);
+  }
+  @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+    #nav-bottom { background:#151B2B !important; }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    #nav-bottom { background:#151B2B !important; -webkit-backdrop-filter:none; backdrop-filter:none; }
+  }
+
+  /* 반응형 가드 — 좁은 화면 가로 overflow 방지 (v2/v3 패턴) */
+  @media (max-width: 767px) {
+    html, body { overflow-x: hidden; max-width: 100%; }
+    #toast { max-width: calc(100vw - 24px); }
+    main canvas { max-width: 100%; }
+  }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
-<div class="min-h-screen flex">
-  <aside class="w-56 bg-slate-900 text-white p-5 shrink-0">
+<div class="min-h-screen lg:flex">
+  <aside class="hidden lg:block w-56 bg-slate-900 text-white p-5 shrink-0 sticky top-0 h-screen no-print">
     <div class="text-lg font-semibold">CDP <span class="text-emerald-400">·KR</span></div>
     <div class="text-xs text-slate-400 mt-1">통합 ROAS · 어트리뷰션</div>
     <nav id="nav" class="mt-8 space-y-1 text-sm"></nav>
@@ -131,9 +153,10 @@
     </div>
     <div class="mt-8 text-xs text-slate-500">v1.0 · demo</div>
   </aside>
-  <main id="main" class="flex-1 p-6 space-y-6"></main>
+  <main id="main" class="lg:flex-1 min-w-0 p-4 lg:p-6 pb-24 lg:pb-6 space-y-5 lg:space-y-6"></main>
 </div>
-<div id="toast" class="fixed bottom-6 right-6 hidden bg-slate-900 text-white px-4 py-2 rounded-lg shadow-lg text-sm z-50"></div>
+<nav id="nav-bottom" class="lg:hidden fixed bottom-0 inset-x-0 z-30 no-print text-white"></nav>
+<div id="toast" class="fixed bottom-24 right-4 lg:bottom-6 lg:right-6 hidden bg-slate-900 text-white px-4 py-2 rounded-lg shadow-lg text-sm z-50"></div>
 
 <script>
 // ============== 데이터 (mock seed, localStorage 유지) ==============
@@ -239,6 +262,11 @@ const NAV = [
   ['dashboard','📊 대시보드'], ['attribution','🎯 어트리뷰션'], ['funnel','🔻 전환 깔때기'],
   ['segments','👥 고객 세그먼트'], ['cohort','📈 코호트 리텐션'], ['journeys','🛤️ 여정 탐색'],
 ];
+// 모바일 바텀네비용 — 아이콘 + 짧은 라벨 (v2/v3 패턴)
+const NAV_BOTTOM = [
+  ['dashboard','📊','대시보드'], ['attribution','🎯','어트리뷰션'], ['funnel','🔻','깔때기'],
+  ['segments','👥','세그먼트'], ['cohort','📈','코호트'], ['journeys','🛤️','여정'],
+];
 let view = location.hash.slice(1) || 'dashboard';
 if (!VIEWS.includes(view)) view='dashboard';
 const KRW = n => '₩ ' + Math.round(n).toLocaleString('ko-KR');
@@ -247,6 +275,8 @@ const fmt = n => Math.round(n).toLocaleString('ko-KR');
 function renderNav(){
   const el = document.getElementById('nav');
   el.innerHTML = NAV.map(([k,n])=>`<a href="#${k}" data-k="${k}" class="block px-3 py-2 rounded text-sm ${k===view?'nav-active':'text-slate-300'}">${n}</a>`).join('');
+  const bottom = document.getElementById('nav-bottom');
+  if (bottom) bottom.innerHTML = `<div class="grid" style="grid-template-columns:repeat(${NAV_BOTTOM.length},1fr);">${NAV_BOTTOM.map(([k,e,n])=>`<a href="#${k}" data-k="${k}" class="py-2.5 text-center ${k===view?'text-emerald-400 font-bold':'text-slate-300'}"><div class="text-base leading-none">${e}</div><div class="text-[10px] mt-1">${n}</div></a>`).join('')}</div>`;
 }
 
 // Dashboard
@@ -257,26 +287,26 @@ function vDashboard(){
   const roas = (totalRev/totalSpend).toFixed(2);
   const cac = totalSpend / conv.length;
   return `
-  <header><div class="text-sm text-slate-500">D2C 브랜드: <b>오늘의 무드</b></div><h1 class="text-2xl font-bold">통합 ROAS 대시보드</h1></header>
-  <section class="grid grid-cols-4 gap-4">
+  <header><div class="text-sm text-slate-500">D2C 브랜드: <b>오늘의 무드</b></div><h1 class="text-xl lg:text-2xl font-bold">통합 ROAS 대시보드</h1></header>
+  <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
     ${kpi('매출 (자사몰)', KRW(totalRev), '+12.4% vs 이전 30일','emerald-600')}
     ${kpi('광고비 합계', KRW(totalSpend), `${state.spend.length}개 매체 통합`,'slate-500')}
     ${kpi('전체 ROAS', roas+'x', '+0.31 vs 이전','emerald-600')}
     ${kpi('CAC (신규)', KRW(cac), `전환 ${conv.length.toLocaleString()}건`,'slate-500')}
   </section>
-  <section class="grid grid-cols-3 gap-4">
-    <div class="bg-white rounded-2xl p-5 ring-fade col-span-2">
+  <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div class="bg-white rounded-2xl p-5 ring-fade lg:col-span-2 min-w-0">
       <div class="flex items-center justify-between mb-3"><div class="font-semibold">일자별 매출 vs 광고비</div><div class="text-xs text-slate-500">최근 30일</div></div>
       <canvas id="trend" height="120"></canvas>
     </div>
-    <div class="bg-white rounded-2xl p-5 ring-fade">
+    <div class="bg-white rounded-2xl p-5 ring-fade min-w-0">
       <div class="font-semibold mb-3">매체별 광고비 분포</div>
       <canvas id="donut" height="200"></canvas>
     </div>
   </section>
   <section class="bg-white rounded-2xl ring-fade overflow-hidden">
-    <div class="p-5 flex items-center justify-between"><div class="font-semibold">매체별 효율 (현재 어트리뷰션: <span id="curm">${labelOf(state.model)}</span>)</div><button id="csv" class="text-xs text-blue-600">CSV 내보내기</button></div>
-    <table class="w-full text-sm" id="ch-table">${channelTable(attribute(state.model))}</table>
+    <div class="p-5 flex items-center justify-between gap-2"><div class="font-semibold text-sm lg:text-base">매체별 효율 (현재 어트리뷰션: <span id="curm">${labelOf(state.model)}</span>)</div><button id="csv" class="text-xs text-blue-600 shrink-0">CSV 내보내기</button></div>
+    <div class="overflow-x-auto"><table class="w-full text-sm min-w-[420px]" id="ch-table">${channelTable(attribute(state.model))}</table></div>
   </section>`;
 }
 function channelTable(att){
@@ -301,20 +331,20 @@ function vAttribution(){
   const att = attribute(state.model);
   const totals = state.spend.map(c=>({name:c.name, color:c.color, cost:c.cost, rev:att[c.name]||0, roas:(att[c.name]||0)/c.cost}));
   return `
-  <header class="flex items-end justify-between"><div><h1 class="text-2xl font-bold">어트리뷰션 분석</h1><div class="text-sm text-slate-500">사용자 여정 ${state.journeys.length}건 · 전환 ${state.journeys.filter(j=>j.converted).length}건을 바탕으로 직접 계산했어요</div></div>
-  <select id="model-sel" class="border rounded-lg px-3 py-2 text-sm bg-white">
+  <header class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h1 class="text-xl lg:text-2xl font-bold">어트리뷰션 분석</h1><div class="text-sm text-slate-500">사용자 여정 ${state.journeys.length}건 · 전환 ${state.journeys.filter(j=>j.converted).length}건을 바탕으로 직접 계산했어요</div></div>
+  <select id="model-sel" class="border rounded-lg px-3 py-2 text-sm bg-white w-full sm:w-auto">
     ${['last_click','first_click','linear','time_decay','markov'].map(m=>`<option value="${m}" ${state.model===m?'selected':''}>${labelOf(m)}</option>`).join('')}
   </select></header>
   <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900">고른 모델은 자동으로 저장돼요. 매체표·세그먼트·코호트 화면에 바로 반영돼요.</div>
-  <section class="grid grid-cols-3 gap-4">
-    <div class="bg-white rounded-2xl p-5 ring-fade col-span-2"><div class="font-semibold mb-3">매체별 매출 기여 (모델: ${labelOf(state.model)})</div><div class="relative h-[260px]"><canvas id="bar"></canvas></div></div>
-    <div class="bg-white rounded-2xl p-5 ring-fade"><div class="font-semibold mb-3">기여도 비중</div><div class="relative h-[260px]"><canvas id="att-donut"></canvas></div></div>
+  <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div class="bg-white rounded-2xl p-5 ring-fade lg:col-span-2 min-w-0"><div class="font-semibold mb-3">매체별 매출 기여 (모델: ${labelOf(state.model)})</div><div class="relative h-[260px]"><canvas id="bar"></canvas></div></div>
+    <div class="bg-white rounded-2xl p-5 ring-fade min-w-0"><div class="font-semibold mb-3">기여도 비중</div><div class="relative h-[260px]"><canvas id="att-donut"></canvas></div></div>
   </section>
-  <section class="grid grid-cols-2 gap-4">
-    <div class="bg-white rounded-2xl p-5 ring-fade"><div class="font-semibold mb-3">모델 비교 — Last Click vs Markov</div><div class="relative h-[260px]"><canvas id="cmp"></canvas></div></div>
-    <div class="bg-white rounded-2xl p-5 ring-fade">
+  <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="bg-white rounded-2xl p-5 ring-fade min-w-0"><div class="font-semibold mb-3">모델 비교 — Last Click vs Markov</div><div class="relative h-[260px]"><canvas id="cmp"></canvas></div></div>
+    <div class="bg-white rounded-2xl p-5 ring-fade min-w-0 overflow-x-auto">
       <div class="font-semibold mb-3">모델별 의사결정 차이</div>
-      <table class="w-full text-sm">
+      <table class="w-full text-sm min-w-[360px]">
         <thead class="bg-slate-50 text-slate-600"><tr><th class="text-left p-2">매체</th><th class="text-right p-2">Last Click</th><th class="text-right p-2">Markov</th><th class="text-right p-2">차이</th></tr></thead>
         <tbody id="diff"></tbody>
       </table>
@@ -326,9 +356,9 @@ function vAttribution(){
 function vFunnel(){
   const sessions = 41_800, viewed=27_600, addedToCart=7_450, checkedOut=3_180, purchased=1_880;
   return `
-  <header><h1 class="text-2xl font-bold">전환 깔때기</h1><div class="text-sm text-slate-500">최근 30일 자사몰 트래킹</div></header>
-  <section class="grid grid-cols-3 gap-4">
-    <div class="bg-white rounded-2xl p-5 ring-fade col-span-2"><div class="font-semibold mb-3">단계별 이탈</div><canvas id="funnel" height="120"></canvas></div>
+  <header><h1 class="text-xl lg:text-2xl font-bold">전환 깔때기</h1><div class="text-sm text-slate-500">최근 30일 자사몰 트래킹</div></header>
+  <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div class="bg-white rounded-2xl p-5 ring-fade lg:col-span-2 min-w-0"><div class="font-semibold mb-3">단계별 이탈</div><canvas id="funnel" height="120"></canvas></div>
     <div class="bg-white rounded-2xl p-5 ring-fade space-y-3 text-sm">
       ${funnelStep('세션', sessions, sessions)}
       ${funnelStep('상품 조회', viewed, sessions)}
@@ -338,8 +368,8 @@ function vFunnel(){
       <div class="pt-3 border-t mt-3"><div class="text-xs text-slate-500">전체 전환율</div><div class="text-2xl font-bold text-emerald-600">${(purchased/sessions*100).toFixed(2)}%</div></div>
     </div>
   </section>
-  <section class="bg-white rounded-2xl p-5 ring-fade"><div class="font-semibold mb-3">매체 진입별 깔때기 비교</div>
-    <table class="w-full text-sm">
+  <section class="bg-white rounded-2xl p-5 ring-fade overflow-x-auto"><div class="font-semibold mb-3">매체 진입별 깔때기 비교</div>
+    <table class="w-full text-sm min-w-[520px]">
       <thead class="bg-slate-50 text-slate-600"><tr><th class="text-left p-2">진입 매체</th><th class="text-right p-2">세션</th><th class="text-right p-2">상품 조회</th><th class="text-right p-2">장바구니</th><th class="text-right p-2">구매</th><th class="text-right p-2">전환율</th></tr></thead>
       <tbody>${funnelByChannel()}</tbody>
     </table>
@@ -365,21 +395,21 @@ function vSegments(){
     return { name:s, count:ppl.length, conv:conv.length, rev:conv.reduce((a,b)=>a+b.value,0), avg: conv.length? conv.reduce((a,b)=>a+b.value,0)/conv.length : 0 };
   });
   return `
-  <header class="flex items-end justify-between"><div><h1 class="text-2xl font-bold">고객 세그먼트</h1><div class="text-sm text-slate-500">RFM·행동 기반 4개 세그먼트</div></div>
-    <button id="add-seg" class="text-sm px-3 py-2 rounded-lg bg-blue-600 text-white">+ 세그먼트 빌더</button>
+  <header class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h1 class="text-xl lg:text-2xl font-bold">고객 세그먼트</h1><div class="text-sm text-slate-500">RFM·행동 기반 4개 세그먼트</div></div>
+    <button id="add-seg" class="text-sm px-3 py-2 rounded-lg bg-blue-600 text-white w-full sm:w-auto">+ 세그먼트 빌더</button>
   </header>
-  <section class="grid grid-cols-4 gap-4">
-    ${stats.map(s=>`<div class="bg-white rounded-2xl p-5 ring-fade"><div class="text-xs text-slate-500">${s.name}</div><div class="text-2xl font-bold mt-1">${fmt(s.count)}명</div><div class="text-xs text-emerald-600 mt-1">전환 ${fmt(s.conv)} · 평균 ${KRW(s.avg)}</div></div>`).join('')}
+  <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+    ${stats.map(s=>`<div class="bg-white rounded-2xl p-5 ring-fade"><div class="text-xs text-slate-500">${s.name}</div><div class="text-xl lg:text-2xl font-bold mt-1">${fmt(s.count)}명</div><div class="text-xs text-emerald-600 mt-1">전환 ${fmt(s.conv)} · 평균 ${KRW(s.avg)}</div></div>`).join('')}
   </section>
-  <section class="bg-white rounded-2xl p-5 ring-fade"><div class="font-semibold mb-3">세그먼트별 매출 기여</div><canvas id="seg-bar" height="100"></canvas></section>
+  <section class="bg-white rounded-2xl p-5 ring-fade min-w-0"><div class="font-semibold mb-3">세그먼트별 매출 기여</div><canvas id="seg-bar" height="100"></canvas></section>
   <section class="bg-white rounded-2xl ring-fade overflow-hidden">
     <div class="p-5 font-semibold">사용자 정의 세그먼트</div>
-    <table class="w-full text-sm">
+    <div class="overflow-x-auto"><table class="w-full text-sm min-w-[420px]">
       <thead class="bg-slate-50 text-slate-600"><tr><th class="p-3 text-left">이름</th><th class="p-3 text-left">조건</th><th class="p-3 text-right">예상 모집단</th><th class="p-3"></th></tr></thead>
       <tbody id="user-segs"></tbody>
-    </table>
+    </table></div>
   </section>
-  <dialog id="seg-dlg" class="rounded-2xl p-0 backdrop:bg-black/40 w-[480px]">
+  <dialog id="seg-dlg" class="rounded-2xl p-0 backdrop:bg-black/40 w-[92vw] max-w-[480px]">
     <form method="dialog" class="p-6 space-y-4">
       <h3 class="text-lg font-semibold">세그먼트 빌더</h3>
       <input id="seg-name" required placeholder="세그먼트 이름 (예: 메타 유입 VIP)" class="w-full border rounded-lg p-3 text-sm">
@@ -397,7 +427,7 @@ function vSegments(){
 // Cohort
 function vCohort(){
   return `
-  <header><h1 class="text-2xl font-bold">코호트 리텐션</h1><div class="text-sm text-slate-500">월별 신규 가입 코호트 × 이후 N개월 잔존</div></header>
+  <header><h1 class="text-xl lg:text-2xl font-bold">코호트 리텐션</h1><div class="text-sm text-slate-500">월별 신규 가입 코호트 × 이후 N개월 잔존</div></header>
   <div class="bg-white rounded-2xl p-5 ring-fade overflow-x-auto"><table class="w-full text-sm" id="cohort-tbl"></table></div>
   <div class="bg-white rounded-2xl p-5 ring-fade"><div class="font-semibold mb-3">평균 잔존 곡선</div><canvas id="ret" height="100"></canvas></div>`;
 }
@@ -405,14 +435,14 @@ function vCohort(){
 // Journeys
 function vJourneys(){
   return `
-  <header><h1 class="text-2xl font-bold">여정 탐색</h1><div class="text-sm text-slate-500">${state.journeys.length}건 중 전환 여정을 무작위로 뽑아 보여드려요 · 매체로 검색해 보세요</div></header>
-  <div class="bg-white rounded-2xl p-5 ring-fade flex gap-2 items-center text-sm">
+  <header><h1 class="text-xl lg:text-2xl font-bold">여정 탐색</h1><div class="text-sm text-slate-500">${state.journeys.length}건 중 전환 여정을 무작위로 뽑아 보여드려요 · 매체로 검색해 보세요</div></header>
+  <div class="bg-white rounded-2xl p-5 ring-fade flex flex-wrap gap-x-3 gap-y-2 items-center text-sm">
     <span>매체 포함:</span>
     ${state.spend.map(c=>`<label class="inline-flex items-center gap-1"><input type="checkbox" data-ch="${c.name}" class="jf"> ${c.name}</label>`).join('')}
-    <label class="inline-flex items-center gap-1 ml-4"><input type="checkbox" id="conv-only" checked> 전환만</label>
-    <button id="re-sample" class="ml-auto px-3 py-1.5 rounded-lg bg-slate-900 text-white">샘플 다시 뽑기</button>
+    <label class="inline-flex items-center gap-1 sm:ml-2"><input type="checkbox" id="conv-only" checked> 전환만</label>
+    <button id="re-sample" class="w-full sm:w-auto sm:ml-auto px-3 py-1.5 rounded-lg bg-slate-900 text-white">샘플 다시 뽑기</button>
   </div>
-  <div class="bg-white rounded-2xl ring-fade overflow-hidden"><table class="w-full text-sm" id="jrn-tbl"><thead class="bg-slate-50 text-slate-600"><tr><th class="p-3 text-left">ID</th><th class="p-3 text-left">여정 (touchpoints)</th><th class="p-3 text-right">매출</th><th class="p-3 text-left">세그먼트</th></tr></thead><tbody></tbody></table></div>`;
+  <div class="bg-white rounded-2xl ring-fade overflow-hidden overflow-x-auto"><table class="w-full text-sm min-w-[480px]" id="jrn-tbl"><thead class="bg-slate-50 text-slate-600"><tr><th class="p-3 text-left">ID</th><th class="p-3 text-left">여정 (touchpoints)</th><th class="p-3 text-right">매출</th><th class="p-3 text-left">세그먼트</th></tr></thead><tbody></tbody></table></div>`;
 }
 
 // ============== 라우팅 + 차트 ==============

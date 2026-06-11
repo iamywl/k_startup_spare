@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=1440,initial-scale=1" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>스몰박스 SMB — 통합 백오피스</title>
 <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
@@ -34,6 +34,14 @@
 </script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
+  /* 모바일에서 데스크톱 사이드바 숨김, Bottom Nav 노출 (v2/v3 패턴 이식) */
+  @media (max-width: 767px){ #sidebar{ display:none; } #bottomnav{ display:flex; } #main{ padding-bottom:5rem; } }
+  @media (min-width: 768px){ #bottomnav{ display:none; } }
+  /* 반응형: 모바일 390px 가로 overflow 방지 — 표는 가로 스크롤 컨테이너로 */
+  @media (max-width: 767px){
+    #main { padding-left: 1rem; padding-right: 1rem; }
+    .table-scroll { display:block; width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  }
   /* design-tone-components */
   /* ===== design-tone-components (guide §6·§7) ===== */
   button, [role="button"], a.w-full, input[type="submit"], input[type="button"] {
@@ -60,12 +68,20 @@
       radial-gradient(80% 62% at 50% 104%, rgba(124,130,242,0.18), transparent 60%);
   }
   /* 사이드바(좌측 내비) — frosted 0.55 + sheen */
-  aside.w-60 {
+  #sidebar {
     background-color: rgba(255,255,255,0.55) !important;
     -webkit-backdrop-filter: saturate(200%) blur(26px);
             backdrop-filter: saturate(200%) blur(26px);
     border-right: 1px solid rgba(255,255,255,0.55);
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+  }
+  /* 모바일 하단 내비 — 스티키 바, frosted 0.55 + sheen (v2 동일) */
+  #bottomnav {
+    background-color: rgba(255,255,255,0.55) !important;
+    -webkit-backdrop-filter: saturate(200%) blur(26px);
+            backdrop-filter: saturate(200%) blur(26px);
+    border-top: 1px solid rgba(255,255,255,0.55);
+    box-shadow: 0 -8px 24px rgba(25,31,40,0.10), inset 0 1px 0 rgba(255,255,255,0.6);
   }
   /* 토스트 — 잉크(다크) 글래스 + sheen */
   #toast:not(.hidden) {
@@ -90,13 +106,13 @@
   }
   /* 폴백: backdrop-filter 미지원 또는 투명도 감소 선호 시 불투명 표면 */
   @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-    aside.w-60 { background-color: #FFFFFF !important; }
+    #sidebar, #bottomnav { background-color: #FFFFFF !important; }
     #toast:not(.hidden) { background-color: #191F28 !important; }
     dialog#emp-dlg[open] { background-color: #FFFFFF; }
     dialog#emp-dlg::backdrop { background: rgba(25,31,40,0.40) !important; }
   }
   @media (prefers-reduced-transparency: reduce) {
-    aside.w-60 { background-color: #FFFFFF !important; -webkit-backdrop-filter:none; backdrop-filter:none; }
+    #sidebar, #bottomnav { background-color: #FFFFFF !important; -webkit-backdrop-filter:none; backdrop-filter:none; }
     #toast:not(.hidden) { background-color: #191F28 !important; -webkit-backdrop-filter:none; backdrop-filter:none; }
     dialog#emp-dlg[open] { background-color: #FFFFFF; -webkit-backdrop-filter:none; backdrop-filter:none; }
     dialog#emp-dlg::backdrop { background: rgba(25,31,40,0.40) !important; -webkit-backdrop-filter:none; backdrop-filter:none; }
@@ -106,7 +122,7 @@
 </head>
 <body class="bg-slate-100 text-slate-900">
 <div class="min-h-screen flex">
-  <aside class="w-60 bg-white border-r p-5">
+  <aside id="sidebar" class="w-60 bg-white border-r p-5 shrink-0">
     <div class="text-lg font-semibold">스몰박스 <span class="text-blue-600">SMB</span></div>
     <div class="text-xs text-slate-500 mt-1">시트당 9,900원/월</div>
     <nav id="nav" class="mt-8 space-y-1 text-sm"></nav>
@@ -117,9 +133,13 @@
     </div>
     <div class="mt-8 text-xs text-slate-400">v1.0 · all-in-one</div>
   </aside>
-  <main id="main" class="flex-1 p-8"></main>
+  <main id="main" class="flex-1 p-6 md:p-8 max-w-full overflow-x-hidden"></main>
 </div>
-<div id="toast" class="fixed bottom-6 right-6 hidden bg-slate-900 text-white px-4 py-2 rounded-lg shadow-lg text-sm z-50"></div>
+
+<!-- 모바일 Bottom Nav (v2/v3 패턴 이식) -->
+<nav id="bottomnav" class="fixed bottom-0 inset-x-0 bg-white border-t z-40 justify-around py-1 text-[11px]"></nav>
+
+<div id="toast" class="fixed bottom-20 md:bottom-6 right-6 hidden bg-slate-900 text-white px-4 py-2 rounded-lg shadow-lg text-sm z-50"></div>
 
 <script>
 // ============== 상태 ==============
@@ -180,9 +200,13 @@ const NAV = [
   ['attendance','⏰ 근태'], ['payroll','💰 급여'], ['employees','👥 직원 관리'],
   ['kakao','💬 알림톡 로그'], ['docs','📁 문서함'],
 ];
+// 모바일 하단 내비 — 주요 5개 + '더보기'(나머지 메뉴 접근). v2/v3 패턴 이식.
+const BOTTOM = [['dash','📊','홈'],['contract','📝','계약'],['payroll','💰','급여'],['employees','👥','직원'],['docs','📁','문서']];
 
 function renderNav(){
   document.getElementById('nav').innerHTML = NAV.map(([k,n])=>`<a data-view="${k}" class="block px-3 py-2 rounded text-sm cursor-pointer ${state.view===k?'bg-blue-50 text-blue-700 font-semibold':'text-slate-700 hover:bg-slate-50'}">${n}</a>`).join('');
+  document.getElementById('bottomnav').innerHTML = BOTTOM.map(([k,i,n])=>`<button data-view="${k}" class="flex flex-col items-center justify-center min-h-[44px] px-2 py-1 ${state.view===k?'text-blue-600 font-semibold':'text-slate-500'}"><span class="text-lg leading-none">${i}</span><span>${n}</span></button>`).join('')
+    + `<button id="moreBtn" class="flex flex-col items-center justify-center min-h-[44px] px-2 py-1 ${NAV.some(([k])=>k===state.view)&&!BOTTOM.some(([k])=>k===state.view)?'text-blue-600 font-semibold':'text-slate-500'}"><span class="text-lg leading-none">⋯</span><span>더보기</span></button>`;
 }
 
 // ============== 화면 ==============
@@ -191,13 +215,13 @@ function vDash(){
   const totalNet = state.employees.reduce((a,b)=>a+calcPay(b.salary).net,0);
   const pending = state.contracts.filter(c=>c.status==='서명대기').length;
   return `<h1 class="text-2xl font-bold">대시보드</h1>
-  <div class="grid grid-cols-4 gap-4 mt-6">
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
     ${kpi('직원 수', state.employees.length+'명', '4대보험 자동 계산')}
     ${kpi('대기 계약', pending+'건', '카카오 알림톡 발송 완료')}
     ${kpi('이번달 총급여', KRW(totalSalary), `실 지급 ${KRW(totalNet)}`)}
     ${kpi('알림톡 누계', state.kakao.length+'건', '최근 7일')}
   </div>
-  <section class="grid grid-cols-2 gap-4 mt-6">
+  <section class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
     <div class="bg-white rounded-2xl p-5 border"><div class="font-semibold mb-3">최근 활동</div>
       <ul class="text-sm space-y-2 text-slate-700">
         ${state.kakao.slice(0,5).map(k=>`<li>· ${k.t} — <b>${k.to}</b> · ${k.tpl} <span class="text-emerald-600 text-xs">${k.result}</span></li>`).join('')}
@@ -214,8 +238,8 @@ function vContract(){
   return `<h1 class="text-2xl font-bold">전자계약</h1>
   <div class="mt-2 text-sm text-slate-500">jsPDF 실 PDF 생성 + 서명 캔버스 + 카카오 알림톡 발송 로그</div>
   <button id="new-c" class="mt-4 px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold">새 계약 작성하기</button>
-  <div class="mt-6 bg-white rounded-2xl border overflow-hidden">
-    <table class="w-full text-sm">
+  <div class="mt-6 bg-white rounded-2xl border overflow-hidden table-scroll">
+    <table class="w-full text-sm min-w-[640px]">
       <thead class="bg-slate-50 text-slate-600"><tr><th class="text-left p-3">계약 ID</th><th class="text-left p-3">유형</th><th class="text-left p-3">상대방</th><th class="text-left p-3">상태</th><th class="text-left p-3">발송일</th><th class="text-right p-3">동작</th></tr></thead>
       <tbody>${state.contracts.map(c=>`<tr class="border-t">
         <td class="p-3 font-mono text-xs">${c.id}</td>
@@ -247,7 +271,7 @@ function wfStep1(){
     { id:'용역계약서', desc:'용역(SI·디자인·콘텐츠 등) 표준 계약서', vars:['vendor','project','fee','dueDate'] },
     { id:'NDA',       desc:'비밀유지계약서 (한·영 병기)', vars:['party','term','scope'] },
   ];
-  return `<div class="grid grid-cols-3 gap-4">
+  return `<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
     ${tpls.map(t=>`<button data-tpl="${t.id}" class="text-left bg-white rounded-2xl border p-5 hover:border-blue-500 hover:shadow">
       <div class="font-semibold">${t.id}</div><div class="text-sm text-slate-500 mt-1">${t.desc}</div><div class="text-xs text-slate-400 mt-3">변수 ${t.vars.length}개</div>
     </button>`).join('')}
@@ -265,7 +289,7 @@ function wfStep2(){
   </div>`;
 }
 function wfStep3(){
-  return `<div class="grid grid-cols-2 gap-6">
+  return `<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
     <div class="bg-white rounded-2xl border p-6">
       <div class="text-sm text-slate-500">PDF 미리보기 (jsPDF 실 생성)</div>
       <iframe id="pdf-iframe" class="w-full h-[600px] mt-3 border rounded"></iframe>
@@ -282,7 +306,7 @@ function wfStep3(){
   </div>`;
 }
 function wfStep4(){
-  return `<div class="grid grid-cols-2 gap-6">
+  return `<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
     <div class="bg-white rounded-2xl border p-6">
       <div class="font-semibold mb-3">서명란</div>
       <canvas id="sig" width="500" height="180" class="border rounded-lg bg-slate-50 w-full"></canvas>
@@ -303,7 +327,7 @@ function wfStep4(){
 function vAttendance(){
   const today = new Date(); const week = ['월','화','수','목','금','토','일'];
   return `<h1 class="text-2xl font-bold">근태</h1>
-  <div class="grid grid-cols-2 gap-6 mt-6">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
     <div class="bg-white rounded-2xl border p-6">
       <div class="font-semibold mb-3">이번 주 출퇴근 (예시)</div>
       <table class="w-full text-sm"><thead class="bg-slate-50 text-slate-600"><tr><th class="p-3 text-left">요일</th><th class="p-3 text-right">출근</th><th class="p-3 text-right">퇴근</th><th class="p-3 text-right">근무</th></tr></thead>
@@ -320,8 +344,8 @@ function vAttendance(){
 function vPayroll(){
   return `<h1 class="text-2xl font-bold">급여 명세 — 이번 달</h1>
   <div class="text-sm text-slate-500 mt-1">4대보험(국민연금·건강·고용·산재) + 소득세 자동 계산. 명세서는 jsPDF로 즉시 PDF.</div>
-  <div class="bg-white rounded-2xl border mt-6 overflow-hidden">
-    <table class="w-full text-sm">
+  <div class="bg-white rounded-2xl border mt-6 overflow-hidden table-scroll">
+    <table class="w-full text-sm min-w-[720px]">
       <thead class="bg-slate-50 text-slate-600">
         <tr><th class="text-left p-3">직원</th><th class="text-left p-3">부서</th><th class="text-right p-3">기본급</th><th class="text-right p-3">4대보험 합</th><th class="text-right p-3">소득세</th><th class="text-right p-3">실 지급</th><th class="text-center p-3">동작</th></tr>
       </thead>
@@ -358,14 +382,14 @@ function vPayroll(){
 function vEmployees(){
   return `<h1 class="text-2xl font-bold">직원 관리</h1>
   <button id="emp-add" class="mt-4 px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold">+ 직원 추가</button>
-  <div class="mt-6 bg-white rounded-2xl border overflow-hidden">
-    <table class="w-full text-sm"><thead class="bg-slate-50 text-slate-600"><tr><th class="text-left p-3">사번</th><th class="text-left p-3">이름</th><th class="text-left p-3">부서</th><th class="text-left p-3">입사일</th><th class="text-right p-3">월급</th><th class="text-left p-3">연락처</th><th class="text-right p-3">동작</th></tr></thead>
+  <div class="mt-6 bg-white rounded-2xl border overflow-hidden table-scroll">
+    <table class="w-full text-sm min-w-[760px]"><thead class="bg-slate-50 text-slate-600"><tr><th class="text-left p-3">사번</th><th class="text-left p-3">이름</th><th class="text-left p-3">부서</th><th class="text-left p-3">입사일</th><th class="text-right p-3">월급</th><th class="text-left p-3">연락처</th><th class="text-right p-3">동작</th></tr></thead>
       <tbody>${state.employees.map(e=>`<tr class="border-t" id="row-${e.id}">
         <td class="p-3 font-mono text-xs">${e.id}</td><td class="p-3 font-medium">${e.name}</td><td class="p-3">${e.dept}</td><td class="p-3">${e.join}</td><td class="p-3 text-right">${KRW(e.salary)}</td><td class="p-3 text-xs text-slate-500">${e.phone}</td>
         <td class="p-3 text-right space-x-2"><button data-edit="${e.id}" class="text-xs text-blue-600">편집</button><button data-del="${e.id}" class="text-xs text-red-600">삭제</button></td>
       </tr>`).join('')}</tbody></table>
   </div>
-  <dialog id="emp-dlg" class="rounded-2xl p-0 backdrop:bg-black/40 w-[480px]">
+  <dialog id="emp-dlg" class="rounded-2xl p-0 backdrop:bg-black/40 w-[92vw] max-w-[480px]">
     <form method="dialog" class="p-6 space-y-3">
       <h3 id="emp-dlg-title" class="text-lg font-semibold">직원 추가</h3>
       <input id="ef-name" placeholder="이름" class="w-full border rounded-lg p-3 text-sm">
@@ -386,8 +410,8 @@ function vEmployees(){
 function vKakao(){
   return `<h1 class="text-2xl font-bold">알림톡 로그</h1>
   <div class="mt-2 text-sm text-slate-500">실제 발송은 NHN Toast·카카오 비즈메시지 키가 있을 때 켜져요. 지금은 mock 발송 로그예요.</div>
-  <div class="mt-6 bg-white rounded-2xl border overflow-hidden">
-    <table class="w-full text-sm"><thead class="bg-slate-50 text-slate-600"><tr><th class="text-left p-3">시각</th><th class="text-left p-3">수신</th><th class="text-left p-3">템플릿</th><th class="text-left p-3">결과</th></tr></thead>
+  <div class="mt-6 bg-white rounded-2xl border overflow-hidden table-scroll">
+    <table class="w-full text-sm min-w-[560px]"><thead class="bg-slate-50 text-slate-600"><tr><th class="text-left p-3">시각</th><th class="text-left p-3">수신</th><th class="text-left p-3">템플릿</th><th class="text-left p-3">결과</th></tr></thead>
       <tbody>${state.kakao.map(k=>`<tr class="border-t"><td class="p-3 text-xs text-slate-500">${k.t}</td><td class="p-3">${k.to}</td><td class="p-3">${k.tpl}</td><td class="p-3 text-emerald-600">${k.result}</td></tr>`).join('')}</tbody></table>
   </div>`;
 }
@@ -403,7 +427,7 @@ function vDocs(){
     ['기타', 11, 'bg-pink-50 text-pink-700'],
   ];
   return `<h1 class="text-2xl font-bold">문서함</h1>
-  <div class="grid grid-cols-3 gap-4 mt-6">${cards.map(([n,c,cls])=>`<div class="${cls} rounded-2xl p-5"><div class="text-sm">${n}</div><div class="text-3xl font-bold mt-1">${c}건</div></div>`).join('')}</div>`;
+  <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mt-6">${cards.map(([n,c,cls])=>`<div class="${cls} rounded-2xl p-5"><div class="text-sm">${n}</div><div class="text-3xl font-bold mt-1">${c}건</div></div>`).join('')}</div>`;
 }
 
 // ============== PDF (jsPDF 실 생성) ==============
@@ -475,8 +499,31 @@ function render(){
   document.getElementById('main').innerHTML = ({dash:vDash,contract:vContract,workflow:vWorkflow,attendance:vAttendance,payroll:vPayroll,employees:vEmployees,kakao:vKakao,docs:vDocs})[state.view]();
   bind();
 }
+// 모바일 bottomnav '더보기' — 사이드바 전용 메뉴까지 전체 접근(좁은 화면에서 사이드바가 숨겨져 접근 불가하던 메뉴 복구)
+function openMoreSheet(){
+  const old=document.getElementById('moreSheet'); if(old) old.remove();
+  const sheet=document.createElement('div');
+  sheet.id='moreSheet';
+  sheet.className='fixed inset-0 z-[60] flex items-end';
+  sheet.innerHTML=`<div class="absolute inset-0 bg-black/40" data-close="1"></div>
+    <div class="relative w-full bg-white rounded-t-2xl p-4 pb-6 max-h-[72vh] overflow-auto">
+      <div class="w-10 h-1 bg-slate-300 rounded-full mx-auto mb-4"></div>
+      <div class="text-sm font-bold text-slate-700 mb-3 px-1">전체 메뉴</div>
+      <div class="grid grid-cols-3 gap-2">
+        ${NAV.map(([k,n])=>`<button data-goto="${k}" class="flex flex-col items-center justify-center gap-1 min-h-[64px] p-2 rounded-xl border ${state.view===k?'border-blue-500 bg-blue-50 text-blue-700':'border-slate-200 text-slate-600'}"><span class="text-[12px] text-center leading-tight">${n}</span></button>`).join('')}
+      </div>
+    </div>`;
+  document.body.appendChild(sheet);
+  sheet.addEventListener('click',(e)=>{
+    if(e.target.closest('[data-close]')){ sheet.remove(); return; }
+    const g=e.target.closest('[data-goto]');
+    if(g){ state.view=g.dataset.goto; if(state.view!=='workflow'){ state.wfStep=1; state.wfData={}; } persist(); sheet.remove(); render(); }
+  });
+}
+
 function bind(){
   document.querySelectorAll('[data-view]').forEach(a=>a.onclick=()=>{ state.view=a.dataset.view; if (state.view!=='workflow') { state.wfStep=1; state.wfData={}; } persist(); render(); });
+  const moreBtn=document.getElementById('moreBtn'); if(moreBtn) moreBtn.onclick=openMoreSheet;
   // contract list
   document.querySelectorAll('[data-pdf]').forEach(b=>b.onclick=()=>{
     const c = state.contracts.find(x=>x.id===b.dataset.pdf);

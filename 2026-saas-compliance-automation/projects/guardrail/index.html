@@ -93,14 +93,83 @@
     div.bg-slate-100.overflow-auto { background-color: #F2F4F6 !important; }
   }
 
-  /* 반응형 보정 — 390px 모바일에서 가로 overflow 방지 (데스크톱 불변) */
-  @media (max-width: 640px) {
-    aside.w-64 { width: 13rem; }
-    header.bg-white.border-b { padding-left: 1rem; padding-right: 1rem; }
-    div.bg-slate-100.overflow-auto, div.overflow-auto.p-8 { padding: 1rem; }
-    .grid.grid-cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .grid.grid-cols-3 { grid-template-columns: minmax(0, 1fr); }
-    .col-span-2 { grid-column: span 1 / span 1; }
+  /* ===== 모바일 네이티브 레이아웃 (≤767px) — 데스크톱(≥768px) 완전 불변 ===== */
+
+  /* 모바일 상단 앱바 + 백드롭은 데스크톱에서 항상 숨김 */
+  #mobile-appbar { display: none; }
+  #drawer-backdrop { display: none; }
+
+  @media (max-width: 767px) {
+    /* 1) 데스크톱 사이드바 → 오프캔버스 드로어 */
+    aside.bg-slate-900 {
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: 82vw; max-width: 300px;
+      z-index: 60;
+      transform: translateX(-100%);
+      transition: transform .28s cubic-bezier(.3,0,0,1);
+      box-shadow: 0 8px 40px rgba(0,0,0,.35);
+      -webkit-overflow-scrolling: touch;
+    }
+    body.drawer-open aside.bg-slate-900 { transform: translateX(0); }
+
+    /* 반투명 백드롭 */
+    #drawer-backdrop {
+      display: block; position: fixed; inset: 0; z-index: 55;
+      background: rgba(15,12,30,.5);
+      -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+      opacity: 0; pointer-events: none; transition: opacity .28s ease;
+    }
+    body.drawer-open #drawer-backdrop { opacity: 1; pointer-events: auto; }
+    body.drawer-open { overflow: hidden; }
+
+    /* 2) 모바일 전용 상단 앱바 */
+    #mobile-appbar {
+      display: flex; align-items: center; gap: .625rem;
+      position: sticky; top: 0; z-index: 40;
+      height: 52px; padding: 0 .875rem;
+      background: rgba(255,255,255,.75);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+              backdrop-filter: saturate(180%) blur(20px);
+      border-bottom: 1px solid rgba(31,27,54,.08);
+    }
+    #mobile-appbar .ab-burger {
+      width: 38px; height: 38px; flex: none;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 10px; background: transparent; color: #1F1B36;
+      font-size: 20px; line-height: 1;
+    }
+    #mobile-appbar .ab-burger:active { background: rgba(31,27,54,.06); }
+    #mobile-appbar .ab-logo {
+      width: 30px; height: 30px; flex: none; border-radius: 8px;
+      background: #4338CA; color: #fff; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; font-size: 15px;
+    }
+    #mobile-appbar .ab-title { font-weight: 700; color: #1F1B36; font-size: 16px; }
+
+    /* 3) 본문 풀폭 — 사이드바가 흐름에서 빠졌으므로 main이 전체 폭 */
+    .min-h-screen.flex { display: block; }
+    .flex-1.flex.flex-col.min-w-0 { width: 100%; }
+
+    /* 데스크톱 헤더는 모바일 앱바와 중복 — 컴팩트하게 */
+    header.bg-white.border-b {
+      padding-left: 1rem; padding-right: 1rem; padding-top: .75rem; padding-bottom: .75rem;
+      flex-wrap: wrap; gap: .5rem;
+    }
+    header.bg-white.border-b .flex.items-center.gap-5 { flex-wrap: wrap; gap: .75rem; }
+
+    /* 4) 본문 패딩 축소 */
+    div.bg-slate-100.overflow-auto, div.overflow-auto.p-8, .overflow-auto.p-8 { padding: 1rem; }
+
+    /* 5) 그리드 스택 — 모바일에서 읽히는 열 수로 */
+    .grid.grid-cols-6 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .grid.grid-cols-5 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .grid.grid-cols-4 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .grid.grid-cols-3 { grid-template-columns: minmax(0,1fr); }
+    .grid.grid-cols-2 { grid-template-columns: minmax(0,1fr); }
+    .col-span-2, .col-span-3 { grid-column: span 1 / span 1; }
+
+    /* 6) 가로로 넓은 표/히트맵은 가로 스크롤 허용(세로 쪼개짐 방지) */
+    table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
   }
   </style>
 </head>
@@ -456,6 +525,16 @@ function renderShell() {
 
   // Main
   const main = el(`<div class="flex-1 flex flex-col min-w-0"></div>`);
+
+  // 모바일 전용 상단 앱바 (≥768px CSS로 숨김) — 햄버거로 드로어 토글
+  const appbar = el(`
+    <div id="mobile-appbar">
+      <button class="ab-burger" id="mobile-hamburger" aria-label="메뉴 열기">☰</button>
+      <span class="ab-logo">G</span>
+      <span class="ab-title">가드레일</span>
+    </div>`);
+  main.appendChild(appbar);
+
   // Top bar
   const top = el(`
     <header class="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between">
@@ -500,6 +579,17 @@ function renderShell() {
   content.appendChild(body);
   main.appendChild(content);
   wrap.appendChild(main);
+
+  // 오프캔버스 드로어 백드롭 + 토글 (모바일)
+  const backdrop = el(`<div id="drawer-backdrop"></div>`);
+  wrap.appendChild(backdrop);
+  const closeDrawer = () => document.body.classList.remove("drawer-open");
+  const openDrawer = () => document.body.classList.add("drawer-open");
+  appbar.querySelector("#mobile-hamburger").onclick = openDrawer;
+  backdrop.onclick = closeDrawer;
+  side.querySelectorAll("#nav button").forEach(b => b.addEventListener("click", closeDrawer));
+  closeDrawer();
+
   return wrap;
 }
 

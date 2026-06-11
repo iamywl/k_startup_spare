@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=1280, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>클래스렌즈 — 학습분석 SaaS (v1 PoC)</title>
 <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
@@ -99,13 +99,57 @@
     header.sticky.top-0 { background-color: #FFFFFF !important; background-image: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
     #toast { background-color: #0F1B26 !important; background-image: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
   }
+
+  /* ===== 차트 0px 붕괴 방지 — 캔버스는 고정 높이 래퍼 안에서만 그린다 ===== */
+  .chart-box { position: relative; width: 100%; }
+  .chart-box > canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
+
+  /* ===== 모바일 오프캔버스 드로어 (≤767px) ===== */
+  @media (max-width: 767px) {
+    /* 루트: 화면 높이 고정 해제 → 세로 스크롤 허용 */
+    #appRoot { height: auto !important; min-height: 100vh; overflow: visible !important; display: block !important; }
+    #appMain { overflow: visible !important; }
+
+    /* 사이드바 = 슬라이드인 드로어 */
+    #sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0; z-index: 60;
+      width: 248px; max-width: 84vw;
+      transform: translateX(-100%);
+      transition: transform .28s cubic-bezier(.3,0,0,1);
+    }
+    #appRoot.drawer-open #sidebar { transform: translateX(0); }
+
+    /* 백드롭 */
+    #drawerBackdrop {
+      position: fixed; inset: 0; z-index: 55;
+      background: rgba(15,27,38,.45);
+      opacity: 0; pointer-events: none; transition: opacity .28s ease;
+    }
+    #appRoot.drawer-open #drawerBackdrop { opacity: 1; pointer-events: auto; }
+
+    /* 데스크톱 헤더의 큰 패딩 → 모바일 축소 */
+    #appMain > header { padding-left: 1rem; padding-right: 1rem; }
+    #contentPad { padding: 1rem !important; }
+  }
+  /* 모바일 앱바: 데스크톱에서 숨김 */
+  @media (min-width: 768px) { #mobileAppbar { display: none !important; } }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800">
 
-<div class="flex h-screen overflow-hidden">
+<!-- 모바일 상단 앱바 (데스크톱 숨김) -->
+<header id="mobileAppbar" class="md:hidden sticky top-0 z-40 flex items-center gap-3 bg-white/90 backdrop-blur border-b px-4 py-3">
+  <button id="hamburger" aria-label="메뉴 열기" class="w-10 h-10 -ml-1 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-700">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="text-lg font-bold text-slate-800">클래스렌즈</div>
+</header>
+
+<div id="appRoot" class="flex h-screen overflow-hidden">
+  <!-- 드로어 백드롭 (모바일 전용) -->
+  <div id="drawerBackdrop"></div>
   <!-- 좌측 내비 -->
-  <aside class="w-60 bg-slate-900 text-slate-200 flex flex-col shrink-0">
+  <aside id="sidebar" class="w-60 bg-slate-900 text-slate-200 flex flex-col shrink-0">
     <div class="px-5 py-5 border-b border-slate-700">
       <div class="text-xl font-bold text-white">클래스렌즈</div>
       <div class="text-xs text-slate-400 mt-0.5">학습분석 SaaS · v1 PoC</div>
@@ -131,7 +175,7 @@
   </aside>
 
   <!-- 본문 -->
-  <main class="flex-1 overflow-y-auto">
+  <main id="appMain" class="flex-1 overflow-y-auto min-w-0">
     <header class="bg-white border-b px-8 py-4 flex items-center justify-between sticky top-0 z-10">
       <div>
         <h1 id="viewTitle" class="text-lg font-bold text-slate-800">성취 대시보드</h1>
@@ -143,18 +187,18 @@
       </div>
     </header>
 
-    <div class="p-8">
+    <div id="contentPad" class="p-8">
       <!-- ===== 대시보드 ===== -->
       <section id="view-dashboard" class="view space-y-6">
-        <div id="kpiCards" class="grid grid-cols-4 gap-4"></div>
-        <div class="grid grid-cols-3 gap-6">
-          <div class="col-span-2 bg-white rounded-xl border p-5">
+        <div id="kpiCards" class="grid grid-cols-2 lg:grid-cols-4 gap-4"></div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-2 bg-white rounded-xl border p-5">
             <h3 class="font-semibold mb-3 text-slate-700">평가 회차별 학급 평균 추세</h3>
-            <canvas id="trendChart" height="120"></canvas>
+            <div class="chart-box" style="height:240px"><canvas id="trendChart"></canvas></div>
           </div>
           <div class="bg-white rounded-xl border p-5">
             <h3 class="font-semibold mb-3 text-slate-700">학생별 최근 성취</h3>
-            <canvas id="studentBar" height="220"></canvas>
+            <div class="chart-box" style="height:300px"><canvas id="studentBar"></canvas></div>
           </div>
         </div>
         <div class="bg-white rounded-xl border p-5">
@@ -172,7 +216,7 @@
 
       <!-- ===== 입력 ===== -->
       <section id="view-input" class="view hidden space-y-6">
-        <div class="grid grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div class="bg-white rounded-xl border p-5">
             <h3 class="font-semibold mb-4 text-slate-700">① 수기 평가 입력</h3>
             <form id="manualForm" class="space-y-3 text-sm">
@@ -247,7 +291,7 @@
       <!-- ===== 추천 ===== -->
       <section id="view-recommend" class="view hidden space-y-6">
         <div class="bg-white rounded-xl border p-5">
-          <div class="flex items-center justify-between mb-4">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
             <div>
               <h3 class="font-semibold text-slate-700">취약개념 기반 맞춤 과제 추천</h3>
               <p class="text-xs text-slate-500">정답률이 임계값보다 낮은 개념에 대해 학생별 연습 과제를 자동으로 만들어 드려요.</p>
@@ -272,12 +316,12 @@
 
       <!-- ===== 리포트 ===== -->
       <section id="view-report" class="view hidden space-y-6">
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-3">
           <select id="reportStudent" class="border rounded-lg px-3 py-2 bg-white text-sm"></select>
           <button id="buildReport" class="bg-blue-700 hover:bg-blue-800 text-white rounded-lg px-4 py-2 text-sm font-medium">리포트 생성</button>
           <button id="downloadPdf" class="bg-rose-600 hover:bg-rose-700 text-white rounded-lg px-4 py-2 text-sm font-medium">PDF 저장</button>
         </div>
-        <div id="reportCard" class="bg-white rounded-xl border max-w-3xl mx-auto p-8 hidden">
+        <div id="reportCard" class="bg-white rounded-xl border max-w-3xl mx-auto p-5 sm:p-8 hidden">
           <div class="flex items-center justify-between border-b pb-4 mb-5">
             <div>
               <div class="text-xl font-bold text-slate-800">학부모 성취 리포트</div>
@@ -290,7 +334,7 @@
           </div>
           <div class="grid grid-cols-3 gap-4 mb-6" id="rpKpi"></div>
           <h4 class="font-semibold text-slate-700 mb-2">성취 추세</h4>
-          <canvas id="rpTrend" height="90" class="mb-6"></canvas>
+          <div class="chart-box mb-6" style="height:200px"><canvas id="rpTrend"></canvas></div>
           <h4 class="font-semibold text-slate-700 mb-2">취약개념</h4>
           <div id="rpWeak" class="flex flex-wrap gap-2 mb-6"></div>
           <h4 class="font-semibold text-slate-700 mb-2">추천 보충 과제</h4>
@@ -481,7 +525,7 @@ function renderDashboard() {
   charts.trend = new Chart(document.getElementById("trendChart"), {
     type: "line",
     data: { labels: titles, datasets: [{ label: "학급 평균", data: titleAvg, borderColor: "#0A6BA3", backgroundColor: "rgba(10,120,184,.12)", fill: true, tension: .3, pointRadius: 5 }] },
-    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100 } } },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100 } } },
   });
 
   // 학생별 최근 점수
@@ -489,7 +533,7 @@ function renderDashboard() {
   charts.studentBar = new Chart(document.getElementById("studentBar"), {
     type: "bar",
     data: { labels: ss.map((s) => s.name), datasets: [{ data: ss.map((s) => lastScore(s.id)), backgroundColor: ss.map((s) => lastScore(s.id) < 70 ? "#F04452" : "#0A78B8") }] },
-    options: { indexAxis: "y", plugins: { legend: { display: false } }, scales: { x: { min: 0, max: 100 } } },
+    options: { responsive: true, maintainAspectRatio: false, indexAxis: "y", plugins: { legend: { display: false } }, scales: { x: { min: 0, max: 100 } } },
   });
 
   document.getElementById("studentTable").innerHTML = ss.map((s) => {
@@ -695,7 +739,7 @@ function buildReport(sid) {
   charts.rpTrend = new Chart(document.getElementById("rpTrend"), {
     type: "line",
     data: { labels: recs.map((r) => r.title), datasets: [{ label: s.name, data: recs.map((r) => r.score), borderColor: "#0A6BA3", backgroundColor: "rgba(10,120,184,.1)", fill: true, tension: .3, pointRadius: 4 }] },
-    options: { plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100 } }, animation: false },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100 } }, animation: false },
   });
 
   const weak = studentWeakConcepts(sid);
@@ -872,6 +916,15 @@ document.getElementById("resetBtn").addEventListener("click", () => {
     state = seed(); save(); fillClassSelect(); setView("dashboard"); toast("시드 데이터로 초기화했어요.");
   }
 });
+
+// ---------- 모바일 드로어 ----------
+const appRoot = document.getElementById("appRoot");
+function openDrawer() { appRoot.classList.add("drawer-open"); }
+function closeDrawer() { appRoot.classList.remove("drawer-open"); }
+document.getElementById("hamburger").addEventListener("click", openDrawer);
+document.getElementById("drawerBackdrop").addEventListener("click", closeDrawer);
+// 메뉴 클릭 시 닫힘
+document.querySelectorAll(".nav-btn").forEach((b) => b.addEventListener("click", closeDrawer));
 
 // ---------- 부트 ----------
 fillClassSelect();
