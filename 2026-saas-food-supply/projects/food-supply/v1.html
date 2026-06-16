@@ -1,0 +1,803 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>발주메이트 — 식자재 자동발주·재고관리 (v1)</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  /* ── 동적 브랜드 컬러: 푸드테크/신뢰 → 딥 인디고-블루 단일 hue, WCAG AA 계산 ── */
+  :root{
+    --brand:#2f53d6;          /* primary CTA / 핵심 수치 */
+    --brand-strong:#243f9e;
+    --brand-soft:#eaeefb;
+    --ink:#1b1f2a;            /* 순흑 금지: hue 섞인 부드러운 잉크 */
+    --ink-2:#525a6b;          /* 보조 */
+    --ink-3:#858d9d;          /* 캡션 */
+    --bg:#f5f6fb;
+    --surface:#ffffff;
+    --surface-2:#f0f2f9;
+    --line:#e6e8f0;
+    --ok:#137a4b; --ok-soft:#e2f4ea;
+    --warn:#9a6400; --warn-soft:#fbf0d9;
+    --danger:#b0303a; --danger-soft:#fbe4e6;
+    --radius:14px;
+    --shadow-float:0 12px 32px rgba(27,31,42,.16);
+    --sidebar-w:248px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Segoe UI",Roboto,sans-serif;
+    background:
+      radial-gradient(1200px 520px at 12% -8%, rgba(47,83,214,.07), transparent 60%),
+      var(--bg);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    line-height:1.45;
+  }
+  button{font-family:inherit;cursor:pointer}
+  .app{display:flex;min-height:100vh}
+
+  /* ── 사이드바 (데스크톱) ── */
+  .sidebar{
+    width:var(--sidebar-w);flex:0 0 var(--sidebar-w);
+    background:#1a1f30;color:#e9ecf6;
+    display:flex;flex-direction:column;gap:4px;
+    padding:22px 14px;position:sticky;top:0;height:100vh;overflow-y:auto;
+  }
+  .brand{display:flex;align-items:center;gap:10px;padding:6px 8px 18px}
+  .brand .logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#5b78f0,#2f53d6);
+    display:grid;place-items:center;font-weight:800;color:#fff}
+  .brand b{font-size:17px;letter-spacing:-.2px}
+  .brand small{display:block;color:#9aa3c4;font-size:11px;font-weight:600}
+  .nav-btn{display:flex;align-items:center;gap:11px;width:100%;text-align:left;border:0;
+    background:transparent;color:#c4cbe4;padding:12px 12px;border-radius:11px;font-size:14.5px;font-weight:600;
+    transition:background .15s, color .15s}
+  .nav-btn .ic{width:20px;text-align:center;font-size:16px}
+  .nav-btn:hover{background:rgba(255,255,255,.06);color:#fff}
+  .nav-btn.active{background:var(--brand);color:#fff}
+  .side-foot{margin-top:auto;padding:12px 10px;color:#7e87a8;font-size:11.5px;line-height:1.5}
+
+  /* ── 본문 ── */
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .topbar{display:none}
+  .content{padding:28px 32px 60px;max-width:1180px;width:100%}
+  .view{display:none;animation:fade .25s ease}
+  .view.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .page-head{margin:0 0 20px}
+  .page-head h1{font-size:25px;font-weight:800;letter-spacing:-.5px;margin:0 0 4px}
+  .page-head p{margin:0;color:var(--ink-2);font-size:14px}
+
+  /* ── KPI ── */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+  .kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 16px}
+  .kpi .label{color:var(--ink-3);font-size:12.5px;font-weight:600;margin-bottom:6px}
+  .kpi .num{font-size:26px;font-weight:800;letter-spacing:-.6px}
+  .kpi .num.brand{color:var(--brand)}
+  .kpi .sub{font-size:12px;color:var(--ink-2);margin-top:3px}
+
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .grid-2>*{min-width:0}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px;min-width:0}
+  .card h3{margin:0 0 4px;font-size:16px;font-weight:700}
+  .card .hint{color:var(--ink-3);font-size:12.5px;margin:0 0 14px}
+  .chart-wrap{position:relative;height:240px}
+
+  /* ── 표 ── */
+  .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:560px}
+  th,td{padding:11px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{color:var(--ink-3);font-weight:600;font-size:12px;text-transform:none}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  tr.row-click{cursor:pointer}
+  tr.row-click:hover{background:var(--surface-2)}
+
+  .pill{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:700}
+  .pill.ok{background:var(--ok-soft);color:var(--ok)}
+  .pill.warn{background:var(--warn-soft);color:var(--warn)}
+  .pill.danger{background:var(--danger-soft);color:var(--danger)}
+  .pill.muted{background:var(--surface-2);color:var(--ink-2)}
+
+  /* ── 폼 ── */
+  label.fld{display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin:0 0 6px}
+  input,select,textarea{font-family:inherit;width:100%;padding:11px 12px;border:1px solid var(--line);
+    border-radius:11px;font-size:14px;background:var(--surface);color:var(--ink)}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(47,83,214,.16)}
+  .form-row{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:12px}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:12px;
+    font-weight:700;font-size:14.5px;padding:0 18px;height:46px;background:var(--surface-2);color:var(--ink);
+    transition:transform .08s, background .15s}
+  .btn:active{transform:scale(.97)}
+  .btn:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(47,83,214,.35)}
+  .btn.primary{background:var(--brand);color:#fff}
+  .btn.primary:hover{background:var(--brand-strong)}
+  .btn.full{width:100%;height:52px}
+  .btn.sm{height:38px;font-size:13px;padding:0 13px;border-radius:10px}
+  .btn.ghost{background:transparent;border:1px solid var(--line)}
+  .btn[disabled]{opacity:.35;pointer-events:none}
+
+  .section-title{font-size:13px;font-weight:700;color:var(--ink-2);margin:24px 0 10px}
+
+  /* ── 워크플로 스텝퍼 ── */
+  .stepper{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+  .step{flex:1;min-width:96px;border:1px solid var(--line);background:var(--surface);border-radius:11px;
+    padding:10px 12px;font-size:12.5px;font-weight:600;color:var(--ink-3)}
+  .step b{display:block;font-size:11px;color:var(--ink-3);margin-bottom:2px}
+  .step.done{border-color:var(--ok);background:var(--ok-soft);color:var(--ok)}
+  .step.cur{border-color:var(--brand);background:var(--brand-soft);color:var(--brand-strong)}
+
+  /* ── 발주 제안 카드 ── */
+  .sugg{border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px;background:var(--surface)}
+  .sugg .top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .sugg .name{font-weight:700;font-size:15px}
+  .sugg .why{font-size:12.5px;color:var(--ink-2);margin-top:5px;line-height:1.5}
+  .sugg .qty{display:flex;align-items:center;gap:8px;margin-top:10px}
+  .sugg .qty input{width:96px}
+
+  .log{font-size:12.5px;color:var(--ink-2);background:var(--surface-2);border-radius:10px;padding:10px 12px;
+    margin-top:8px;white-space:pre-wrap;word-break:break-word;font-variant-numeric:tabular-nums}
+
+  .empty{color:var(--ink-3);font-size:13.5px;text-align:center;padding:26px}
+
+  /* ── 토스트 ── */
+  #toast{position:fixed;left:50%;bottom:88px;transform:translateX(-50%) translateY(20px);
+    background:#1a1f30;color:#fff;padding:12px 18px;border-radius:12px;font-size:13.5px;font-weight:600;
+    box-shadow:var(--shadow-float);opacity:0;pointer-events:none;transition:.25s;z-index:60;max-width:90vw}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* ── 모바일 셸 (≤767px) ── */
+  .topbar{align-items:center;gap:10px;padding:12px 16px;background:rgba(255,255,255,.82);
+    backdrop-filter:saturate(180%) blur(18px);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:40}
+  .hamb{width:42px;height:42px;border-radius:11px;border:1px solid var(--line);background:var(--surface);
+    font-size:19px;display:grid;place-items:center}
+  .topbar .tb-brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:16px}
+  .topbar .tb-brand .logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#5b78f0,#2f53d6);
+    display:grid;place-items:center;color:#fff;font-size:13px}
+  .backdrop{display:none;position:fixed;inset:0;background:rgba(27,31,42,.4);z-index:48}
+  .bottomnav{display:none}
+
+  @media(max-width:767px){
+    .sidebar{position:fixed;left:0;top:0;height:100%;z-index:50;transform:translateX(-100%);
+      transition:transform .25s ease;width:82vw;max-width:300px}
+    body.drawer-open .sidebar{transform:translateX(0)}
+    body.drawer-open .backdrop{display:block}
+    .topbar{display:flex}
+    .content{padding:18px 16px 96px;max-width:100%}
+    .page-head h1{font-size:21px}
+    .kpis{grid-template-columns:1fr 1fr;gap:10px}
+    .kpi .num{font-size:22px}
+    .grid-2{grid-template-columns:1fr}
+    .form-row{grid-template-columns:1fr}
+    .bottomnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:45;
+      background:rgba(255,255,255,.92);backdrop-filter:saturate(180%) blur(18px);
+      border-top:1px solid var(--line);padding:6px 4px 8px}
+    .bottomnav button{flex:1;border:0;background:transparent;color:var(--ink-3);
+      display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;font-size:10.5px;font-weight:700;
+      padding:4px 2px;border-radius:10px}
+    .bottomnav button .ic{font-size:18px}
+    .bottomnav button.active{color:var(--brand)}
+    #toast{bottom:104px}
+  }
+  @media(min-width:768px){ .backdrop{display:none!important} }
+  @media(prefers-reduced-transparency:reduce){ .topbar,.bottomnav{backdrop-filter:none;background:#fff} }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- 사이드바 -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="logo">발</div>
+      <div><b>발주메이트</b><small>식자재 자동발주 SaaS</small></div>
+    </div>
+    <button class="nav-btn active" data-view="dashboard"><span class="ic">▦</span>재고 대시보드</button>
+    <button class="nav-btn" data-view="catalog"><span class="ic">▤</span>품목·공급사</button>
+    <button class="nav-btn" data-view="forecast"><span class="ic">◷</span>소비예측·재주문</button>
+    <button class="nav-btn" data-view="orders"><span class="ic">✎</span>발주서·발송이력</button>
+    <button class="nav-btn" data-view="settle"><span class="ic">₩</span>입고·정산</button>
+    <div class="side-foot">
+      데모 모드 · 오프라인 동작<br/>모든 데이터는 브라우저(localStorage)에 저장됩니다.
+    </div>
+  </aside>
+
+  <div class="backdrop" id="backdrop"></div>
+
+  <div class="main">
+    <!-- 모바일 앱바 -->
+    <header class="topbar">
+      <button class="hamb" id="hamb" aria-label="메뉴 열기">☰</button>
+      <div class="tb-brand"><span class="logo">발</span>발주메이트</div>
+    </header>
+
+    <div class="content">
+      <!-- ① 대시보드 -->
+      <section class="view active" id="view-dashboard">
+        <div class="page-head"><h1>재고 대시보드</h1><p>오늘 기준 재고 상태와 최근 소진 추이를 한눈에.</p></div>
+        <div class="kpis">
+          <div class="kpi"><div class="label">관리 품목</div><div class="num" id="kpiItems">0</div><div class="sub">활성 SKU</div></div>
+          <div class="kpi"><div class="label">재주문 필요</div><div class="num brand" id="kpiReorder">0</div><div class="sub">재고 ≤ 재주문점</div></div>
+          <div class="kpi"><div class="label">금일 발주 제안액</div><div class="num" id="kpiSuggest">₩0</div><div class="sub">예측 기반</div></div>
+          <div class="kpi"><div class="label">이번 달 정산</div><div class="num" id="kpiSettle">₩0</div><div class="sub">입고 확정분</div></div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h3>최근 7일 소진 추이</h3><p class="hint">일자별 총 소비량(단위 합산) · 이동평균 기반 예측의 입력</p>
+            <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+          </div>
+          <div class="card">
+            <h3>품목별 재고 커버일수</h3><p class="hint">현재고 ÷ 일평균소비 = 며칠 버티는가</p>
+            <div class="chart-wrap"><canvas id="coverChart"></canvas></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <h3>재고 현황</h3><p class="hint">행을 누르면 품목 관리로 이동합니다.</p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr>
+                <th>품목</th><th>공급사</th><th class="num">현재고</th><th class="num">재주문점(ROP)</th>
+                <th class="num">일평균소비</th><th class="num">커버일수</th><th>상태</th>
+              </tr></thead>
+              <tbody id="dashRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ② 품목·공급사 -->
+      <section class="view" id="view-catalog">
+        <div class="page-head"><h1>품목 · 공급사 관리</h1><p>품목별 현재고·리드타임·안전계수, 공급사 정보를 관리합니다.</p></div>
+        <div class="grid-2">
+          <div class="card">
+            <h3>품목 추가 / 수정</h3><p class="hint">현재고와 단가를 입력하면 즉시 저장됩니다(localStorage).</p>
+            <div class="form-row">
+              <div><label class="fld">품목명</label><input id="fName" placeholder="예) 양파 15kg망" /></div>
+              <div><label class="fld">공급사</label><select id="fSupplier"></select></div>
+            </div>
+            <div class="form-row">
+              <div><label class="fld">현재고(단위)</label><input id="fStock" type="number" min="0" value="0" /></div>
+              <div><label class="fld">단가(원/단위)</label><input id="fPrice" type="number" min="0" value="0" /></div>
+            </div>
+            <div class="form-row">
+              <div><label class="fld">리드타임(일)</label><input id="fLead" type="number" min="0" value="2" /></div>
+              <div><label class="fld">최소발주(MOQ)</label><input id="fMoq" type="number" min="1" value="1" /></div>
+            </div>
+            <div class="form-row">
+              <div><label class="fld">서비스수준 Z (1.65=95%)</label>
+                <select id="fZ"><option value="1.28">90% (1.28)</option><option value="1.65" selected>95% (1.65)</option><option value="2.05">98% (2.05)</option></select>
+              </div>
+              <div><label class="fld">　</label><button class="btn primary full" id="saveItem">품목 저장</button></div>
+            </div>
+            <input type="hidden" id="fEditId" />
+          </div>
+          <div class="card">
+            <h3>공급사</h3><p class="hint">발주서가 발송되는 거래처입니다.</p>
+            <div class="form-row">
+              <div><label class="fld">공급사명</label><input id="sName" placeholder="예) 한밭청과" /></div>
+              <div><label class="fld">담당 연락처(mock)</label><input id="sPhone" placeholder="010-0000-0000" /></div>
+            </div>
+            <button class="btn ghost sm" id="addSupplier">공급사 추가</button>
+            <div class="table-scroll" style="margin-top:14px">
+              <table><thead><tr><th>공급사</th><th>연락처</th><th class="num">취급품목</th></tr></thead>
+              <tbody id="supplierRows"></tbody></table>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <h3>품목 목록</h3><p class="hint">행의 [수정]으로 불러오기, [−]로 재고 차감(소비 기록)됩니다.</p>
+          <div class="table-scroll">
+            <table><thead><tr>
+              <th>품목</th><th>공급사</th><th class="num">현재고</th><th class="num">단가</th>
+              <th class="num">리드/Z/MOQ</th><th>조치</th>
+            </tr></thead><tbody id="itemRows"></tbody></table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ③ 소비예측·재주문 -->
+      <section class="view" id="view-forecast">
+        <div class="page-head"><h1>소비예측 · 재주문 제안</h1>
+          <p>최근 소비 데이터로 이동평균·안전재고·재주문점(ROP)을 산출하고, 부족분만큼 발주를 제안합니다.</p></div>
+        <div class="card">
+          <h3>예측 파라미터</h3><p class="hint">이동평균 윈도우(일) 안에서 일평균소비와 표준편차를 계산합니다.</p>
+          <div class="form-row">
+            <div><label class="fld">이동평균 윈도우(일)</label>
+              <select id="maWindow"><option>5</option><option selected>7</option><option>14</option></select></div>
+            <div><label class="fld">목표 재고 커버일수</label>
+              <select id="targetCover"><option>5</option><option selected>7</option><option>10</option><option>14</option></select></div>
+          </div>
+          <button class="btn primary" id="runForecast">예측 실행 · 재주문 계산</button>
+        </div>
+
+        <div class="section-title">계산 결과 (품목별)</div>
+        <div class="card">
+          <div class="table-scroll">
+            <table><thead><tr>
+              <th>품목</th><th class="num">일평균(μ)</th><th class="num">표준편차(σ)</th>
+              <th class="num">안전재고</th><th class="num">ROP</th><th class="num">현재고</th>
+              <th class="num">목표재고</th><th class="num">제안수량</th><th>판정</th>
+            </tr></thead><tbody id="forecastRows"><tr><td colspan="9" class="empty">[예측 실행]을 눌러 계산하세요.</td></tr></tbody></table>
+          </div>
+        </div>
+
+        <div class="section-title">발주 제안 (부족 품목)</div>
+        <div id="suggestList"><div class="empty">예측 실행 후 재주문점 이하 품목이 여기에 제안됩니다.</div></div>
+        <button class="btn primary full" id="createDraft" disabled>선택 품목으로 발주서 초안 만들기 →</button>
+      </section>
+
+      <!-- ④ 발주서·발송이력 -->
+      <section class="view" id="view-orders">
+        <div class="page-head"><h1>발주서 · 발송 이력</h1><p>공급사별로 발주서를 생성·PDF 다운로드하고, mock 발송 로그를 남깁니다.</p></div>
+
+        <div class="card" id="draftCard">
+          <h3>발주서 초안</h3><p class="hint">소비예측에서 넘어온 초안입니다. 공급사별로 묶여 발주됩니다.</p>
+          <div id="draftBody"><div class="empty">아직 초안이 없습니다. [소비예측]에서 발주서 초안을 만드세요.</div></div>
+        </div>
+
+        <div class="section-title">발송 이력</div>
+        <div class="card">
+          <div class="table-scroll">
+            <table><thead><tr>
+              <th>발주번호</th><th>공급사</th><th class="num">품목수</th><th class="num">금액</th>
+              <th>상태</th><th>일시</th><th>조치</th>
+            </tr></thead><tbody id="orderRows"><tr><td colspan="7" class="empty">발송 이력이 없습니다.</td></tr></tbody></table>
+          </div>
+        </div>
+        <div id="sendLog"></div>
+      </section>
+
+      <!-- ⑤ 입고·정산 -->
+      <section class="view" id="view-settle">
+        <div class="page-head"><h1>입고 · 정산</h1><p>발송한 발주를 입고 처리하면 재고가 증가하고 정산 내역이 쌓입니다.</p></div>
+        <div class="kpis" style="grid-template-columns:repeat(3,1fr)">
+          <div class="kpi"><div class="label">발송 대기/완료</div><div class="num" id="stOpen">0</div><div class="sub">입고 미확정</div></div>
+          <div class="kpi"><div class="label">입고 완료</div><div class="num" id="stDone">0</div><div class="sub">정산 반영</div></div>
+          <div class="kpi"><div class="label">누적 정산액</div><div class="num brand" id="stTotal">₩0</div><div class="sub">전체 기간</div></div>
+        </div>
+        <div class="card">
+          <h3>입고 대기 발주</h3><p class="hint">[입고확정]을 누르면 재고 증가 + 정산 반영됩니다.</p>
+          <div class="table-scroll">
+            <table><thead><tr>
+              <th>발주번호</th><th>공급사</th><th class="num">금액</th><th>발송일시</th><th>조치</th>
+            </tr></thead><tbody id="pendingRows"><tr><td colspan="5" class="empty">입고 대기 건이 없습니다.</td></tr></tbody></table>
+          </div>
+        </div>
+        <div class="section-title">정산 내역</div>
+        <div class="card">
+          <div class="table-scroll">
+            <table><thead><tr>
+              <th>발주번호</th><th>공급사</th><th class="num">정산액</th><th>입고일시</th>
+            </tr></thead><tbody id="settleRows"><tr><td colspan="4" class="empty">정산 내역이 없습니다.</td></tr></tbody></table>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 모바일 바텀탭 -->
+    <nav class="bottomnav">
+      <button data-view="dashboard" class="active"><span class="ic">▦</span>대시보드</button>
+      <button data-view="catalog"><span class="ic">▤</span>품목</button>
+      <button data-view="forecast"><span class="ic">◷</span>예측</button>
+      <button data-view="orders"><span class="ic">✎</span>발주</button>
+      <button data-view="settle"><span class="ic">₩</span>정산</button>
+    </nav>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* ─────────────────────────────────────────────────────────
+   발주메이트 v1 — 식자재 자동발주·재고관리 (단일 HTML 자체완결)
+   핵심 로직:
+   - 소비예측: 이동평균(μ), 표본표준편차(σ)
+   - 안전재고 = Z * σ * sqrt(리드타임)
+   - 재주문점(ROP) = μ * 리드타임 + 안전재고
+   - 목표재고 = μ * 목표커버일수 + 안전재고
+   - 제안수량 = max(0, 목표재고 - 현재고), MOQ 올림
+   상태: localStorage 지속 / Chart.js 시각화 / jsPDF 발주서(한글 임베드)
+   ───────────────────────────────────────────────────────── */
+const LS = "balju-mate-v1";
+const KRW = n => "₩" + Math.round(n).toLocaleString("ko-KR");
+const todayISO = () => new Date().toISOString().slice(0,10);
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+
+/* ── 시드 데이터: 7일치 소비 이력 포함 ── */
+function seed(){
+  const sup = [
+    {id:"s1", name:"한밭청과", phone:"053-000-1111"},
+    {id:"s2", name:"대구축산유통", phone:"053-000-2222"},
+    {id:"s3", name:"신선수산", phone:"053-000-3333"},
+  ];
+  // 일별 소비량(units/day) — 변동성 포함
+  const hist = {
+    i1:[14,12,18,15,16,13,17], i2:[6,5,7,6,8,5,6], i3:[22,25,20,24,28,23,26],
+    i4:[4,3,5,4,6,3,4], i5:[9,11,8,10,12,9,10], i6:[2,3,2,4,3,2,3],
+  };
+  const days = Array.from({length:7},(_,i)=>{
+    const d=new Date(); d.setDate(d.getDate()-(6-i)); return d.toISOString().slice(0,10);
+  });
+  const items = [
+    {id:"i1", name:"양파 15kg망", supplier:"s1", stock:38, price:18000, lead:2, moq:5, z:1.65, unit:"망"},
+    {id:"i2", name:"대파 1kg",     supplier:"s1", stock:42, price:3200,  lead:1, moq:10,z:1.65, unit:"단"},
+    {id:"i3", name:"삼겹살 1kg",   supplier:"s2", stock:55, price:12500, lead:2, moq:5, z:1.65, unit:"kg"},
+    {id:"i4", name:"한우 등심 1kg",supplier:"s2", stock:9,  price:48000, lead:3, moq:2, z:2.05, unit:"kg"},
+    {id:"i5", name:"고등어 손질",  supplier:"s3", stock:21, price:4200,  lead:2, moq:6, z:1.65, unit:"마리"},
+    {id:"i6", name:"활광어 1kg",   supplier:"s3", stock:5,  price:26000, lead:2, moq:2, z:2.05, unit:"kg"},
+  ].map(it=>({...it, hist:hist[it.id], days}));
+  return {suppliers:sup, items, orders:[], settlements:[], seq:1001};
+}
+let state = load();
+function load(){
+  try{ const r = JSON.parse(localStorage.getItem(LS)); if(r && r.items) return r; }catch(e){}
+  const s = seed(); localStorage.setItem(LS, JSON.stringify(s)); return s;
+}
+function save(){ localStorage.setItem(LS, JSON.stringify(state)); }
+
+/* ── 통계 헬퍼 ── */
+function mean(a){ return a.reduce((x,y)=>x+y,0)/a.length; }
+function stdev(a){ if(a.length<2) return 0; const m=mean(a);
+  return Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/(a.length-1)); }
+
+/** 품목별 예측 계산 — 이동평균·안전재고·ROP·제안수량 */
+function computeItem(it, win, targetCover){
+  const window = it.hist.slice(-win);
+  const mu = mean(window);
+  const sigma = stdev(window);
+  const safety = it.z * sigma * Math.sqrt(it.lead);     // 안전재고
+  const rop = mu * it.lead + safety;                    // 재주문점
+  const target = mu * targetCover + safety;             // 목표재고
+  let suggest = Math.max(0, target - it.stock);
+  if(suggest>0) suggest = Math.ceil(suggest/it.moq)*it.moq; // MOQ 올림
+  const cover = mu>0 ? it.stock/mu : 999;
+  const need = it.stock <= rop;
+  return {mu, sigma, safety, rop, target, suggest, cover, need};
+}
+
+/* ── 라우팅 ── */
+function go(view){
+  $$(".view").forEach(v=>v.classList.toggle("active", v.id==="view-"+view));
+  $$(".nav-btn").forEach(b=>b.classList.toggle("active", b.dataset.view===view));
+  $$(".bottomnav button").forEach(b=>b.classList.toggle("active", b.dataset.view===view));
+  document.body.classList.remove("drawer-open");
+  if(view==="dashboard") renderDashboard();
+  if(view==="catalog") renderCatalog();
+  if(view==="orders") renderOrders();
+  if(view==="settle") renderSettle();
+  window.scrollTo(0,0);
+}
+$$(".nav-btn, .bottomnav button").forEach(b=> b.addEventListener("click",()=>go(b.dataset.view)));
+$("#hamb").addEventListener("click",()=>document.body.classList.toggle("drawer-open"));
+$("#backdrop").addEventListener("click",()=>document.body.classList.remove("drawer-open"));
+
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show");
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2200); }
+
+const supName = id => (state.suppliers.find(s=>s.id===id)||{}).name || "-";
+
+/* ── ① 대시보드 ── */
+let trendChart, coverChart;
+function renderDashboard(){
+  const win=7, tgt=7;
+  const calc = state.items.map(it=>({it, c:computeItem(it,win,tgt)}));
+  const reorder = calc.filter(x=>x.c.need).length;
+  const suggestVal = calc.reduce((s,x)=>s + x.c.suggest*x.it.price, 0);
+  const settleVal = state.settlements.reduce((s,x)=>s+x.amount,0);
+  $("#kpiItems").textContent = state.items.length;
+  $("#kpiReorder").textContent = reorder;
+  $("#kpiSuggest").textContent = KRW(suggestVal);
+  $("#kpiSettle").textContent = KRW(settleVal);
+
+  // 표
+  $("#dashRows").innerHTML = calc.map(({it,c})=>{
+    const st = it.stock<=c.rop ? '<span class="pill danger">재주문 필요</span>'
+      : it.stock<=c.rop*1.4 ? '<span class="pill warn">주의</span>' : '<span class="pill ok">충분</span>';
+    return `<tr class="row-click" data-go="catalog">
+      <td>${it.name}</td><td>${supName(it.supplier)}</td>
+      <td class="num">${it.stock}</td><td class="num">${c.rop.toFixed(1)}</td>
+      <td class="num">${c.mu.toFixed(1)}</td><td class="num">${c.cover>=999?"—":c.cover.toFixed(1)}일</td><td>${st}</td></tr>`;
+  }).join("");
+  $$("#dashRows tr").forEach(r=>r.addEventListener("click",()=>go(r.dataset.go)));
+
+  // 차트1: 7일 총 소진 추이
+  const days = state.items[0].days;
+  const totals = days.map((_,d)=> state.items.reduce((s,it)=>s+(it.hist[d]||0),0));
+  if(trendChart) trendChart.destroy();
+  trendChart = new Chart($("#trendChart"),{
+    type:"line",
+    data:{labels:days.map(d=>d.slice(5)), datasets:[{label:"총 소비량", data:totals,
+      borderColor:"#2f53d6", backgroundColor:"rgba(47,83,214,.12)", fill:true, tension:.35, pointRadius:3}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{y:{beginAtZero:true}}}
+  });
+  // 차트2: 커버일수 막대
+  const cov = calc.map(x=>({n:x.it.name, v: x.c.cover>=999?0:Math.min(x.c.cover,30)}));
+  if(coverChart) coverChart.destroy();
+  coverChart = new Chart($("#coverChart"),{
+    type:"bar",
+    data:{labels:cov.map(c=>c.n), datasets:[{label:"커버일수", data:cov.map(c=>c.v),
+      backgroundColor: cov.map(c=> c.v<3?"#b0303a":c.v<6?"#d39a2a":"#2f53d6"), borderRadius:6}]},
+    options:{indexAxis:"y", responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}}, scales:{x:{beginAtZero:true}}}
+  });
+}
+
+/* ── ② 품목·공급사 ── */
+function fillSupplierSelect(){
+  $("#fSupplier").innerHTML = state.suppliers.map(s=>`<option value="${s.id}">${s.name}</option>`).join("");
+}
+function renderCatalog(){
+  fillSupplierSelect();
+  $("#supplierRows").innerHTML = state.suppliers.map(s=>{
+    const cnt = state.items.filter(i=>i.supplier===s.id).length;
+    return `<tr><td>${s.name}</td><td>${s.phone||"-"}</td><td class="num">${cnt}</td></tr>`;
+  }).join("") || '<tr><td colspan="3" class="empty">공급사가 없습니다.</td></tr>';
+
+  $("#itemRows").innerHTML = state.items.map(it=>`
+    <tr><td>${it.name}</td><td>${supName(it.supplier)}</td>
+      <td class="num">${it.stock} ${it.unit}</td><td class="num">${KRW(it.price)}</td>
+      <td class="num">${it.lead}d / Z${it.z} / ${it.moq}</td>
+      <td><button class="btn ghost sm" data-edit="${it.id}">수정</button>
+          <button class="btn ghost sm" data-consume="${it.id}">−소비</button></td></tr>`).join("")
+    || '<tr><td colspan="6" class="empty">품목이 없습니다.</td></tr>';
+
+  $$("#itemRows [data-edit]").forEach(b=>b.addEventListener("click",()=>editItem(b.dataset.edit)));
+  $$("#itemRows [data-consume]").forEach(b=>b.addEventListener("click",()=>consume(b.dataset.consume)));
+}
+function editItem(id){
+  const it = state.items.find(i=>i.id===id); if(!it) return;
+  $("#fEditId").value=it.id; $("#fName").value=it.name; $("#fSupplier").value=it.supplier;
+  $("#fStock").value=it.stock; $("#fPrice").value=it.price; $("#fLead").value=it.lead;
+  $("#fMoq").value=it.moq; $("#fZ").value=it.z;
+  window.scrollTo({top:0,behavior:"smooth"}); toast("수정할 품목을 불러왔어요");
+}
+function consume(id){
+  const it=state.items.find(i=>i.id===id); if(!it) return;
+  const dec = Math.max(1, Math.round(mean(it.hist.slice(-7))*0.3));
+  it.stock = Math.max(0, it.stock-dec);
+  it.hist = [...it.hist.slice(1), dec + Math.round(Math.random()*3)]; // 오늘 소비 기록
+  save(); renderCatalog(); toast(`${it.name} ${dec}${it.unit} 소비 기록 (재고 ${it.stock})`);
+}
+$("#saveItem").addEventListener("click",()=>{
+  const name=$("#fName").value.trim(); if(!name){toast("품목명을 입력하세요");return;}
+  const id=$("#fEditId").value || ("i"+Date.now());
+  const obj={id, name, supplier:$("#fSupplier").value,
+    stock:+$("#fStock").value||0, price:+$("#fPrice").value||0,
+    lead:+$("#fLead").value||1, moq:+$("#fMoq").value||1, z:+$("#fZ").value||1.65, unit:"단위"};
+  const ex=state.items.find(i=>i.id===id);
+  if(ex){ obj.hist=ex.hist; obj.days=ex.days; obj.unit=ex.unit; Object.assign(ex,obj); }
+  else { obj.days=state.items[0]?.days||[]; obj.hist=Array(7).fill(Math.max(1,Math.round((+$("#fStock").value||10)/7))); state.items.push(obj); }
+  save();
+  $("#fEditId").value=""; $("#fName").value=""; $("#fStock").value=0; $("#fPrice").value=0;
+  renderCatalog(); toast(ex?"품목을 수정했어요":"품목을 추가했어요");
+});
+$("#addSupplier").addEventListener("click",()=>{
+  const name=$("#sName").value.trim(); if(!name){toast("공급사명을 입력하세요");return;}
+  state.suppliers.push({id:"s"+Date.now(), name, phone:$("#sPhone").value.trim()});
+  save(); $("#sName").value=""; $("#sPhone").value=""; renderCatalog(); toast("공급사를 추가했어요");
+});
+
+/* ── ③ 소비예측·재주문 ── */
+let lastForecast = [];
+$("#runForecast").addEventListener("click",()=>{
+  const win=+$("#maWindow").value, tgt=+$("#targetCover").value;
+  lastForecast = state.items.map(it=>({it, c:computeItem(it,win,tgt)}));
+  $("#forecastRows").innerHTML = lastForecast.map(({it,c})=>{
+    const verdict = c.need ? '<span class="pill danger">발주 필요</span>'
+      : '<span class="pill ok">유지</span>';
+    return `<tr><td>${it.name}</td><td class="num">${c.mu.toFixed(2)}</td><td class="num">${c.sigma.toFixed(2)}</td>
+      <td class="num">${c.safety.toFixed(1)}</td><td class="num">${c.rop.toFixed(1)}</td>
+      <td class="num">${it.stock}</td><td class="num">${c.target.toFixed(1)}</td>
+      <td class="num">${c.suggest}</td><td>${verdict}</td></tr>`;
+  }).join("");
+
+  const need = lastForecast.filter(x=>x.c.need && x.c.suggest>0);
+  if(need.length===0){
+    $("#suggestList").innerHTML='<div class="empty">현재 재주문점 이하 품목이 없습니다. 재고가 충분합니다 👍</div>';
+    $("#createDraft").disabled=true;
+  } else {
+    $("#suggestList").innerHTML = need.map(({it,c})=>`
+      <div class="sugg" data-item="${it.id}">
+        <div class="top"><div>
+          <div class="name">${it.name} <span class="pill muted">${supName(it.supplier)}</span></div>
+          <div class="why">현재고 ${it.stock} ≤ ROP ${c.rop.toFixed(1)} · 일평균 ${c.mu.toFixed(1)} · 안전재고 ${c.safety.toFixed(1)} · 목표 ${c.target.toFixed(1)}</div>
+        </div><label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-2)">
+          <input type="checkbox" class="pick" checked style="width:auto"/> 포함</label></div>
+        <div class="qty"><span style="font-size:12.5px;color:var(--ink-2)">발주수량</span>
+          <input type="number" class="qInput" min="0" value="${c.suggest}"/>
+          <span style="font-size:12.5px;color:var(--ink-3)">× ${KRW(it.price)} = </span>
+          <b class="lineSum">${KRW(c.suggest*it.price)}</b></div>
+      </div>`).join("");
+    $("#createDraft").disabled=false;
+    $$(".sugg").forEach(card=>{
+      const q=card.querySelector(".qInput"), sum=card.querySelector(".lineSum");
+      const it=state.items.find(i=>i.id===card.dataset.item);
+      q.addEventListener("input",()=> sum.textContent=KRW((+q.value||0)*it.price));
+    });
+  }
+  toast("예측을 계산했어요");
+});
+
+let currentDraft = null;
+$("#createDraft").addEventListener("click",()=>{
+  const lines=[];
+  $$(".sugg").forEach(card=>{
+    if(!card.querySelector(".pick").checked) return;
+    const it=state.items.find(i=>i.id===card.dataset.item);
+    const qty=+card.querySelector(".qInput").value||0;
+    if(qty>0) lines.push({id:it.id, name:it.name, supplier:it.supplier, qty, price:it.price, unit:it.unit});
+  });
+  if(lines.length===0){toast("포함된 품목이 없습니다");return;}
+  // 공급사별로 그룹
+  const groups={};
+  lines.forEach(l=>{ (groups[l.supplier]=groups[l.supplier]||[]).push(l); });
+  currentDraft = Object.entries(groups).map(([sid,items])=>({supplier:sid, items}));
+  toast(`발주서 초안 ${currentDraft.length}건 생성 → 발주서 화면으로`);
+  go("orders");
+});
+
+/* ── ④ 발주서·발송 ── */
+function renderOrders(){
+  // 초안
+  if(!currentDraft || currentDraft.length===0){
+    $("#draftBody").innerHTML='<div class="empty">아직 초안이 없습니다. [소비예측]에서 발주서 초안을 만드세요.</div>';
+  } else {
+    $("#draftBody").innerHTML = currentDraft.map((g,gi)=>{
+      const total=g.items.reduce((s,l)=>s+l.qty*l.price,0);
+      return `<div class="card" style="margin-bottom:12px;border-color:var(--brand-soft)">
+        <h3>${supName(g.supplier)} <span class="pill muted">${g.items.length}품목</span></h3>
+        <div class="table-scroll"><table><thead><tr><th>품목</th><th class="num">수량</th><th class="num">단가</th><th class="num">금액</th></tr></thead>
+        <tbody>${g.items.map(l=>`<tr><td>${l.name}</td><td class="num">${l.qty} ${l.unit}</td><td class="num">${KRW(l.price)}</td><td class="num">${KRW(l.qty*l.price)}</td></tr>`).join("")}</tbody>
+        <tfoot><tr><th colspan="3" class="num">합계</th><th class="num">${KRW(total)}</th></tr></tfoot></table></div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <button class="btn ghost sm" data-pdf="${gi}">📄 발주서 PDF 다운로드</button>
+          <button class="btn primary sm" data-send="${gi}">📨 공급사에 발송(mock)</button>
+        </div></div>`;
+    }).join("");
+    $$("#draftBody [data-pdf]").forEach(b=>b.addEventListener("click",()=>downloadPDF(currentDraft[+b.dataset.pdf])));
+    $$("#draftBody [data-send]").forEach(b=>b.addEventListener("click",()=>sendOrder(+b.dataset.send)));
+  }
+  // 이력
+  if(state.orders.length===0){
+    $("#orderRows").innerHTML='<tr><td colspan="7" class="empty">발송 이력이 없습니다.</td></tr>';
+  } else {
+    $("#orderRows").innerHTML = state.orders.slice().reverse().map(o=>{
+      const st = o.status==="received" ? '<span class="pill ok">입고완료</span>' : '<span class="pill warn">발송</span>';
+      return `<tr><td>${o.no}</td><td>${supName(o.supplier)}</td><td class="num">${o.items.length}</td>
+        <td class="num">${KRW(o.total)}</td><td>${st}</td><td>${o.sentAt}</td>
+        <td><button class="btn ghost sm" data-rpdf="${o.no}">PDF</button></td></tr>`;
+    }).join("");
+    $$("#orderRows [data-rpdf]").forEach(b=>b.addEventListener("click",()=>{
+      const o=state.orders.find(x=>x.no===b.dataset.rpdf);
+      downloadPDF({supplier:o.supplier, items:o.items}, o.no);
+    }));
+  }
+}
+
+/* jsPDF 한글 발주서 — 폰트 임베드(나눔고딕 base64 동적 로드, 실패 시 canvas 폴백) */
+let _fontReady=null;
+async function ensureKoreanFont(doc){
+  if(_fontReady===false) return false;
+  try{
+    if(!window._nanumB64){
+      const url="https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_three@1.0/NanumGothic.ttf";
+      const buf=await fetch(url).then(r=>{if(!r.ok)throw 0;return r.arrayBuffer();});
+      let bin=""; const bytes=new Uint8Array(buf);
+      for(let i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
+      window._nanumB64=btoa(bin);
+    }
+    doc.addFileToVFS("NanumGothic.ttf", window._nanumB64);
+    doc.addFont("NanumGothic.ttf","NanumGothic","normal");
+    doc.setFont("NanumGothic"); _fontReady=true; return true;
+  }catch(e){ _fontReady=false; return false; }
+}
+
+/* 한글 안전 발주서 생성: TTF 임베드 성공 시 jsPDF 텍스트, 실패 시 canvas 래스터화 후 PDF에 이미지 */
+async function downloadPDF(group, forcedNo){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:"pt", format:"a4"});
+  const ok = await ensureKoreanFont(doc);
+  const no = forcedNo || ("PO-"+todayISO().replace(/-/g,"")+"-"+state.seq);
+  const total = group.items.reduce((s,l)=>s+l.qty*l.price,0);
+
+  if(ok){
+    let y=56; doc.setFontSize(18); doc.text("발 주 서 (Purchase Order)",40,y); y+=26;
+    doc.setFontSize(11);
+    doc.text(`발주번호: ${no}`,40,y); doc.text(`발주일자: ${todayISO()}`,330,y); y+=18;
+    doc.text(`공급사: ${supName(group.supplier)}`,40,y); y+=18;
+    doc.text(`발주처: 발주메이트 데모 식당  (담당: <TODO: 사용자 입력>)`,40,y); y+=24;
+    doc.setFillColor(240,242,249); doc.rect(40,y,515,22,"F");
+    doc.text("품목",48,y+15); doc.text("수량",300,y+15); doc.text("단가",380,y+15); doc.text("금액",470,y+15); y+=30;
+    group.items.forEach(l=>{
+      doc.text(String(l.name),48,y);
+      doc.text(`${l.qty} ${l.unit}`,300,y);
+      doc.text(KRW(l.price),380,y);
+      doc.text(KRW(l.qty*l.price),470,y); y+=20;
+    });
+    y+=6; doc.setLineWidth(.5); doc.line(40,y,555,y); y+=20;
+    doc.setFontSize(13); doc.text(`합계: ${KRW(total)} (VAT 별도)`,360,y);
+    doc.setFontSize(9); doc.setTextColor(130);
+    doc.text("본 발주서는 발주메이트 v1 데모에서 자동 생성되었습니다.",40,800);
+  } else {
+    // 폴백: 한글 깨짐 방지를 위해 canvas로 그려 이미지 삽입
+    const c=document.createElement("canvas"); c.width=900; c.height=240+group.items.length*40;
+    const x=c.getContext("2d"); x.fillStyle="#fff"; x.fillRect(0,0,c.width,c.height);
+    x.fillStyle="#1b1f2a"; x.font="bold 30px sans-serif"; x.fillText("발 주 서 (Purchase Order)",40,56);
+    x.font="18px sans-serif";
+    x.fillText(`발주번호: ${no}    발주일자: ${todayISO()}`,40,96);
+    x.fillText(`공급사: ${supName(group.supplier)}`,40,124);
+    x.font="bold 18px sans-serif"; let yy=176;
+    x.fillText("품목",48,yy); x.fillText("수량",420,yy); x.fillText("단가",560,yy); x.fillText("금액",720,yy);
+    x.font="17px sans-serif"; yy+=34;
+    group.items.forEach(l=>{ x.fillText(String(l.name),48,yy); x.fillText(`${l.qty} ${l.unit}`,420,yy);
+      x.fillText(KRW(l.price),560,yy); x.fillText(KRW(l.qty*l.price),720,yy); yy+=38; });
+    x.font="bold 20px sans-serif"; x.fillText(`합계: ${KRW(total)} (VAT 별도)`,520,yy+20);
+    const img=c.toDataURL("image/png");
+    doc.addImage(img,"PNG",30,30,535,(c.height/c.width)*535);
+  }
+  doc.save(`${no}.pdf`);
+  toast("발주서 PDF를 생성했어요");
+}
+
+async function sendOrder(gi){
+  const g = currentDraft[gi]; if(!g) return;
+  const no = "PO-"+todayISO().replace(/-/g,"")+"-"+(state.seq++);
+  const total = g.items.reduce((s,l)=>s+l.qty*l.price,0);
+  const now = new Date().toLocaleString("ko-KR",{hour12:false});
+  const order = {no, supplier:g.supplier, items:g.items.map(l=>({...l})), total, status:"sent", sentAt:now};
+  state.orders.push(order);
+  // 발송 시점에 재고는 아직 증가하지 않음(입고 시 증가). 발송 mock 로그.
+  const sup = state.suppliers.find(s=>s.id===g.supplier);
+  const logEl=$("#sendLog");
+  const div=document.createElement("div"); div.className="log";
+  div.textContent =
+`[mock 발송 로그] ${now}
+→ 채널: 카카오 알림톡 (대체발송: SMS)
+→ 수신: ${sup.name} (${sup.phone||"연락처 미등록"})
+→ 발주번호 ${no} · ${g.items.length}품목 · ${KRW(total)}
+→ 결과: 전송 성공 (HTTP 200, mock) · 공급사 확인 대기`;
+  logEl.prepend(div);
+  // 초안에서 발송분 제거
+  currentDraft.splice(gi,1);
+  save(); renderOrders(); toast(`${sup.name}에 발주서를 발송했어요 (${no})`);
+}
+
+/* ── ⑤ 입고·정산 ── */
+function renderSettle(){
+  const pending = state.orders.filter(o=>o.status==="sent");
+  const done = state.orders.filter(o=>o.status==="received");
+  $("#stOpen").textContent = pending.length;
+  $("#stDone").textContent = done.length;
+  $("#stTotal").textContent = KRW(state.settlements.reduce((s,x)=>s+x.amount,0));
+
+  $("#pendingRows").innerHTML = pending.length? pending.map(o=>`
+    <tr><td>${o.no}</td><td>${supName(o.supplier)}</td><td class="num">${KRW(o.total)}</td><td>${o.sentAt}</td>
+    <td><button class="btn primary sm" data-recv="${o.no}">입고확정</button></td></tr>`).join("")
+    : '<tr><td colspan="5" class="empty">입고 대기 건이 없습니다.</td></tr>';
+  $$("#pendingRows [data-recv]").forEach(b=>b.addEventListener("click",()=>receive(b.dataset.recv)));
+
+  $("#settleRows").innerHTML = state.settlements.length? state.settlements.slice().reverse().map(s=>`
+    <tr><td>${s.no}</td><td>${supName(s.supplier)}</td><td class="num">${KRW(s.amount)}</td><td>${s.at}</td></tr>`).join("")
+    : '<tr><td colspan="4" class="empty">정산 내역이 없습니다.</td></tr>';
+}
+function receive(no){
+  const o = state.orders.find(x=>x.no===no); if(!o||o.status!=="received"===false){}
+  if(!o || o.status==="received") return;
+  o.status="received";
+  // 입고: 재고 증가
+  o.items.forEach(l=>{ const it=state.items.find(i=>i.id===l.id); if(it) it.stock += l.qty; });
+  const at=new Date().toLocaleString("ko-KR",{hour12:false});
+  state.settlements.push({no:o.no, supplier:o.supplier, amount:o.total, at});
+  save(); renderSettle(); toast(`${o.no} 입고확정 · 재고 반영 · ${KRW(o.total)} 정산`);
+}
+
+/* ── 초기 렌더 ── */
+renderDashboard();
+window.addEventListener("resize",()=>{ /* Chart.js responsive 자동 */ });
+</script>
+</body>
+</html>

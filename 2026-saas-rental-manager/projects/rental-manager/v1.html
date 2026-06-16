@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>임대지기 — 소규모 임대인용 임대관리</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          // 동적 브랜드 컬러: 신뢰감의 인디고-틸(부동산/금융 톤). WCAG AA 이상 계산.
+          brand: { 50:'#eef4fb',100:'#d7e6f6',500:'#1f6fd6',600:'#1a5fbb',700:'#154e9c' },
+          ink: { DEFAULT:'#1a2230', 2:'#525a68', 3:'#8a909c' },
+          surface: { DEFAULT:'#ffffff', sub:'#f5f7fa', line:'#e7ebf1' }
+        },
+        fontFamily: { sans:['Pretendard','-apple-system','BlinkMacSystemFont','Apple SD Gothic Neo','sans-serif'] }
+      }
+    }
+  }
+</script>
+<style>
+  *{ -webkit-tap-highlight-color:transparent; }
+  body{ font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif; color:#1a2230; background:
+    radial-gradient(1200px 600px at 100% -10%, rgba(31,111,214,.06), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(31,111,214,.05), transparent 60%), #f5f7fa; }
+  .press{ transition:transform .12s cubic-bezier(.2,.7,.3,1); }
+  .press:active{ transform:scale(.97); }
+  .card{ background:#fff; border:1px solid #e7ebf1; border-radius:16px; }
+  .glass{ background:rgba(255,255,255,.78); backdrop-filter:saturate(185%) blur(20px); -webkit-backdrop-filter:saturate(185%) blur(20px); }
+  @supports not (backdrop-filter:blur(2px)){ .glass{ background:#fff; } }
+  .navbtn{ transition:background .15s,color .15s; }
+  .navbtn.active{ background:rgba(31,111,214,.12); color:#154e9c; }
+  ::-webkit-scrollbar{ width:10px;height:10px } ::-webkit-scrollbar-thumb{ background:#d7dde6;border-radius:8px }
+  /* 반응형 네비 분기: 768px */
+  #sidebar{ display:none } #bottomnav{ display:flex } #mobileAppbar{ display:flex }
+  @media(min-width:768px){ #sidebar{ display:flex } #bottomnav{ display:none } #mobileAppbar{ display:none } #main{ padding-bottom:0 } }
+  .sheet-enter{ transform:translateY(100%); }
+  .badge{ font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px }
+  table th{ font-weight:600 }
+  .num{ font-variant-numeric:tabular-nums }
+</style>
+</head>
+<body class="text-ink">
+
+<!-- ===== 모바일 상단 앱바 ===== -->
+<header id="mobileAppbar" class="glass fixed top-0 inset-x-0 z-30 h-14 items-center justify-between px-4 border-b border-surface-line">
+  <div class="flex items-center gap-2">
+    <div class="w-8 h-8 rounded-xl bg-brand-600 text-white grid place-items-center font-extrabold">집</div>
+    <span class="font-extrabold text-[17px]">임대지기</span>
+  </div>
+  <button id="mAdd" class="press w-10 h-10 rounded-xl bg-brand-600 text-white grid place-items-center text-xl font-bold" aria-label="빠른 등록">＋</button>
+</header>
+
+<div class="md:flex md:min-h-screen">
+  <!-- ===== 데스크톱 사이드바 ===== -->
+  <aside id="sidebar" class="w-64 shrink-0 flex-col bg-[#10213a] text-white sticky top-0 h-screen p-4">
+    <div class="flex items-center gap-2 px-2 pt-1 pb-6">
+      <div class="w-9 h-9 rounded-xl bg-white/15 grid place-items-center font-extrabold">집</div>
+      <div><div class="font-extrabold text-lg leading-none">임대지기</div><div class="text-[11px] text-white/50 mt-1">소규모 임대관리</div></div>
+    </div>
+    <nav class="flex-1 space-y-1" id="navDesktop"></nav>
+    <div class="mt-4 p-3 rounded-xl bg-white/5 text-[12px] text-white/60 leading-relaxed">
+      <div class="text-white/80 font-semibold mb-1">데모 모드</div>
+      로그인 없이 모든 기능을 쓸 수 있어요. 데이터는 브라우저에 저장돼요.
+    </div>
+  </aside>
+
+  <!-- ===== 본문 ===== -->
+  <main id="main" class="flex-1 min-w-0 pt-14 md:pt-0 pb-24 md:pb-10">
+    <div class="hidden md:flex items-center justify-between px-8 pt-7 pb-2">
+      <div>
+        <h1 id="pageTitle" class="text-2xl font-extrabold">수입 대시보드</h1>
+        <p id="pageDesc" class="text-ink-2 mt-1 text-sm">이번 달 수납 현황을 한눈에 확인해요.</p>
+      </div>
+      <button id="dAdd" class="press bg-brand-600 hover:bg-brand-700 text-white rounded-xl px-4 h-11 font-semibold flex items-center gap-2">＋ 빠른 등록</button>
+    </div>
+    <div class="md:hidden px-4 pt-4 pb-1">
+      <h1 id="pageTitleM" class="text-xl font-extrabold">수입 대시보드</h1>
+      <p id="pageDescM" class="text-ink-2 mt-0.5 text-[13px]">이번 달 수납 현황을 한눈에 확인해요.</p>
+    </div>
+
+    <div id="views" class="px-4 md:px-8 pt-3 max-w-[1180px]"></div>
+  </main>
+</div>
+
+<!-- ===== 모바일 바텀 탭바 ===== -->
+<nav id="bottomnav" class="glass fixed bottom-0 inset-x-0 z-30 border-t border-surface-line h-[64px] items-stretch justify-around px-1" id="navMobile"></nav>
+
+<!-- ===== 바텀시트(빠른 등록) ===== -->
+<div id="sheetWrap" class="fixed inset-0 z-50 hidden">
+  <div id="sheetDim" class="absolute inset-0 bg-ink/20" style="backdrop-filter:blur(2px)"></div>
+  <div id="sheet" class="glass sheet-enter absolute bottom-0 inset-x-0 rounded-t-3xl p-5 pb-8 max-w-[560px] mx-auto transition-transform duration-300 shadow-2xl" style="border:1px solid #e7ebf1">
+    <div class="w-10 h-1.5 rounded-full bg-ink-3/40 mx-auto mb-4"></div>
+    <h3 class="text-lg font-extrabold mb-1">빠른 등록</h3>
+    <p class="text-ink-2 text-[13px] mb-4">자주 쓰는 작업을 바로 시작해요.</p>
+    <div class="grid grid-cols-2 gap-3">
+      <button data-quick="unit" class="press card p-4 text-left"><div class="text-2xl mb-1">🚪</div><div class="font-bold">호실 등록</div><div class="text-[12px] text-ink-2">새 임대 물건</div></button>
+      <button data-quick="tenant" class="press card p-4 text-left"><div class="text-2xl mb-1">🧑</div><div class="font-bold">임차인 배정</div><div class="text-[12px] text-ink-2">계약·입주</div></button>
+      <button data-quick="charge" class="press card p-4 text-left"><div class="text-2xl mb-1">💸</div><div class="font-bold">월세 청구</div><div class="text-[12px] text-ink-2">청구서 생성</div></button>
+      <button data-quick="repair" class="press card p-4 text-left"><div class="text-2xl mb-1">🛠️</div><div class="font-bold">하자 접수</div><div class="text-[12px] text-ink-2">사진 첨부</div></button>
+    </div>
+    <button id="sheetClose" class="press w-full mt-5 h-12 rounded-xl bg-surface-sub font-semibold">닫기</button>
+  </div>
+</div>
+
+<!-- ===== 범용 모달 ===== -->
+<div id="modalWrap" class="fixed inset-0 z-50 hidden">
+  <div id="modalDim" class="absolute inset-0 bg-ink/25" style="backdrop-filter:blur(2px)"></div>
+  <div class="absolute inset-0 flex items-end md:items-center justify-center p-0 md:p-4">
+    <div id="modalCard" class="glass w-full md:max-w-[520px] rounded-t-3xl md:rounded-3xl p-5 md:p-6 max-h-[90vh] overflow-y-auto shadow-2xl" style="border:1px solid #e7ebf1"></div>
+  </div>
+</div>
+
+<!-- ===== 토스트 ===== -->
+<div id="toast" class="glass fixed bottom-[80px] md:bottom-6 left-1/2 -translate-x-1/2 z-[60] hidden px-4 py-3 rounded-2xl shadow-xl text-sm font-semibold" style="border:1px solid #e7ebf1"></div>
+
+<!-- PDF 렌더 영역(화면 밖) -->
+<div id="pdfStage" style="position:fixed;left:-9999px;top:0;width:760px;background:#fff;"></div>
+
+<script>
+/* =========================================================================
+   임대지기 v1 — 1인·소규모 임대인용 임대관리 SaaS PoC (단일 HTML, 오프라인 구동)
+   - 실 동작: localStorage 지속, jsPDF+html2canvas 실 PDF, 사진 실 업로드/미리보기
+   - 다단계 워크플로: 호실→임차인→청구→수납→독촉
+   ========================================================================= */
+const KRW = n => (n||0).toLocaleString('ko-KR') + '원';
+const KRWk = n => (n>=10000? Math.round(n/10000)+'만' : (n||0).toLocaleString())+'원';
+const uid = () => Math.random().toString(36).slice(2,9);
+const todayISO = () => new Date().toISOString().slice(0,10);
+const fmtDate = s => s? s.replaceAll('-','.').slice(2) : '-';
+const MONTH = '2026-06';
+const monthLabel = m => { const [y,mm]=m.split('-'); return `${y}년 ${+mm}월`; };
+
+/* ---------- 저장소 ---------- */
+const DB = {
+  key:'rental-jigi-v1',
+  load(){ try{ return JSON.parse(localStorage.getItem(this.key)) }catch(e){ return null } },
+  save(s){ localStorage.setItem(this.key, JSON.stringify(s)); },
+};
+
+/* ---------- 시드 데이터 ---------- */
+function seed(){
+  const units = [
+    { id:'u1', name:'행복빌라 201호', type:'월세', deposit:10000000, rent:550000, mgmt:70000, addr:'대구 남구 대명동' },
+    { id:'u2', name:'행복빌라 202호', type:'월세', deposit:5000000,  rent:480000, mgmt:60000, addr:'대구 남구 대명동' },
+    { id:'u3', name:'행복빌라 301호', type:'월세', deposit:20000000, rent:650000, mgmt:80000, addr:'대구 남구 대명동' },
+    { id:'u4', name:'대명원룸 B102', type:'월세', deposit:3000000,  rent:420000, mgmt:50000, addr:'대구 남구 봉덕동' },
+    { id:'u5', name:'대명원룸 B103', type:'전세', deposit:90000000, rent:0,      mgmt:50000, addr:'대구 남구 봉덕동' },
+    { id:'u6', name:'대명원룸 B104', type:'공실', deposit:0,        rent:430000, mgmt:50000, addr:'대구 남구 봉덕동' },
+  ];
+  const tenants = [
+    { id:'t1', unit:'u1', name:'김민준', phone:'010-1234-5678', start:'2025-03-01', months:24, payday:5 },
+    { id:'t2', unit:'u2', name:'이서연', phone:'010-2222-3333', start:'2024-11-15', months:24, payday:15 },
+    { id:'t3', unit:'u3', name:'박도윤', phone:'010-4444-5555', start:'2025-07-10', months:12, payday:10 },
+    { id:'t4', unit:'u4', name:'최지우', phone:'010-6666-7777', start:'2025-01-20', months:24, payday:25 },
+    { id:'t5', unit:'u5', name:'정하준', phone:'010-8888-9999', start:'2024-09-01', months:24, payday:1 },
+  ];
+  // 6월 청구·수납
+  const charges = [
+    { id:'c1', unit:'u1', tenant:'t1', month:MONTH, rent:550000, mgmt:70000, due:'2026-06-05', paid:true,  paidAt:'2026-06-04' },
+    { id:'c2', unit:'u2', tenant:'t2', month:MONTH, rent:480000, mgmt:60000, due:'2026-06-15', paid:false, paidAt:null },
+    { id:'c3', unit:'u3', tenant:'t3', month:MONTH, rent:650000, mgmt:80000, due:'2026-06-10', paid:true,  paidAt:'2026-06-09' },
+    { id:'c4', unit:'u4', tenant:'t4', month:MONTH, rent:420000, mgmt:50000, due:'2026-06-25', paid:false, paidAt:null },
+    { id:'c5', unit:'u5', tenant:'t5', month:MONTH, rent:0,      mgmt:50000, due:'2026-06-01', paid:true,  paidAt:'2026-06-01' },
+  ];
+  // 지난 5개월 수입(추세 차트용)
+  const history = [
+    { month:'2026-01', collected:2700000 },{ month:'2026-02', collected:2820000 },
+    { month:'2026-03', collected:2750000 },{ month:'2026-04', collected:2880000 },
+    { month:'2026-05', collected:2810000 },
+  ];
+  const repairs = [
+    { id:'r1', unit:'u1', tenant:'t1', title:'싱크대 배수구 누수', status:'접수', priority:'높음', created:'2026-06-12', photo:null, note:'주방 하부장 물고임' },
+    { id:'r2', unit:'u3', tenant:'t3', title:'보일러 온수 미작동', status:'진행', priority:'긴급', created:'2026-06-10', photo:null, note:'기사 방문 예약 완료' },
+    { id:'r3', unit:'u2', tenant:'t2', title:'현관 도어락 건전지', status:'완료', priority:'낮음', created:'2026-06-03', photo:null, note:'교체 완료' },
+  ];
+  return { units, tenants, charges, history, repairs, contracts:[], notices:[] };
+}
+
+let S = DB.load() || seed();
+const persist = () => DB.save(S);
+
+/* ---------- 헬퍼 조회 ---------- */
+const unitById = id => S.units.find(u=>u.id===id);
+const tenantById = id => S.tenants.find(t=>t.id===id);
+const tenantOfUnit = uid => S.tenants.find(t=>t.unit===uid);
+const chargeTotal = c => (c.rent||0)+(c.mgmt||0);
+
+/* ---------- 토스트 ---------- */
+let toastT;
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.remove('hidden');
+  clearTimeout(toastT); toastT=setTimeout(()=>el.classList.add('hidden'),2200);
+}
+
+/* ---------- 네비게이션 ---------- */
+const NAV = [
+  { id:'dashboard', label:'대시보드', icon:'📊', title:'수입 대시보드', desc:'이번 달 수납 현황을 한눈에 확인해요.' },
+  { id:'units',     label:'호실·임차인', icon:'🚪', title:'호실·임차인 관리', desc:'보유 물건과 임차인을 관리해요.' },
+  { id:'rent',      label:'월세 수납', icon:'💸', title:'월세 수납 추적', desc:'이번 달 청구·수납·미납을 추적해요.' },
+  { id:'contract',  label:'계약', icon:'📄', title:'계약 관리', desc:'계약·갱신을 관리하고 계약서를 만들어요.' },
+  { id:'repair',    label:'하자보수', icon:'🛠️', title:'하자보수 요청', desc:'수리 요청을 접수·처리해요.' },
+];
+let curView = 'dashboard';
+
+function renderNav(){
+  const dk = NAV.map(n=>`<button data-view="${n.id}" class="navbtn ${n.id===curView?'active':''} w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 text-[14px] text-white/85 hover:bg-white/5">
+    <span class="text-lg">${n.icon}</span><span class="font-medium">${n.label}</span></button>`).join('');
+  document.getElementById('navDesktop').innerHTML = dk;
+  // 모바일 5탭
+  const mb = NAV.map(n=>`<button data-view="${n.id}" class="flex-1 flex flex-col items-center justify-center gap-0.5 min-h-[44px] ${n.id===curView?'text-brand-600':'text-ink-3'}">
+    <span class="text-[19px] leading-none">${n.icon}</span><span class="text-[10px] font-semibold">${n.label}</span></button>`).join('');
+  document.getElementById('bottomnav').innerHTML = mb;
+  document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>go(b.dataset.view));
+}
+
+function go(v){
+  curView=v;
+  const meta=NAV.find(n=>n.id===v);
+  document.getElementById('pageTitle').textContent=meta.title;
+  document.getElementById('pageDesc').textContent=meta.desc;
+  document.getElementById('pageTitleM').textContent=meta.title;
+  document.getElementById('pageDescM').textContent=meta.desc;
+  renderNav();
+  render();
+  document.getElementById('main').scrollTo?.(0,0);
+  window.scrollTo(0,0);
+}
+
+/* ============================== 렌더 ============================== */
+function render(){
+  const el=document.getElementById('views');
+  if(curView==='dashboard') el.innerHTML=viewDashboard();
+  else if(curView==='units') el.innerHTML=viewUnits();
+  else if(curView==='rent') el.innerHTML=viewRent();
+  else if(curView==='contract') el.innerHTML=viewContract();
+  else if(curView==='repair') el.innerHTML=viewRepair();
+  bindView();
+  if(curView==='dashboard') drawDashCharts();
+}
+
+/* ---------- 집계 ---------- */
+function summary(){
+  const cs=S.charges.filter(c=>c.month===MONTH);
+  const billed=cs.reduce((a,c)=>a+chargeTotal(c),0);
+  const collected=cs.filter(c=>c.paid).reduce((a,c)=>a+chargeTotal(c),0);
+  const overdue=cs.filter(c=>!c.paid).reduce((a,c)=>a+chargeTotal(c),0);
+  const rate= billed? Math.round(collected/billed*100):0;
+  const occupied=S.units.filter(u=>u.type!=='공실').length;
+  const occRate=Math.round(occupied/S.units.length*100);
+  const openRepairs=S.repairs.filter(r=>r.status!=='완료').length;
+  return { billed, collected, overdue, rate, occupied, occRate, openRepairs, total:S.units.length };
+}
+
+/* ---------- 1. 대시보드 ---------- */
+function viewDashboard(){
+  const s=summary();
+  const overdueList=S.charges.filter(c=>c.month===MONTH&&!c.paid);
+  const kpi=(label,val,sub,accent)=>`<div class="card p-4 md:p-5">
+    <div class="text-[12px] text-ink-2">${label}</div>
+    <div class="text-[22px] md:text-[26px] font-extrabold mt-1 num ${accent||''}">${val}</div>
+    <div class="text-[12px] text-ink-3 mt-0.5">${sub}</div></div>`;
+  return `
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+    ${kpi('이번 달 수납', KRWk(s.collected), monthLabel(MONTH)+' 입금', 'text-brand-600')}
+    ${kpi('미납 금액', KRWk(s.overdue), `미납 ${overdueList.length}건`, s.overdue>0?'text-rose-600':'')}
+    ${kpi('수납률', s.rate+'%', `청구 ${KRWk(s.billed)}`, '')}
+    ${kpi('입주율', s.occRate+'%', `${s.occupied}/${s.total}호 입주`, '')}
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mt-4">
+    <div class="card p-4 md:p-5">
+      <div class="flex items-center justify-between mb-3"><h3 class="font-bold">월별 수입 추세</h3><span class="text-[12px] text-ink-3">최근 6개월</span></div>
+      <div style="height:220px"><canvas id="chTrend"></canvas></div>
+    </div>
+    <div class="card p-4 md:p-5">
+      <div class="flex items-center justify-between mb-3"><h3 class="font-bold">이번 달 수납 구성</h3><span class="text-[12px] text-ink-3">${monthLabel(MONTH)}</span></div>
+      <div style="height:220px"><canvas id="chDonut"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mt-4">
+    <div class="card p-4 md:p-5">
+      <div class="flex items-center justify-between mb-3"><h3 class="font-bold">미납 알림</h3>
+        ${overdueList.length?`<span class="badge bg-rose-50 text-rose-600">${overdueList.length}건</span>`:`<span class="badge bg-emerald-50 text-emerald-600">완납</span>`}</div>
+      ${overdueList.length? overdueList.map(c=>{
+        const t=tenantById(c.tenant), u=unitById(c.unit);
+        const od = Math.max(0, Math.round((new Date('2026-06-16')-new Date(c.due))/86400000));
+        return `<div class="flex items-center justify-between py-2.5 border-b border-surface-line last:border-0">
+          <div><div class="font-semibold text-[14px]">${u?.name||'-'} · ${t?.name||'-'}</div>
+            <div class="text-[12px] text-ink-3">납기 ${fmtDate(c.due)} · ${od>0?`<span class="text-rose-600">${od}일 연체</span>`:'기한 임박'}</div></div>
+          <div class="text-right"><div class="font-bold num text-rose-600">${KRW(chargeTotal(c))}</div>
+            <button data-remind="${c.id}" class="press text-[12px] mt-1 px-2.5 py-1 rounded-lg bg-brand-50 text-brand-700 font-semibold">독촉 발송</button></div>
+        </div>`;
+      }).join('') : `<div class="text-ink-2 text-sm py-6 text-center">미납 건이 없어요. 모두 수납됐어요. 👏</div>`}
+    </div>
+    <div class="card p-4 md:p-5">
+      <div class="flex items-center justify-between mb-3"><h3 class="font-bold">처리할 하자보수</h3>
+        <span class="badge bg-amber-50 text-amber-700">${s.openRepairs}건</span></div>
+      ${S.repairs.filter(r=>r.status!=='완료').map(r=>{
+        const u=unitById(r.unit);
+        const pc = r.priority==='긴급'?'bg-rose-50 text-rose-600':r.priority==='높음'?'bg-amber-50 text-amber-700':'bg-surface-sub text-ink-2';
+        return `<div class="flex items-center justify-between py-2.5 border-b border-surface-line last:border-0">
+          <div><div class="font-semibold text-[14px]">${r.title}</div><div class="text-[12px] text-ink-3">${u?.name||'-'} · ${fmtDate(r.created)}</div></div>
+          <span class="badge ${pc}">${r.priority}</span></div>`;
+      }).join('') || `<div class="text-ink-2 text-sm py-6 text-center">대기 중인 요청이 없어요.</div>`}
+      <button data-view="repair" class="press w-full mt-3 h-10 rounded-xl bg-surface-sub font-semibold text-sm">하자보수 전체 보기</button>
+    </div>
+  </div>`;
+}
+
+let trendChart, donutChart;
+function drawDashCharts(){
+  const s=summary();
+  const hist=[...S.history, { month:MONTH, collected:s.collected }];
+  const ctx1=document.getElementById('chTrend'); if(!ctx1) return;
+  trendChart?.destroy?.();
+  trendChart=new Chart(ctx1,{ type:'line', data:{
+    labels:hist.map(h=>(+h.month.split('-')[1])+'월'),
+    datasets:[{ data:hist.map(h=>h.collected), borderColor:'#1f6fd6', backgroundColor:'rgba(31,111,214,.12)',
+      fill:true, tension:.35, pointRadius:3, pointBackgroundColor:'#1f6fd6', borderWidth:2 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false},
+      tooltip:{ callbacks:{ label:c=>KRW(c.parsed.y) } } },
+      scales:{ y:{ ticks:{ callback:v=>KRWk(v), font:{size:11} }, grid:{color:'#eef1f5'} }, x:{ grid:{display:false}, ticks:{font:{size:11}} } } } });
+
+  const ctx2=document.getElementById('chDonut'); if(!ctx2) return;
+  donutChart?.destroy?.();
+  donutChart=new Chart(ctx2,{ type:'doughnut', data:{
+    labels:['수납완료','미납'], datasets:[{ data:[s.collected, s.overdue||0.0001],
+      backgroundColor:['#1f6fd6','#f1556c'], borderWidth:0 }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'66%',
+      plugins:{ legend:{ position:'bottom', labels:{ font:{size:12}, usePointStyle:true, padding:14 } },
+        tooltip:{ callbacks:{ label:c=>c.label+' '+KRW(c.parsed) } } } } });
+}
+
+/* ---------- 2. 호실·임차인 ---------- */
+function viewUnits(){
+  const rows=S.units.map(u=>{
+    const t=tenantOfUnit(u.id);
+    const tc= u.type==='공실'?'bg-surface-sub text-ink-3':u.type==='전세'?'bg-violet-50 text-violet-700':'bg-brand-50 text-brand-700';
+    return `<tr class="border-b border-surface-line hover:bg-surface-sub cursor-pointer" data-unit="${u.id}">
+      <td class="py-3 pl-4"><div class="font-semibold">${u.name}</div><div class="text-[12px] text-ink-3">${u.addr}</div></td>
+      <td><span class="badge ${tc}">${u.type}</span></td>
+      <td class="num text-right">${u.type==='전세'?'-':KRW(u.rent)}</td>
+      <td class="num text-right hidden sm:table-cell">${KRW(u.deposit)}</td>
+      <td class="pr-4">${ t? `<div class="text-[13px] font-medium">${t.name}</div><div class="text-[11px] text-ink-3">${t.phone}</div>` : `<span class="text-ink-3 text-[13px]">공실</span>` }</td>
+    </tr>`;
+  }).join('');
+  return `
+  <div class="flex flex-wrap gap-2 mb-3">
+    <button id="addUnit" class="press bg-brand-600 text-white rounded-xl px-4 h-10 font-semibold text-sm">＋ 호실 등록</button>
+    <button id="addTenant" class="press bg-white border border-surface-line rounded-xl px-4 h-10 font-semibold text-sm">＋ 임차인 배정</button>
+  </div>
+  <div class="card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm min-w-[560px]">
+        <thead><tr class="text-ink-2 text-[12px] bg-surface-sub">
+          <th class="py-2.5 pl-4 text-left">호실</th><th class="text-left">유형</th>
+          <th class="text-right">월세</th><th class="text-right hidden sm:table-cell">보증금</th><th class="text-left pl-4">임차인</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </div>
+  <p class="text-[12px] text-ink-3 mt-2">행을 누르면 호실 상세를 볼 수 있어요.</p>`;
+}
+
+/* ---------- 3. 월세 수납 ---------- */
+function viewRent(){
+  const cs=S.charges.filter(c=>c.month===MONTH).sort((a,b)=>a.due.localeCompare(b.due));
+  const s=summary();
+  const seg = (label,val,cls)=>`<div class="flex-1 text-center"><div class="text-[11px] text-ink-2">${label}</div><div class="font-extrabold num ${cls||''}">${val}</div></div>`;
+  const rows=cs.map(c=>{
+    const t=tenantById(c.tenant), u=unitById(c.unit);
+    const od = !c.paid && new Date('2026-06-16')>new Date(c.due);
+    return `<div class="flex items-center gap-3 p-3 md:p-4 border-b border-surface-line last:border-0">
+      <div class="w-10 h-10 rounded-xl grid place-items-center font-bold text-[13px] ${c.paid?'bg-emerald-50 text-emerald-600':od?'bg-rose-50 text-rose-600':'bg-amber-50 text-amber-700'}">${c.paid?'✓':od?'!':'…'}</div>
+      <div class="min-w-0 flex-1">
+        <div class="font-semibold truncate">${u?.name||'-'} · ${t?.name||'-'}</div>
+        <div class="text-[12px] text-ink-3">납기 ${fmtDate(c.due)}${c.paid?` · 입금 ${fmtDate(c.paidAt)}`:od?' · <span class="text-rose-600">연체</span>':''}</div>
+      </div>
+      <div class="text-right shrink-0">
+        <div class="font-bold num">${KRW(chargeTotal(c))}</div>
+        ${ c.paid
+          ? `<button data-receipt="${c.id}" class="press text-[12px] mt-1 px-2.5 py-1 rounded-lg bg-surface-sub font-semibold">영수증 PDF</button>`
+          : `<div class="flex gap-1.5 mt-1 justify-end">
+              <button data-remind="${c.id}" class="press text-[12px] px-2.5 py-1 rounded-lg bg-brand-50 text-brand-700 font-semibold">독촉</button>
+              <button data-pay="${c.id}" class="press text-[12px] px-2.5 py-1 rounded-lg bg-brand-600 text-white font-semibold">수납</button>
+            </div>` }
+      </div>
+    </div>`;
+  }).join('');
+  return `
+  <div class="card p-4 flex gap-2 mb-3">
+    ${seg('청구', KRWk(s.billed))}
+    <div class="w-px bg-surface-line"></div>
+    ${seg('수납', KRWk(s.collected),'text-brand-600')}
+    <div class="w-px bg-surface-line"></div>
+    ${seg('미납', KRWk(s.overdue), s.overdue>0?'text-rose-600':'')}
+    <div class="w-px bg-surface-line"></div>
+    ${seg('수납률', s.rate+'%')}
+  </div>
+  <div class="flex flex-wrap gap-2 mb-3">
+    <button id="genCharges" class="press bg-brand-600 text-white rounded-xl px-4 h-10 font-semibold text-sm">＋ 다음 달 청구 생성</button>
+    <button id="remindAll" class="press bg-white border border-surface-line rounded-xl px-4 h-10 font-semibold text-sm">미납 일괄 독촉</button>
+  </div>
+  <div class="card overflow-hidden"><div class="px-4 py-2.5 text-[12px] text-ink-2 bg-surface-sub font-semibold">${monthLabel(MONTH)} 청구 ${cs.length}건</div>${rows}</div>
+  ${S.notices.length?`<div class="card p-4 mt-3">
+    <h3 class="font-bold mb-2 text-sm">독촉 발송 로그 (mock)</h3>
+    <div class="space-y-1.5 text-[12px] text-ink-2 font-mono">
+      ${S.notices.slice(-6).reverse().map(n=>`<div>· [${n.at}] <b>${n.to}</b> → "${n.msg}"</div>`).join('')}
+    </div></div>`:''}`;
+}
+
+/* ---------- 4. 계약 ---------- */
+function viewContract(){
+  const rows=S.tenants.map(t=>{
+    const u=unitById(t.unit);
+    const end=addMonths(t.start,t.months);
+    const dleft=Math.round((new Date(end)-new Date('2026-06-16'))/86400000);
+    const renew = dleft<=60;
+    return `<div class="card p-4 mb-3">
+      <div class="flex items-start justify-between gap-3">
+        <div><div class="font-bold">${u?.name||'-'}</div>
+          <div class="text-[13px] text-ink-2 mt-0.5">${t.name} · ${u?.type||''} ${u?.type==='전세'?'':'/ 월세 '+KRW(u?.rent||0)}</div>
+          <div class="text-[12px] text-ink-3 mt-1">계약 ${fmtDate(t.start)} ~ ${fmtDate(end)} (${t.months}개월)</div></div>
+        ${ renew? `<span class="badge bg-amber-50 text-amber-700">갱신 ${dleft<=0?'만료':dleft+'일 전'}</span>` : `<span class="badge bg-emerald-50 text-emerald-600">유효</span>` }
+      </div>
+      <div class="flex gap-2 mt-3">
+        <button data-contract="${t.id}" class="press flex-1 h-10 rounded-xl bg-brand-600 text-white font-semibold text-sm">📄 계약서 PDF 생성</button>
+        ${ renew? `<button data-renew="${t.id}" class="press flex-1 h-10 rounded-xl bg-white border border-surface-line font-semibold text-sm">갱신 처리</button>`:'' }
+      </div>
+    </div>`;
+  }).join('');
+  return `<p class="text-[13px] text-ink-2 mb-3">계약 만료 60일 전이면 갱신 알림이 떠요. 계약서는 표준 양식으로 PDF가 만들어져요.</p>${rows}`;
+}
+function addMonths(iso,m){ const d=new Date(iso); d.setMonth(d.getMonth()+m); return d.toISOString().slice(0,10); }
+
+/* ---------- 5. 하자보수 ---------- */
+function viewRepair(){
+  const cards=S.repairs.slice().sort((a,b)=>b.created.localeCompare(a.created)).map(r=>{
+    const u=unitById(r.unit), t=tenantById(r.tenant);
+    const sc=r.status==='완료'?'bg-emerald-50 text-emerald-600':r.status==='진행'?'bg-brand-50 text-brand-700':'bg-amber-50 text-amber-700';
+    const pc=r.priority==='긴급'?'bg-rose-50 text-rose-600':r.priority==='높음'?'bg-amber-50 text-amber-700':'bg-surface-sub text-ink-2';
+    return `<div class="card p-4">
+      <div class="flex items-start justify-between gap-2">
+        <div class="min-w-0"><div class="font-bold truncate">${r.title}</div>
+          <div class="text-[12px] text-ink-3 mt-0.5">${u?.name||'-'} · ${t?.name||'-'} · ${fmtDate(r.created)}</div></div>
+        <div class="flex flex-col items-end gap-1 shrink-0"><span class="badge ${sc}">${r.status}</span><span class="badge ${pc}">${r.priority}</span></div>
+      </div>
+      ${r.note?`<p class="text-[13px] text-ink-2 mt-2">${r.note}</p>`:''}
+      ${r.photo?`<img src="${r.photo}" class="mt-2 rounded-xl w-full max-h-44 object-cover border border-surface-line">`:''}
+      <div class="flex gap-2 mt-3">
+        ${ r.status!=='완료'? `<button data-advance="${r.id}" class="press flex-1 h-9 rounded-lg bg-brand-600 text-white text-[13px] font-semibold">${r.status==='접수'?'진행 시작':'완료 처리'}</button>`:'' }
+        <button data-repairview="${r.id}" class="press ${r.status!=='완료'?'':'flex-1'} h-9 px-3 rounded-lg bg-surface-sub text-[13px] font-semibold">상세</button>
+      </div>
+    </div>`;
+  }).join('');
+  return `
+  <div class="flex justify-between items-center mb-3">
+    <div class="flex gap-2 text-[12px] text-ink-2">
+      <span class="badge bg-amber-50 text-amber-700">접수 ${S.repairs.filter(r=>r.status==='접수').length}</span>
+      <span class="badge bg-brand-50 text-brand-700">진행 ${S.repairs.filter(r=>r.status==='진행').length}</span>
+      <span class="badge bg-emerald-50 text-emerald-600">완료 ${S.repairs.filter(r=>r.status==='완료').length}</span>
+    </div>
+    <button id="addRepair" class="press bg-brand-600 text-white rounded-xl px-4 h-10 font-semibold text-sm">＋ 하자 접수</button>
+  </div>
+  <div class="grid sm:grid-cols-2 gap-3">${cards}</div>`;
+}
+
+/* ============================== 인터랙션 ============================== */
+function bindView(){
+  document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>go(b.dataset.view));
+  // 대시보드 독촉
+  document.querySelectorAll('[data-remind]').forEach(b=>b.onclick=()=>sendRemind(b.dataset.remind));
+  // 수납
+  document.querySelectorAll('[data-pay]').forEach(b=>b.onclick=()=>markPaid(b.dataset.pay));
+  document.querySelectorAll('[data-receipt]').forEach(b=>b.onclick=()=>makeReceiptPDF(b.dataset.receipt));
+  document.querySelectorAll('[data-unit]').forEach(b=>b.onclick=()=>unitDetail(b.dataset.unit));
+  document.querySelectorAll('[data-contract]').forEach(b=>b.onclick=()=>makeContractPDF(b.dataset.contract));
+  document.querySelectorAll('[data-renew]').forEach(b=>b.onclick=()=>renewContract(b.dataset.renew));
+  document.querySelectorAll('[data-advance]').forEach(b=>b.onclick=()=>advanceRepair(b.dataset.advance));
+  document.querySelectorAll('[data-repairview]').forEach(b=>b.onclick=()=>repairDetail(b.dataset.repairview));
+  const ge=document.getElementById('genCharges'); if(ge) ge.onclick=genNextMonth;
+  const ra=document.getElementById('remindAll'); if(ra) ra.onclick=remindAll;
+  const au=document.getElementById('addUnit'); if(au) au.onclick=()=>openUnitForm();
+  const at=document.getElementById('addTenant'); if(at) at.onclick=()=>openTenantForm();
+  const ar=document.getElementById('addRepair'); if(ar) ar.onclick=()=>openRepairForm();
+}
+
+/* ---- 수납 워크플로 ---- */
+function markPaid(id){
+  const c=S.charges.find(x=>x.id===id); if(!c) return;
+  c.paid=true; c.paidAt=todayISO(); persist();
+  toast('수납 처리했어요. 영수증을 만들 수 있어요.');
+  render();
+}
+function sendRemind(id){
+  const c=S.charges.find(x=>x.id===id); if(!c) return;
+  const t=tenantById(c.tenant), u=unitById(c.unit);
+  const msg=`[임대지기] ${u?.name} ${monthLabel(c.month)} 임대료 ${KRW(chargeTotal(c))} 미납 안내드립니다.`;
+  S.notices.push({ at:new Date().toLocaleString('ko-KR',{hour12:false}), to:`${t?.name}(${t?.phone})`, msg }); persist();
+  toast(`${t?.name} 님께 독촉 알림을 발송했어요(mock).`);
+  if(curView==='rent') render();
+}
+function remindAll(){
+  const un=S.charges.filter(c=>c.month===MONTH&&!c.paid);
+  if(!un.length){ toast('미납 건이 없어요.'); return; }
+  un.forEach(c=>sendRemind(c.id));
+  toast(`미납 ${un.length}건에 독촉을 일괄 발송했어요(mock).`);
+}
+function genNextMonth(){
+  const next=addMonths(MONTH+'-01',1).slice(0,7);
+  if(S.charges.some(c=>c.month===next)){ toast(`${monthLabel(next)} 청구는 이미 생성됐어요.`); return; }
+  S.tenants.forEach(t=>{
+    const u=unitById(t.unit); if(!u||u.type==='공실') return;
+    S.charges.push({ id:uid(), unit:u.id, tenant:t.id, month:next, rent:u.rent, mgmt:u.mgmt,
+      due:`${next}-${String(t.payday).padStart(2,'0')}`, paid:false, paidAt:null });
+  });
+  persist();
+  toast(`${monthLabel(next)} 청구서를 자동 생성했어요.`);
+}
+
+/* ---- 호실/임차인 폼 ---- */
+function openUnitForm(){
+  modal(`<h3 class="text-lg font-extrabold mb-4">호실 등록</h3>
+    <div class="space-y-3">
+      ${field('uName','호실 이름','예: 행복빌라 302호')}
+      ${field('uAddr','주소','예: 대구 남구 대명동')}
+      <div class="grid grid-cols-2 gap-3">
+        <label class="block"><span class="text-[12px] text-ink-2">유형</span>
+          <select id="uType" class="mt-1 w-full h-11 rounded-xl border border-surface-line px-3"><option>월세</option><option>전세</option><option>공실</option></select></label>
+        ${field('uRent','월세(원)','550000','number','')}
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        ${field('uDeposit','보증금(원)','10000000','number','')}
+        ${field('uMgmt','관리비(원)','70000','number','')}
+      </div>
+    </div>
+    ${modalActions('호실 등록')}`,()=>{
+    const name=val('uName'); if(!name){ toast('호실 이름을 입력해 주세요.'); return false; }
+    S.units.push({ id:uid(), name, addr:val('uAddr')||'-', type:val('uType'),
+      rent:+val('uRent')||0, deposit:+val('uDeposit')||0, mgmt:+val('uMgmt')||0 });
+    persist(); toast('호실을 등록했어요.'); go('units'); return true;
+  });
+}
+function openTenantForm(prefUnit){
+  const opts=S.units.map(u=>`<option value="${u.id}" ${u.id===prefUnit?'selected':''}>${u.name}</option>`).join('');
+  modal(`<h3 class="text-lg font-extrabold mb-4">임차인 배정</h3>
+    <div class="space-y-3">
+      <label class="block"><span class="text-[12px] text-ink-2">호실</span>
+        <select id="tUnit" class="mt-1 w-full h-11 rounded-xl border border-surface-line px-3">${opts}</select></label>
+      ${field('tName','임차인 이름','예: 홍길동')}
+      ${field('tPhone','연락처','010-0000-0000')}
+      <div class="grid grid-cols-2 gap-3">
+        ${field('tStart','계약 시작일',todayISO(),'date')}
+        ${field('tMonths','계약기간(개월)','24','number')}
+      </div>
+      ${field('tPayday','납부일(매월 N일)','5','number')}
+    </div>
+    ${modalActions('배정하기')}`,()=>{
+    const name=val('tName'); if(!name){ toast('이름을 입력해 주세요.'); return false; }
+    const unit=val('tUnit');
+    S.tenants.push({ id:uid(), unit, name, phone:val('tPhone')||'-',
+      start:val('tStart')||todayISO(), months:+val('tMonths')||24, payday:+val('tPayday')||5 });
+    const u=unitById(unit); if(u&&u.type==='공실') u.type='월세';
+    persist(); toast(`${name} 님을 배정했어요. 이제 월세를 청구할 수 있어요.`); go('units'); return true;
+  });
+}
+function unitDetail(id){
+  const u=unitById(id), t=tenantOfUnit(id);
+  const cs=S.charges.filter(c=>c.unit===id);
+  modal(`<h3 class="text-lg font-extrabold">${u.name}</h3>
+    <p class="text-[13px] text-ink-2 mb-4">${u.addr} · ${u.type}</p>
+    <div class="grid grid-cols-3 gap-2 mb-4">
+      <div class="card p-3 text-center"><div class="text-[11px] text-ink-2">월세</div><div class="font-bold num text-sm mt-0.5">${u.type==='전세'?'-':KRWk(u.rent)}</div></div>
+      <div class="card p-3 text-center"><div class="text-[11px] text-ink-2">보증금</div><div class="font-bold num text-sm mt-0.5">${KRWk(u.deposit)}</div></div>
+      <div class="card p-3 text-center"><div class="text-[11px] text-ink-2">관리비</div><div class="font-bold num text-sm mt-0.5">${KRWk(u.mgmt)}</div></div>
+    </div>
+    <div class="card p-3 mb-3"><div class="text-[12px] text-ink-2 mb-1">임차인</div>
+      ${t?`<div class="font-semibold">${t.name}</div><div class="text-[12px] text-ink-3">${t.phone} · 납부일 매월 ${t.payday}일</div>`:`<div class="text-ink-3 text-sm">공실 — 임차인을 배정해 주세요.</div>`}</div>
+    <div class="text-[12px] text-ink-2 mb-1">청구 이력</div>
+    <div class="space-y-1 mb-2">${cs.length?cs.map(c=>`<div class="flex justify-between text-[13px] py-1.5 border-b border-surface-line last:border-0"><span>${monthLabel(c.month)}</span><span class="num ${c.paid?'text-emerald-600':'text-rose-600'}">${KRW(chargeTotal(c))} ${c.paid?'✓':'미납'}</span></div>`).join(''):'<div class="text-ink-3 text-[13px] py-2">청구 이력이 없어요.</div>'}</div>
+    <div class="flex gap-2 mt-4">
+      ${t?'':`<button id="mdAssign" class="press flex-1 h-11 rounded-xl bg-brand-600 text-white font-semibold">임차인 배정</button>`}
+      <button id="mdClose2" class="press flex-1 h-11 rounded-xl bg-surface-sub font-semibold">닫기</button>
+    </div>`);
+  const as=document.getElementById('mdAssign'); if(as) as.onclick=()=>{ closeModal(); openTenantForm(id); };
+  document.getElementById('mdClose2').onclick=closeModal;
+}
+
+/* ---- 하자 폼(사진 업로드 실 동작) ---- */
+function openRepairForm(){
+  const opts=S.units.filter(u=>tenantOfUnit(u.id)).map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
+  modal(`<h3 class="text-lg font-extrabold mb-4">하자보수 접수</h3>
+    <div class="space-y-3">
+      <label class="block"><span class="text-[12px] text-ink-2">호실</span>
+        <select id="rUnit" class="mt-1 w-full h-11 rounded-xl border border-surface-line px-3">${opts}</select></label>
+      ${field('rTitle','증상','예: 화장실 천장 누수')}
+      <label class="block"><span class="text-[12px] text-ink-2">우선순위</span>
+        <select id="rPriority" class="mt-1 w-full h-11 rounded-xl border border-surface-line px-3"><option>낮음</option><option selected>높음</option><option>긴급</option></select></label>
+      <label class="block"><span class="text-[12px] text-ink-2">메모</span>
+        <textarea id="rNote" class="mt-1 w-full rounded-xl border border-surface-line px-3 py-2 h-20" placeholder="상세 상황"></textarea></label>
+      <div>
+        <span class="text-[12px] text-ink-2">증빙 사진</span>
+        <label class="mt-1 flex items-center justify-center h-28 rounded-xl border-2 border-dashed border-surface-line cursor-pointer bg-surface-sub press" id="rPhotoLabel">
+          <input type="file" id="rPhoto" accept="image/*" class="hidden"><span class="text-ink-3 text-sm">📷 사진 선택(업로드)</span></label>
+        <img id="rPreview" class="hidden mt-2 rounded-xl w-full max-h-40 object-cover border border-surface-line">
+      </div>
+    </div>
+    ${modalActions('접수하기')}`,()=>{
+    const title=val('rTitle'); if(!title){ toast('증상을 입력해 주세요.'); return false; }
+    const u=unitById(val('rUnit')); const t=tenantOfUnit(u.id);
+    S.repairs.push({ id:uid(), unit:u.id, tenant:t?.id, title, status:'접수', priority:val('rPriority'),
+      created:todayISO(), photo:window._repairPhoto||null, note:val('rNote')||'' });
+    window._repairPhoto=null; persist(); toast('하자보수를 접수했어요.'); go('repair'); return true;
+  });
+  // 실 사진 업로드 + 미리보기
+  window._repairPhoto=null;
+  document.getElementById('rPhoto').onchange=e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const fr=new FileReader();
+    fr.onload=ev=>{ window._repairPhoto=ev.target.result;
+      const img=document.getElementById('rPreview'); img.src=ev.target.result; img.classList.remove('hidden');
+      document.getElementById('rPhotoLabel').querySelector('span').textContent='✓ 사진 업로드됨 (다시 선택 가능)'; };
+    fr.readAsDataURL(f);
+  };
+}
+function advanceRepair(id){
+  const r=S.repairs.find(x=>x.id===id); if(!r) return;
+  r.status = r.status==='접수'?'진행':'완료'; persist();
+  toast(`상태를 '${r.status}'(으)로 변경했어요.`); render();
+}
+function repairDetail(id){
+  const r=S.repairs.find(x=>x.id===id); const u=unitById(r.unit), t=tenantById(r.tenant);
+  modal(`<h3 class="text-lg font-extrabold">${r.title}</h3>
+    <p class="text-[13px] text-ink-2 mb-3">${u?.name} · ${t?.name||'-'} · 접수 ${fmtDate(r.created)}</p>
+    <div class="flex gap-2 mb-3"><span class="badge bg-brand-50 text-brand-700">${r.status}</span><span class="badge bg-amber-50 text-amber-700">${r.priority}</span></div>
+    ${r.note?`<p class="text-[14px] mb-3">${r.note}</p>`:''}
+    ${r.photo?`<img src="${r.photo}" class="rounded-xl w-full mb-3 border border-surface-line">`:`<div class="text-ink-3 text-[13px] mb-3">첨부 사진 없음</div>`}
+    <button id="mdClose3" class="press w-full h-11 rounded-xl bg-surface-sub font-semibold">닫기</button>`);
+  document.getElementById('mdClose3').onclick=closeModal;
+}
+function renewContract(id){
+  const t=tenantById(id); if(!t) return;
+  t.start=todayISO(); t.months=24; persist();
+  toast(`${t.name} 님 계약을 24개월 갱신했어요.`); render();
+}
+
+/* ============================== PDF 생성(실 동작) ============================== */
+async function renderPDF(html, filename){
+  const stage=document.getElementById('pdfStage');
+  stage.innerHTML=`<div style="padding:40px 44px;font-family:Pretendard,'Malgun Gothic',sans-serif;color:#1a2230;width:760px;box-sizing:border-box">${html}</div>`;
+  await new Promise(r=>setTimeout(r,60));
+  const canvas=await html2canvas(stage.firstElementChild,{ scale:2, backgroundColor:'#ffffff', width:760 });
+  const { jsPDF }=window.jspdf;
+  const pdf=new jsPDF('p','mm','a4');
+  const w=210, h=canvas.height*w/canvas.width;
+  pdf.addImage(canvas.toDataURL('image/png'),'PNG',0,0,w,h);
+  pdf.save(filename);
+  stage.innerHTML='';
+}
+async function makeReceiptPDF(id){
+  const c=S.charges.find(x=>x.id===id); const t=tenantById(c.tenant), u=unitById(c.unit);
+  toast('영수증 PDF를 생성하고 있어요…');
+  const html=`
+    <div style="border-bottom:3px solid #1f6fd6;padding-bottom:16px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-end">
+      <div><div style="font-size:13px;color:#1f6fd6;font-weight:700">RENTAL JIGI</div>
+        <div style="font-size:28px;font-weight:800">임대료 영수증</div></div>
+      <div style="text-align:right;font-size:12px;color:#525a68">No. ${id.toUpperCase()}<br>발행일 ${todayISO()}</div></div>
+    <table style="width:100%;font-size:14px;border-collapse:collapse">
+      <tr><td style="padding:8px 0;color:#525a68;width:120px">호실</td><td style="font-weight:600">${u?.name}</td></tr>
+      <tr><td style="padding:8px 0;color:#525a68">임차인</td><td style="font-weight:600">${t?.name}</td></tr>
+      <tr><td style="padding:8px 0;color:#525a68">대상 월</td><td>${monthLabel(c.month)}</td></tr>
+      <tr><td style="padding:8px 0;color:#525a68">입금일</td><td>${c.paidAt||'-'}</td></tr>
+    </table>
+    <table style="width:100%;font-size:14px;border-collapse:collapse;margin-top:24px;border-top:1px solid #e7ebf1">
+      <tr><td style="padding:10px 0;color:#525a68">월 임대료</td><td style="text-align:right;font-weight:600">${KRW(c.rent)}</td></tr>
+      <tr><td style="padding:10px 0;color:#525a68;border-bottom:1px solid #e7ebf1">관리비</td><td style="text-align:right;font-weight:600;border-bottom:1px solid #e7ebf1">${KRW(c.mgmt)}</td></tr>
+      <tr><td style="padding:14px 0;font-weight:700;font-size:16px">합계 (수납완료)</td><td style="text-align:right;font-weight:800;font-size:18px;color:#1f6fd6">${KRW(chargeTotal(c))}</td></tr>
+    </table>
+    <div style="margin-top:40px;font-size:12px;color:#8a909c">위 금액을 정히 영수합니다. 본 영수증은 임대지기에서 자동 발행되었습니다.</div>
+    <div style="margin-top:32px;text-align:right;font-size:14px">임대인 <span style="font-weight:700">＿＿＿＿＿＿＿＿</span> (인)</div>`;
+  await renderPDF(html, `영수증_${u?.name}_${c.month}.pdf`);
+  toast('영수증 PDF를 내려받았어요.');
+}
+async function makeContractPDF(tid){
+  const t=tenantById(tid), u=unitById(t.unit); const end=addMonths(t.start,t.months);
+  toast('계약서 PDF를 생성하고 있어요…');
+  const html=`
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="font-size:13px;color:#1f6fd6;font-weight:700;letter-spacing:2px">${u?.type==='전세'?'전세':'월세'} 임대차계약서</div>
+      <div style="font-size:24px;font-weight:800;margin-top:6px">부동산 임대차 표준계약서</div></div>
+    <div style="font-size:13px;line-height:1.9;color:#1a2230">
+      <p><b>제1조 (목적물)</b> 임대인과 임차인은 아래 부동산에 관하여 다음과 같이 임대차계약을 체결한다.</p>
+      <table style="width:100%;font-size:13px;border-collapse:collapse;margin:10px 0 18px">
+        <tr><td style="padding:7px 0;color:#525a68;width:110px">소재지</td><td style="font-weight:600">${u?.addr}</td></tr>
+        <tr><td style="padding:7px 0;color:#525a68">목적물</td><td style="font-weight:600">${u?.name}</td></tr>
+        <tr><td style="padding:7px 0;color:#525a68">유형</td><td>${u?.type}</td></tr>
+      </table>
+      <p><b>제2조 (보증금 및 차임)</b></p>
+      <table style="width:100%;font-size:13px;border-collapse:collapse;margin:10px 0 18px">
+        <tr><td style="padding:7px 0;color:#525a68;width:110px">보증금</td><td style="font-weight:600">${KRW(u?.deposit)}</td></tr>
+        <tr><td style="padding:7px 0;color:#525a68">월 차임</td><td style="font-weight:600">${u?.type==='전세'?'없음':KRW(u?.rent)}</td></tr>
+        <tr><td style="padding:7px 0;color:#525a68">관리비</td><td>${KRW(u?.mgmt)}</td></tr>
+        <tr><td style="padding:7px 0;color:#525a68">납부일</td><td>매월 ${t.payday}일</td></tr>
+      </table>
+      <p><b>제3조 (계약기간)</b> ${fmtDate(t.start)} 부터 ${fmtDate(end)} 까지 (${t.months}개월)로 한다.</p>
+      <p style="margin-top:8px"><b>제4조 (수선·관리)</b> 임대인은 목적물의 주요 설비 하자에 대해 수선 의무를 부담하며, 임차인은 통상의 관리 의무를 진다.</p>
+      <p style="margin-top:8px"><b>제5조 (특약사항)</b> ＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿</p>
+    </div>
+    <table style="width:100%;font-size:13px;margin-top:36px;border-top:1px solid #e7ebf1;padding-top:16px">
+      <tr><td style="padding:10px 0;width:50%">임대인 성명 ＿＿＿＿＿＿ (인)</td><td style="padding:10px 0">임차인 성명 ${t.name} (인)</td></tr>
+      <tr><td style="padding:6px 0">연락처 ＿＿＿＿＿＿＿＿</td><td style="padding:6px 0">연락처 ${t.phone}</td></tr>
+    </table>
+    <div style="text-align:center;margin-top:24px;font-size:13px;color:#525a68">${todayISO()}</div>`;
+  await renderPDF(html, `임대차계약서_${u?.name}_${t.name}.pdf`);
+  toast('계약서 PDF를 내려받았어요.');
+}
+
+/* ============================== 모달/시트 ============================== */
+function field(id,label,ph,type='text'){
+  return `<label class="block"><span class="text-[12px] text-ink-2">${label}</span>
+    <input id="${id}" type="${type}" placeholder="${ph}" class="mt-1 w-full h-11 rounded-xl border border-surface-line px-3"></label>`;
+}
+function modalActions(submitLabel){
+  return `<div class="flex gap-2 mt-5">
+    <button id="mdCancel" class="press flex-1 h-12 rounded-xl bg-surface-sub font-semibold">취소</button>
+    <button id="mdSubmit" class="press flex-1 h-12 rounded-xl bg-brand-600 text-white font-semibold">${submitLabel}</button></div>`;
+}
+const val=id=>{ const e=document.getElementById(id); return e? (e.value||'').trim():''; };
+function modal(html, onSubmit){
+  document.getElementById('modalCard').innerHTML=html;
+  document.getElementById('modalWrap').classList.remove('hidden');
+  const c=document.getElementById('mdCancel'); if(c) c.onclick=closeModal;
+  const s=document.getElementById('mdSubmit'); if(s&&onSubmit) s.onclick=()=>{ const ok=onSubmit(); if(ok!==false) closeModal(); };
+}
+function closeModal(){ document.getElementById('modalWrap').classList.add('hidden'); }
+document.getElementById('modalDim').onclick=closeModal;
+
+/* 바텀시트(빠른 등록) */
+function openSheet(){
+  const w=document.getElementById('sheetWrap'), s=document.getElementById('sheet');
+  w.classList.remove('hidden'); requestAnimationFrame(()=>s.classList.remove('sheet-enter'));
+}
+function closeSheet(){
+  const w=document.getElementById('sheetWrap'), s=document.getElementById('sheet');
+  s.classList.add('sheet-enter'); setTimeout(()=>w.classList.add('hidden'),280);
+}
+document.getElementById('sheetClose').onclick=closeSheet;
+document.getElementById('sheetDim').onclick=closeSheet;
+document.getElementById('mAdd').onclick=openSheet;
+document.getElementById('dAdd').onclick=openSheet;
+document.querySelectorAll('[data-quick]').forEach(b=>b.onclick=()=>{
+  closeSheet();
+  setTimeout(()=>{ const k=b.dataset.quick;
+    if(k==='unit') openUnitForm(); else if(k==='tenant') openTenantForm();
+    else if(k==='charge'){ go('rent'); genNextMonth(); } else if(k==='repair') openRepairForm(); },300);
+});
+
+/* ============================== 부팅 ============================== */
+renderNav();
+go('dashboard');
+
+/* 데모 리셋(쿼리 ?reset) */
+if(location.search.includes('reset')){ S=seed(); persist(); go('dashboard'); }
+window.__rentalReset=()=>{ S=seed(); persist(); go('dashboard'); };
+</script>
+</body>
+</html>
