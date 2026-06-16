@@ -1,0 +1,2103 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>펫헬스북 v3 — 반려동물 토탈 헬스케어 플랫폼 (시리즈A 데모)</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  /* ============ 디자인 토큰 (Apple × Toss / 동적 브랜드 = 펫 친근 인디고-틸) ============ */
+  :root{
+    --brand:#2f6df0; --brand-deep:#1f53c4; --brand-soft:#eaf1ff;
+    --accent:#11b0a6; --accent-soft:#e1f7f4;
+    --warn:#e8862b; --warn-soft:#fdf0e1;
+    --danger:#e0474f; --danger-soft:#fdeced;
+    --purple:#7c5cf0; --purple-soft:#efeafe;
+    --ink:#14233d; --ink-2:#3f4f6b; --ink-3:#76839b;
+    --line:#e7ebf2; --surface:#ffffff; --surface-2:#f5f7fb; --bg:#eef2f8;
+    --radius:16px; --radius-sm:12px;
+    --shadow-float:0 12px 34px rgba(20,35,61,.16);
+    --shadow-card:0 1px 0 rgba(20,35,61,.04);
+    --tab-h:64px;
+    /* 역할 테마 (동적) */
+    --role:#2f6df0; --role-soft:#eaf1ff;
+  }
+  body[data-role="vet"]{ --role:#11b0a6; --role-soft:#e1f7f4; }
+  body[data-role="insurer"]{ --role:#7c5cf0; --role-soft:#efeafe; }
+  body[data-role="hospital"]{ --role:#e8862b; --role-soft:#fdf0e1; }
+  /* 언어 토글 */
+  .lang-tog{display:inline-flex;background:rgba(255,255,255,.1);border-radius:9px;padding:3px;gap:2px;margin:8px 0}
+  .lang-tog button{flex:1;height:30px;border-radius:7px;font-size:12px;font-weight:800;color:#a9bbdd}
+  .lang-tog button.active{background:#fff;color:var(--ink)}
+  .mtop .lang-tog{margin:0;background:var(--surface-2)}
+  .mtop .lang-tog button{color:var(--ink-3);padding:0 8px;height:28px}
+  .mtop .lang-tog button.active{background:var(--brand);color:#fff}
+  /* 위험 예측 바 */
+  .pred-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line)}
+  .pred-row:last-child{border-bottom:none}
+  .pred-row .pn{flex:1;font-size:13.5px;font-weight:700}
+  .pred-row .pb{flex:0 0 42%;height:9px;border-radius:6px;background:var(--surface-2);overflow:hidden}
+  .pred-row .pb > i{display:block;height:100%;border-radius:6px}
+  .pred-row .pv{flex:0 0 46px;text-align:right;font-weight:800;font-size:13.5px}
+  /* 약물 상호작용 경고 */
+  .ddi{display:flex;gap:10px;padding:12px;border-radius:12px;margin-bottom:8px;font-size:13.5px}
+  .ddi.major{background:var(--danger-soft);color:#b22e36} .ddi.moderate{background:var(--warn-soft);color:#a85e15}
+  .ddi.minor{background:var(--surface-2);color:var(--ink-2)} .ddi .di{font-size:18px}
+  /* 단계 배지 */
+  .ver-pill{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:999px;font-size:10px;font-weight:800;background:var(--purple-soft);color:#5b3fc4;margin-left:6px;vertical-align:middle}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{max-width:100%;overflow-x:hidden}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Segoe UI",Roboto,sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(1100px 520px at 88% -8%, rgba(47,109,240,.10), transparent 60%),
+      radial-gradient(900px 460px at 4% 4%, rgba(17,176,166,.09), transparent 60%),
+      var(--bg);
+    -webkit-font-smoothing:antialiased; line-height:1.5;
+  }
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  input,select,textarea{font-family:inherit;font-size:16px}
+  .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+  /* ============ 셸: 사이드바 + 본문 (PC) ============ */
+  .app{display:flex;min-height:100vh}
+  .sidebar{
+    width:256px;flex:0 0 256px;
+    background:linear-gradient(180deg,#142a52 0%, #122348 100%);
+    color:#dbe4f4;padding:22px 16px;display:flex;flex-direction:column;gap:4px;
+    position:sticky;top:0;height:100vh;overflow:auto;
+  }
+  .brand{display:flex;align-items:center;gap:10px;padding:6px 8px 14px}
+  .brand .logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--brand),var(--accent));
+    display:grid;place-items:center;font-size:20px;box-shadow:0 6px 16px rgba(47,109,240,.4)}
+  .brand b{font-size:18px;color:#fff;letter-spacing:-.3px}
+  .brand small{display:block;color:#9fb2d6;font-size:11px;font-weight:600}
+  .nav-sec{font-size:11px;font-weight:800;color:#7e91ba;letter-spacing:.4px;padding:12px 10px 4px;text-transform:uppercase}
+  .nav-btn{display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:11px;
+    color:#c4d2ec;font-size:14.5px;font-weight:600;text-align:left;width:100%;transition:.16s}
+  .nav-btn .ic{font-size:18px;width:21px;text-align:center}
+  .nav-btn:hover{background:rgba(255,255,255,.07);color:#fff}
+  .nav-btn.active{background:rgba(255,255,255,.14);color:#fff}
+  .nav-btn .badge{margin-left:auto;background:var(--warn);color:#fff;font-size:11px;font-weight:800;
+    min-width:20px;height:20px;border-radius:10px;display:grid;place-items:center;padding:0 6px}
+  .sidebar .spacer{flex:1;min-height:8px}
+  .side-foot{font-size:11px;color:#8a9cc0;padding:8px;line-height:1.5}
+
+  /* 역할 스위처 (사이드바) */
+  .role-switch{display:flex;gap:4px;background:rgba(255,255,255,.08);border-radius:12px;padding:4px;margin:4px 0 8px}
+  .role-switch button{flex:1;height:38px;border-radius:9px;font-size:12px;font-weight:800;color:#a9bbdd;display:flex;flex-direction:column;gap:1px;align-items:center;justify-content:center}
+  .role-switch button .re{font-size:15px}
+  .role-switch button.active{background:#fff;color:var(--ink)}
+
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .content{padding:26px 32px 56px;max-width:1120px;width:100%;margin:0 auto}
+  .page-head{margin-bottom:20px}
+  .page-head h1{font-size:25px;font-weight:800;letter-spacing:-.5px}
+  .page-head p{color:var(--ink-3);font-size:14px;margin-top:4px}
+  .role-banner{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 12px;border-radius:999px;
+    font-size:12.5px;font-weight:800;background:var(--role-soft);color:var(--role);margin-bottom:12px}
+
+  /* ============ 공통 컴포넌트 ============ */
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-card)}
+  .pad{padding:20px}
+  .grid{display:grid;gap:16px}
+  .kpis{grid-template-columns:repeat(4,1fr)}
+  .kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+  .kpi .lbl{font-size:13px;color:var(--ink-3);font-weight:600}
+  .kpi .val{font-size:30px;font-weight:800;letter-spacing:-1px;margin-top:6px}
+  .kpi .val small{font-size:14px;font-weight:700;color:var(--ink-3)}
+  .kpi.accent .val{color:var(--accent)} .kpi.warn .val{color:var(--warn)}
+  .kpi.danger .val{color:var(--danger)} .kpi.purple .val{color:var(--purple)}
+  .kpi.role .val{color:var(--role)}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    height:48px;padding:0 20px;border-radius:12px;font-size:15px;font-weight:700;
+    background:var(--surface-2);color:var(--ink);transition:transform .08s,background .16s;border:1px solid var(--line)}
+  .btn:active{transform:scale(.97)}
+  .btn:focus-visible{outline:3px solid rgba(47,109,240,.5);outline-offset:2px}
+  .btn.primary{background:var(--brand);color:#fff;border-color:transparent;box-shadow:0 6px 16px rgba(47,109,240,.28)}
+  .btn.primary:hover{background:var(--brand-deep)}
+  .btn.role{background:var(--role);color:#fff;border-color:transparent}
+  .btn.accent{background:var(--accent);color:#fff;border-color:transparent}
+  .btn.ghost{background:transparent;border-color:var(--line)}
+  .btn.block{width:100%;height:52px}
+  .btn:disabled{opacity:.35;cursor:not-allowed}
+  .btn.sm{height:38px;padding:0 13px;font-size:13px;border-radius:10px}
+  .btn.xs{height:32px;padding:0 11px;font-size:12.5px;border-radius:9px}
+
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:13px;font-weight:700;color:var(--ink-2);margin-bottom:6px}
+  .field input,.field select,.field textarea{
+    width:100%;height:48px;border:1px solid var(--line);border-radius:12px;padding:0 14px;
+    background:var(--surface);color:var(--ink);transition:.16s}
+  .field textarea{height:auto;min-height:84px;padding:12px 14px;resize:vertical}
+  .field input:focus,.field select:focus,.field textarea:focus{
+    outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(47,109,240,.16)}
+  .field .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .field .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+
+  .chip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:999px;font-size:12.5px;font-weight:700}
+  .chip.due{background:var(--warn-soft);color:#a85e15}
+  .chip.over{background:var(--danger-soft);color:#b22e36}
+  .chip.ok{background:var(--accent-soft);color:#0a7a72}
+  .chip.dog{background:#eef2ff;color:#3a4cc0}
+  .chip.cat{background:#fdeef6;color:#b33a86}
+  .chip.purple{background:var(--purple-soft);color:#5b3fc4}
+  .chip.brand{background:var(--brand-soft);color:var(--brand-deep)}
+  .chip.gray{background:var(--surface-2);color:var(--ink-3)}
+
+  .seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px;flex-wrap:wrap}
+  .seg button{height:38px;padding:0 16px;border-radius:9px;font-size:14px;font-weight:700;color:var(--ink-3)}
+  .seg button.active{background:var(--surface);color:var(--brand);box-shadow:0 1px 4px rgba(20,35,61,.12)}
+
+  .pet-card{display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--line);
+    border-radius:14px;background:var(--surface);cursor:pointer;transition:.16s}
+  .pet-card:hover{border-color:var(--brand);box-shadow:0 4px 14px rgba(20,35,61,.08)}
+  .pet-card.sel{border-color:var(--brand);background:var(--brand-soft)}
+  .avatar{width:54px;height:54px;border-radius:14px;object-fit:cover;background:var(--surface-2);
+    display:grid;place-items:center;font-size:26px;flex:0 0 54px}
+  .pet-card .meta b{font-size:16px}
+  .pet-card .meta span{display:block;font-size:12.5px;color:var(--ink-3)}
+
+  /* 타임라인 */
+  .timeline{position:relative;padding-left:26px}
+  .timeline::before{content:"";position:absolute;left:8px;top:6px;bottom:6px;width:2px;background:var(--line)}
+  .tl-item{position:relative;padding:0 0 18px 8px}
+  .tl-item::before{content:"";position:absolute;left:-22px;top:4px;width:14px;height:14px;border-radius:50%;
+    background:#fff;border:3px solid var(--brand)}
+  .tl-item.weight::before{border-color:var(--accent)}
+  .tl-item.symptom::before{border-color:var(--warn)}
+  .tl-item.visit::before{border-color:var(--brand)}
+  .tl-item.med::before{border-color:#8b5cf6}
+  .tl-date{font-size:12px;color:var(--ink-3);font-weight:700}
+  .tl-body{font-size:14.5px;margin-top:2px}
+  .tl-body b{font-weight:700}
+
+  .sched-row{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--line);
+    border-radius:14px;margin-bottom:10px;background:var(--surface)}
+  .sched-row .ic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-size:21px;flex:0 0 42px}
+  .sched-row .ic.vac{background:var(--accent-soft)}
+  .sched-row .ic.med{background:#f1ecfe}
+  .sched-row .ic.parasite{background:var(--brand-soft)}
+  .sched-row .ic.clinic{background:var(--brand-soft)}
+  .sched-row .grow{flex:1;min-width:0}
+  .sched-row .grow b{font-size:15px}
+  .sched-row .grow span{display:block;font-size:12.5px;color:var(--ink-3)}
+  .dday{font-size:13px;font-weight:800;white-space:nowrap}
+  .dday.over{color:var(--danger)} .dday.due{color:var(--warn)} .dday.ok{color:var(--accent)}
+
+  .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%) translateY(20px);
+    background:rgba(20,35,61,.94);color:#fff;padding:13px 20px;border-radius:14px;font-weight:700;font-size:14px;
+    box-shadow:var(--shadow-float);opacity:0;pointer-events:none;transition:.28s;z-index:200;max-width:90vw;text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  .empty{text-align:center;padding:34px 20px;color:var(--ink-3)}
+  .empty .em{font-size:40px}
+  .sec-title{font-size:16px;font-weight:800;margin:0 0 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .muted{color:var(--ink-3);font-size:13px}
+
+  /* 모달/바텀시트 */
+  .scrim{position:fixed;inset:0;background:rgba(20,35,61,.34);backdrop-filter:blur(3px);
+    opacity:0;pointer-events:none;transition:.22s;z-index:150}
+  .scrim.show{opacity:1;pointer-events:auto}
+  .sheet{position:fixed;left:50%;top:50%;transform:translate(-50%,-46%) scale(.97);
+    width:min(580px,92vw);max-height:88vh;overflow:auto;background:var(--surface);border-radius:20px;
+    box-shadow:var(--shadow-float);opacity:0;pointer-events:none;transition:.24s;z-index:160;padding:24px}
+  .sheet.show{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+  .sheet h3{font-size:20px;font-weight:800;margin-bottom:4px}
+  .sheet .sub{color:var(--ink-3);font-size:13.5px;margin-bottom:18px}
+  .sheet .close{position:absolute;right:16px;top:16px;width:34px;height:34px;border-radius:10px;
+    background:var(--surface-2);font-size:18px;color:var(--ink-3)}
+
+  .chart-wrap{position:relative;height:240px;width:100%}
+  .chart-wrap.sm{height:200px}
+  .upload-prev{width:88px;height:88px;border-radius:16px;object-fit:cover;border:1px solid var(--line);
+    background:var(--surface-2);display:grid;place-items:center;font-size:34px;color:var(--ink-3)}
+
+  /* 데이터 테이블 (수의사/보험사) */
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table.dt{width:100%;border-collapse:collapse;min-width:560px}
+  table.dt th{font-size:12px;font-weight:800;color:var(--ink-3);text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+  table.dt td{font-size:13.5px;padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+  table.dt tr:hover td{background:var(--surface-2)}
+  table.dt tr.click{cursor:pointer}
+
+  /* 스코어 게이지 */
+  .gauge{display:flex;align-items:center;gap:16px}
+  .ring{--p:0;--c:var(--accent);width:96px;height:96px;border-radius:50%;flex:0 0 96px;
+    background:conic-gradient(var(--c) calc(var(--p)*1%), var(--surface-2) 0);
+    display:grid;place-items:center;position:relative}
+  .ring::before{content:"";position:absolute;inset:9px;border-radius:50%;background:var(--surface)}
+  .ring b{position:relative;font-size:24px;font-weight:800}
+  .ring b small{font-size:12px;color:var(--ink-3);font-weight:700}
+
+  .stat-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px dashed var(--line);font-size:13.5px}
+  .stat-row:last-child{border-bottom:none}
+  .stat-row b{font-weight:800}
+  .bar{height:8px;border-radius:6px;background:var(--surface-2);overflow:hidden;margin-top:5px}
+  .bar > i{display:block;height:100%;border-radius:6px;background:var(--brand)}
+
+  .pill-state{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:800}
+  .pill-state.draft{background:var(--surface-2);color:var(--ink-3)}
+  .pill-state.submitted{background:var(--brand-soft);color:var(--brand-deep)}
+  .pill-state.review{background:var(--warn-soft);color:#a85e15}
+  .pill-state.approved{background:var(--accent-soft);color:#0a7a72}
+  .pill-state.rejected{background:var(--danger-soft);color:#b22e36}
+
+  .log-line{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--ink-2);
+    padding:7px 10px;border-bottom:1px solid var(--line);white-space:pre-wrap;word-break:break-all}
+  .log-line .t{color:var(--ink-3)} .log-line .ok{color:#0a7a72;font-weight:700}
+
+  .notif{display:flex;gap:12px;padding:13px;border:1px solid var(--line);border-radius:13px;margin-bottom:9px;background:var(--surface)}
+  .notif .ni{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-size:18px;flex:0 0 38px;background:var(--brand-soft)}
+  .notif.unread{border-color:var(--brand)}
+  .notif b{font-size:14px} .notif .sub{font-size:12.5px;color:var(--ink-3)}
+  .notif time{font-size:11px;color:var(--ink-3);margin-left:auto;white-space:nowrap}
+
+  /* ============ 모바일 셸 ============ */
+  .mtop{display:none}
+  .bottomnav{display:none}
+  .drawer{display:none}
+  @media (max-width:767px){
+    .sidebar{display:none}
+    .content{padding:14px 16px calc(var(--tab-h) + 26px);max-width:100%}
+    .mtop{display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:120;
+      padding:11px 14px;background:rgba(255,255,255,.82);backdrop-filter:saturate(180%) blur(18px);
+      border-bottom:1px solid var(--line)}
+    .mtop .hb{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-size:19px;background:var(--surface-2);flex:0 0 38px}
+    .mtop .logo{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--brand),var(--accent));
+      display:grid;place-items:center;font-size:16px;flex:0 0 30px}
+    .mtop b{font-size:15px;letter-spacing:-.3px}
+    .mtop .mt-title{margin-left:2px;font-weight:800}
+    .mtop .mrole{margin-left:auto;font-size:11px;font-weight:800;color:var(--role);background:var(--role-soft);padding:5px 10px;border-radius:999px}
+    .page-head h1{font-size:20px}
+    .kpis{grid-template-columns:1fr 1fr}
+    .kpi .val{font-size:24px}
+    .field .row2,.field .row3{grid-template-columns:1fr}
+    .bottomnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:130;height:var(--tab-h);
+      background:rgba(255,255,255,.92);backdrop-filter:saturate(180%) blur(20px);border-top:1px solid var(--line)}
+    .bottomnav button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+      min-height:var(--tab-h);font-size:10.5px;font-weight:700;color:var(--ink-3);position:relative;padding:0 2px}
+    .bottomnav button .ic{font-size:20px}
+    .bottomnav button.active{color:var(--brand)}
+    .bottomnav button .badge{position:absolute;top:7px;right:calc(50% - 20px);background:var(--warn);color:#fff;
+      font-size:10px;font-weight:800;min-width:16px;height:16px;border-radius:9px;display:grid;place-items:center;padding:0 4px}
+    .sheet{top:auto;bottom:0;left:0;transform:translateY(18px);width:100%;max-width:100%;
+      border-radius:22px 22px 0 0;max-height:90vh}
+    .sheet.show{transform:translateY(0)}
+    .toast{bottom:calc(var(--tab-h) + 18px)}
+    .btn.row-grow{flex:1}
+    /* 오프캔버스 드로어 (전체 메뉴·역할 전환) */
+    .drawer{display:block;position:fixed;inset-block:0;left:0;width:82vw;max-width:300px;z-index:170;
+      background:linear-gradient(180deg,#142a52,#122348);color:#dbe4f4;padding:20px 16px;
+      transform:translateX(-100%);transition:transform .25s;overflow:auto}
+    body.drawer-open .drawer{transform:translateX(0)}
+    .drawer-scrim{position:fixed;inset:0;background:rgba(20,35,61,.45);z-index:165;opacity:0;pointer-events:none;transition:.22s}
+    body.drawer-open .drawer-scrim{opacity:1;pointer-events:auto}
+    table.dt{min-width:520px}
+    .gauge{flex-direction:column;align-items:flex-start;gap:12px}
+  }
+  @media (max-width:767px){
+    #homeGrid,#clinicGrid,#repGrid,#vetGrid,#insGrid,#predGrid,#hospGrid,.two-col{grid-template-columns:1fr!important}
+    .grid > *{min-width:0}
+    .tbl-wrap{min-width:0;max-width:100%}
+    .pred-row{flex-wrap:wrap}
+    .pred-row .pb{flex:1 1 100%;order:3}
+    .pets-stats{grid-template-columns:1fr 1fr!important}
+  }
+  @media (min-width:768px){ .mobile-only{display:none!important} }
+</style>
+</head>
+<body data-role="guardian">
+
+<!-- 모바일 오프캔버스 드로어 (전체 메뉴 + 역할 전환) -->
+<div class="drawer-scrim" id="drawerScrim"></div>
+<aside class="drawer" id="drawer"></aside>
+
+<div class="app">
+  <!-- 사이드바 (PC) -->
+  <aside class="sidebar" id="sidebar"></aside>
+
+  <div class="main">
+    <!-- 모바일 상단바 -->
+    <header class="mtop">
+      <button class="hb" id="hbBtn" aria-label="메뉴">☰</button>
+      <div class="logo">🐾</div>
+      <b>펫헬스북</b>
+      <span class="mt-title" id="mtTitle"></span>
+      <span class="lang-tog" id="mLangTog" style="margin-left:auto"></span>
+      <span class="mrole" id="mtRole">보호자</span>
+    </header>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<!-- 모바일 바텀탭 -->
+<nav class="bottomnav" id="bottomnav"></nav>
+
+<!-- 시트/모달 마운트 -->
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================================
+   펫헬스북 v3 — 멀티 역할 헬스케어 플랫폼 (오프라인 자체완결 SPA · 시리즈A 데모)
+   외부 의존: Chart.js / jsPDF CDN. 외부 서버·API 키 0 (모든 통합 mock).
+   역할: 보호자(guardian) / 수의사(vet) / 보험사(insurer) / 병원 admin(hospital)
+   알고리즘(v3 추가): 질병 위험 예측(로지스틱 회귀) / 성장곡선 percentile / 약물 상호작용 체크
+            (v2 유지: 체중 추세·이상치 / BCS·권장사료량 / 건강위험 스코어 / 견종 프로토콜)
+   통합(mock, 키0, v3 추가): EMR 연동 / 다보험사 청구 API / 웨어러블 OAuth / 캘린더 동기화
+            (v2 유지: 알림톡 발송로그·양방향 / 보험청구 상태추적 / CSV·JSON)
+   i18n: 한국어/English 토글
+   ========================================================================= */
+const $ = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+const STORE_KEY = "pethealthbook.v3";
+
+/* =========================================================================
+   i18n — 한국어/English 토글 (UI 셸·핵심 라벨)
+   ========================================================================= */
+const I18N = {
+  ko:{
+    brandSub:"토탈 헬스케어 플랫폼 v3", roleSwitch:"역할 전환",
+    guardian:"보호자", vet:"수의사", insurer:"보험사", hospital:"병원 admin",
+    nav_care:"케어", nav_insight:"인사이트", nav_link:"연계", nav_clinic:"진료", nav_risk:"리스크", nav_admin:"운영",
+    home:"홈 대시보드", pets:"반려동물", records:"건강기록", schedule:"접종·투약·구충",
+    report:"건강 리포트", predict:"질병 위험 예측", clinic:"병원 예약", claims:"보험청구",
+    integrations:"데이터·연동", notifs:"알림센터",
+    vetdash:"진료 대시보드", vetpatients:"환자 차트", vetwrite:"진료기록 작성",
+    insdash:"청구 대시보드", insclaims:"청구 검토", insrisk:"리스크 분석",
+    hospdash:"병원 운영", hospsched:"예약·진료 캘린더",
+    add:"추가", save:"저장", submit:"제출", confirm:"확정", approve:"승인", reject:"반려",
+    risk:"위험", level_good:"양호", level_warn:"주의", level_caut:"경계", level_high:"위험",
+  },
+  en:{
+    brandSub:"Total Healthcare Platform v3", roleSwitch:"Switch Role",
+    guardian:"Guardian", vet:"Vet", insurer:"Insurer", hospital:"Hospital",
+    nav_care:"Care", nav_insight:"Insights", nav_link:"Integrations", nav_clinic:"Clinic", nav_risk:"Risk", nav_admin:"Operations",
+    home:"Home", pets:"Pets", records:"Health Records", schedule:"Vaccine·Med·Parasite",
+    report:"Health Report", predict:"Disease Risk Prediction", clinic:"Booking", claims:"Insurance Claims",
+    integrations:"Data·Sync", notifs:"Notifications",
+    vetdash:"Clinical Dashboard", vetpatients:"Patient Chart", vetwrite:"Write Record",
+    insdash:"Claims Dashboard", insclaims:"Claims Review", insrisk:"Risk Analysis",
+    hospdash:"Hospital Ops", hospsched:"Booking·Care Calendar",
+    add:"Add", save:"Save", submit:"Submit", confirm:"Confirm", approve:"Approve", reject:"Reject",
+    risk:"Risk", level_good:"Good", level_warn:"Watch", level_caut:"Caution", level_high:"High",
+  },
+};
+let LANG = "ko";
+const t = (k)=> (I18N[LANG] && I18N[LANG][k]) || (I18N.ko[k]||k);
+const todayISO = ()=> new Date().toISOString().slice(0,10);
+const fmtDate = (iso)=>{ if(!iso) return "-"; const d=new Date(iso+"T00:00:00"); return `${d.getMonth()+1}월 ${d.getDate()}일`; };
+const fmtFull = (iso)=>{ const d=new Date(iso+"T00:00:00"); return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`; };
+const daysBetween = (a,b)=> Math.round((new Date(b+"T00:00:00")-new Date(a+"T00:00:00"))/86400000);
+const addDays = (iso,n)=>{ const d=new Date(iso+"T00:00:00"); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); };
+const uid = ()=> Math.random().toString(36).slice(2,9);
+const won = (n)=> n.toLocaleString("ko-KR")+"원";
+const nowStamp = ()=>{ const d=new Date(); return `${fmtFull(todayISO())} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; };
+
+/* =========================================================================
+   알고리즘 1: 견종·묘종별 접종/구충 프로토콜 엔진
+   ========================================================================= */
+const BREED_PROTOCOL = {
+  dog:{
+    base:[
+      {key:"종합백신(DHPPL)", type:"vac", cycleDays:365, note:"성견 연 1회 추가접종"},
+      {key:"광견병", type:"vac", cycleDays:365, note:"법정 예방접종(연 1회)"},
+      {key:"심장사상충 예방", type:"med", cycleDays:30, note:"매월 1회 정기 투약"},
+      {key:"외부구충(진드기·벼룩)", type:"parasite", cycleDays:30, note:"월 1회 외부기생충"},
+      {key:"내부구충", type:"parasite", cycleDays:90, note:"분기 1회 내부기생충"},
+    ],
+    // 견종 위험 가중(슬개골·심장·관절 등) — 권장 검진 항목
+    breedRisk:{
+      "웰시코기":[{key:"척추(IVDD) 검진", type:"vac", cycleDays:365, note:"장요추 디스크 호발 견종 — 연 1회 정형 검진"}],
+      "포메라니안":[{key:"슬개골 탈구 검진", type:"vac", cycleDays:365, note:"소형견 슬개골 호발 — 연 1회"}],
+      "푸들":[{key:"슬개골 탈구 검진", type:"vac", cycleDays:365, note:"소형견 슬개골 호발 — 연 1회"}],
+      "닥스훈트":[{key:"척추(IVDD) 검진", type:"vac", cycleDays:365, note:"디스크 호발 — 연 1회"}],
+    },
+  },
+  cat:{
+    base:[
+      {key:"종합백신(FVRCP)", type:"vac", cycleDays:365, note:"성묘 연 1회 추가접종"},
+      {key:"광견병", type:"vac", cycleDays:365, note:"연 1회 권장"},
+      {key:"심장사상충 예방", type:"med", cycleDays:30, note:"매월 1회 정기 투약"},
+      {key:"내·외부구충", type:"parasite", cycleDays:30, note:"월 1회 기생충 예방"},
+    ],
+    breedRisk:{
+      "페르시안":[{key:"신장(PKD) 검진", type:"vac", cycleDays:180, note:"다낭성 신장질환 호발 — 6개월마다"}],
+      "스코티시폴드":[{key:"관절(골연골이형성) 검진", type:"vac", cycleDays:365, note:"연골 이형성 호발 — 연 1회"}],
+      "코리안숏헤어":[{key:"구강 스케일링 검진", type:"vac", cycleDays:365, note:"치주질환 예방 — 연 1회"}],
+    },
+  },
+};
+function protocolFor(species, breed){
+  const p = BREED_PROTOCOL[species] || BREED_PROTOCOL.dog;
+  const extra = (p.breedRisk && p.breedRisk[breed]) || [];
+  return { base:p.base, breedExtra:extra };
+}
+
+/* =========================================================================
+   알고리즘 2: BCS(체형) 평가 + 권장 사료량(RER/DER) 계산
+   ========================================================================= */
+const ACTIVITY_FACTOR = { neuter:1.6, intact:1.8, weightloss:1.0, senior:1.2, active:2.0 };
+function calcBCS(pet){
+  // 입력: 현재체중, 이상체중(품종/종 기반 추정), 활동계수
+  const weights = (pet.records||[]).filter(r=>r.type==="weight").sort((a,b)=>a.date.localeCompare(b.date));
+  const cur = weights.length ? weights[weights.length-1].kg : (pet.idealKg||null);
+  const ideal = pet.idealKg || (pet.species==="cat"?4.5:7.0);
+  let bcs=5, label="이상적", color="var(--accent)";
+  if(cur){
+    const ratio = cur/ideal;
+    if(ratio<0.85){ bcs=3; label="저체중"; color="var(--warn)"; }
+    else if(ratio<=1.10){ bcs=5; label="이상적"; color="var(--accent)"; }
+    else if(ratio<=1.25){ bcs=7; label="과체중"; color="var(--warn)"; }
+    else { bcs=9; label="비만"; color="var(--danger)"; }
+  }
+  // RER = 70 * (kg^0.75), DER = RER * 활동계수
+  const af = pet.activity || (bcs>=7?ACTIVITY_FACTOR.weightloss:(pet.species==="cat"?ACTIVITY_FACTOR.neuter:ACTIVITY_FACTOR.neuter));
+  const rer = cur ? 70*Math.pow(cur,0.75) : null;
+  const der = rer ? rer*af : null;
+  return { cur, ideal, bcs, label, color, rer, der, af };
+}
+
+/* =========================================================================
+   알고리즘 3: 체중 추세 + 이상치 탐지 (이동평균 + 표준편차 밴드)
+   ========================================================================= */
+function weightTrend(pet){
+  const w = (pet.records||[]).filter(r=>r.type==="weight").sort((a,b)=>a.date.localeCompare(b.date));
+  if(w.length<3) return { points:w, ma:[], upper:[], lower:[], outliers:[], slope:0, trendLabel:"데이터 부족" };
+  const vals = w.map(x=>x.kg);
+  const win = 3; // 이동평균 윈도
+  const ma=[], upper=[], lower=[], outliers=[];
+  for(let i=0;i<vals.length;i++){
+    const s=Math.max(0,i-win+1);
+    const seg=vals.slice(s,i+1);
+    const m=seg.reduce((a,b)=>a+b,0)/seg.length;
+    const sd=Math.sqrt(seg.reduce((a,b)=>a+(b-m)**2,0)/seg.length) || 0.05;
+    ma.push(+m.toFixed(2));
+    upper.push(+(m+2*sd).toFixed(2));
+    lower.push(+(m-2*sd).toFixed(2));
+    // 직전 윈도(현재값 제외) 기준 ±2σ 밴드를 벗어나면 이상치
+    if(i>=win){
+      const prev=vals.slice(Math.max(0,i-win),i);
+      const pm=prev.reduce((a,b)=>a+b,0)/prev.length;
+      const psd=Math.sqrt(prev.reduce((a,b)=>a+(b-pm)**2,0)/prev.length) || 0.05;
+      const band=Math.max(psd,0.12);
+      if(Math.abs(vals[i]-pm) > 2*band) outliers.push({date:w[i].date, kg:vals[i], expected:+pm.toFixed(2)});
+    }
+  }
+  // 선형 추세 기울기 (최소제곱, kg/30일)
+  const n=vals.length;
+  const xs=w.map((x,i)=>i);
+  const mx=xs.reduce((a,b)=>a+b,0)/n, my=vals.reduce((a,b)=>a+b,0)/n;
+  let num=0,den=0; xs.forEach((x,i)=>{ num+=(x-mx)*(vals[i]-my); den+=(x-mx)**2; });
+  const slopePer=den?num/den:0; // kg per sample
+  const slope=+(slopePer).toFixed(3);
+  let trendLabel = Math.abs(slope)<0.05 ? "안정적" : (slope>0?"증가 추세":"감소 추세");
+  return { points:w, ma, upper, lower, outliers, slope, trendLabel };
+}
+
+/* =========================================================================
+   알고리즘 4: 건강 위험 스코어 (증상·연령·체형·스케줄 지연 가중)
+   0~100, 높을수록 위험. 가중합 정규화.
+   ========================================================================= */
+function healthRisk(pet){
+  const factors=[];
+  let score=0;
+  // (a) 연령 가중
+  const ageY = pet.birth ? daysBetween(pet.birth,todayISO())/365 : 0;
+  let ageScore = ageY<1?5 : ageY<7?2 : ageY<11?14 : 24;
+  factors.push({name:"연령", detail:`${ageY.toFixed(1)}세`, w:ageScore, max:24});
+  score+=ageScore;
+  // (b) 체형(BCS)
+  const b=calcBCS(pet);
+  let bcsScore = b.bcs===5?2 : (b.bcs===3?12 : (b.bcs===7?14:24));
+  factors.push({name:"체형(BCS)", detail:`${b.bcs}/9 ${b.label}`, w:bcsScore, max:24});
+  score+=bcsScore;
+  // (c) 최근 증상 빈도(최근 90일)
+  const recentSym=(pet.records||[]).filter(r=>r.type==="symptom" && daysBetween(r.date,todayISO())<=90).length;
+  let symScore=Math.min(recentSym*8,24);
+  factors.push({name:"최근 증상(90일)", detail:`${recentSym}건`, w:symScore, max:24});
+  score+=symScore;
+  // (d) 스케줄 지연(지난 일정)
+  const overdue=schedItems(pet).filter(s=>s.dday<0).length;
+  let ovScore=Math.min(overdue*9,28);
+  factors.push({name:"예방 일정 지연", detail:`${overdue}건 지남`, w:ovScore, max:28});
+  score+=ovScore;
+  score=Math.min(Math.round(score),100);
+  let level = score<25?"양호" : score<50?"주의" : score<70?"경계":"위험";
+  let color = score<25?"var(--accent)" : score<50?"var(--brand)" : score<70?"var(--warn)":"var(--danger)";
+  // 권고 생성
+  const recs=[];
+  if(overdue>0) recs.push(`지난 예방 일정 ${overdue}건을 빠르게 처리하세요.`);
+  if(b.bcs>=7) recs.push(`과체중 — 권장 칼로리 ${b.der?Math.round(b.der):"-"}kcal/일로 식이 조절.`);
+  if(b.bcs===3) recs.push(`저체중 — 영양 보충 및 원인 진단 권장.`);
+  if(recentSym>=2) recs.push(`최근 증상 반복 — 수의사 진료를 권합니다.`);
+  if(ageY>=11) recs.push(`노령 — 6개월마다 정기 건강검진 권장.`);
+  if(!recs.length) recs.push("현재 특이 위험 없음 — 현행 케어 유지.");
+  return { score, level, color, factors, recs };
+}
+
+/* =========================================================================
+   알고리즘 5 (v3): 질병 위험 예측 — 로지스틱 회귀 (mock 학습 계수)
+   피처: 연령(정규화)·BCS 이탈·최근증상수·일정지연·견종 위험 가중 → 질환별 확률
+   sigmoid(w·x+b). 계수는 수의학 도메인 휴리스틱으로 사전 설정(데모용 mock).
+   ========================================================================= */
+const sigmoid = (z)=> 1/(1+Math.exp(-z));
+// 질환별 로지스틱 모델 (피처 가중 + 절편). 피처: [ageN, bcsDev, sym90, overdue, breedFlag]
+const DISEASE_MODELS = {
+  dog:[
+    {key:"비만 관련 대사질환", w:[0.9, 2.6, 0.2, 0.1, 0.3], b:-2.4, breed:[]},
+    {key:"치주질환", w:[1.8, 0.3, 0.4, 0.6, 0.2], b:-2.1, breed:[]},
+    {key:"슬개골·관절 질환", w:[1.1, 0.6, 0.3, 0.2, 1.9], b:-2.3, breed:["푸들","포메라니안"]},
+    {key:"심장질환", w:[2.4, 0.4, 0.5, 0.3, 0.2], b:-3.0, breed:[]},
+    {key:"척추(IVDD)", w:[1.0, 0.5, 0.5, 0.2, 2.2], b:-2.6, breed:["웰시코기","닥스훈트"]},
+  ],
+  cat:[
+    {key:"만성 신장질환(CKD)", w:[2.8, 0.4, 0.5, 0.4, 0.6], b:-2.9, breed:["페르시안"]},
+    {key:"비만 관련 당뇨", w:[1.0, 2.8, 0.3, 0.1, 0.2], b:-2.6, breed:[]},
+    {key:"치주·구강질환", w:[1.6, 0.3, 0.5, 0.7, 0.5], b:-2.0, breed:["코리안숏헤어"]},
+    {key:"하부요로계질환(FLUTD)", w:[0.8, 1.4, 0.6, 0.2, 0.2], b:-2.4, breed:[]},
+  ],
+};
+function diseasePredict(pet){
+  const ageY = pet.birth ? daysBetween(pet.birth,todayISO())/365 : 1;
+  const ageN = Math.min(ageY/15, 1);                       // 0~1 (15세 기준 정규화)
+  const b = calcBCS(pet);
+  const bcsDev = Math.abs(b.bcs-5)/4;                       // 0~1 이상체형 이탈
+  const sym90 = Math.min((pet.records||[]).filter(r=>r.type==="symptom"&&daysBetween(r.date,todayISO())<=90).length/3,1);
+  const overdue = Math.min(schedItems(pet).filter(s=>s.dday<0).length/3,1);
+  const models = DISEASE_MODELS[pet.species] || DISEASE_MODELS.dog;
+  return models.map(m=>{
+    const breedFlag = m.breed.includes(pet.breed) ? 1 : 0;
+    const x = [ageN, bcsDev, sym90, overdue, breedFlag];
+    const z = m.w.reduce((a,wi,i)=>a+wi*x[i],0) + m.b;
+    const p = sigmoid(z);
+    return { key:m.key, prob:+(p*100).toFixed(1), breedFlag, x };
+  }).sort((a,b)=>b.prob-a.prob);
+}
+
+/* =========================================================================
+   알고리즘 6 (v3): 성장곡선 percentile — 품종 표준 체중 대비 위치(LMS 근사)
+   품종 표준(성성숙 체중 평균·표준편차) 대비 z-score → percentile.
+   ========================================================================= */
+const BREED_STD = { // {adultKg 평균, sd}
+  "웰시코기":{m:12,sd:1.8}, "푸들":{m:4,sd:1.6}, "포메라니안":{m:2.6,sd:0.6}, "닥스훈트":{m:7,sd:1.5},
+  "코리안숏헤어":{m:4.4,sd:0.7}, "페르시안":{m:4.2,sd:0.8}, "스코티시폴드":{m:4.5,sd:0.8}, "믹스":{m:7,sd:2.5},
+};
+const erf = (x)=>{ const t=1/(1+0.3275911*Math.abs(x)); const y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x); return x>=0?y:-y; };
+const normCdf = (z)=> 0.5*(1+erf(z/Math.SQRT2));
+function growthCurve(pet){
+  const std = BREED_STD[pet.breed] || (pet.species==="cat"?BREED_STD["코리안숏헤어"]:BREED_STD["믹스"]);
+  const w = (pet.records||[]).filter(r=>r.type==="weight").sort((a,b)=>a.date.localeCompare(b.date));
+  const pts = w.map(x=>{
+    const ageMo = pet.birth ? Math.max(daysBetween(pet.birth,x.date)/30, 0) : 0;
+    // 성장 시그모이드: 표준 성체 대비 월령별 기대 비율
+    const matur = 1/(1+Math.exp(-(ageMo-6)/2.6));           // 성숙도 0~1
+    const expected = +(std.m*matur).toFixed(2);
+    const z = std.sd? (x.kg-(expected||std.m))/std.sd : 0;
+    const pct = Math.round(normCdf(z)*100);
+    return { date:x.date, ageMo:+ageMo.toFixed(1), kg:x.kg, expected, pct:Math.min(99,Math.max(1,pct)) };
+  });
+  const last = pts.length? pts[pts.length-1] : null;
+  let band = "표준";
+  if(last){ band = last.pct<15?"표준 미만(저체중 경향)" : last.pct>85?"표준 초과(과체중 경향)":"표준 범위"; }
+  return { std, pts, last, band };
+}
+
+/* =========================================================================
+   알고리즘 7 (v3): 약물 상호작용 체크 — 룰 기반 약물 DB
+   ========================================================================= */
+const DRUG_DB = {
+  "하트가드":{cls:"심장사상충(ivermectin)"}, "레볼루션":{cls:"구충(selamectin)"},
+  "넥스가드":{cls:"외부구충(afoxolaner)"}, "항생제(아목시실린)":{cls:"항생제"},
+  "스테로이드(프레드니솔론)":{cls:"코르티코스테로이드"}, "NSAIDs(멜록시캄)":{cls:"비스테로이드 소염제"},
+  "이뇨제(푸로세미드)":{cls:"이뇨제"}, "신경안정제(가바펜틴)":{cls:"진통·신경"},
+};
+const DDI_RULES = [
+  {a:"코르티코스테로이드", b:"비스테로이드 소염제", sev:"major", msg:"스테로이드 + NSAIDs 병용은 위장관 궤양·출혈 위험을 크게 높입니다. 병용 금기."},
+  {a:"이뇨제", b:"비스테로이드 소염제", sev:"moderate", msg:"이뇨제 + NSAIDs 병용 시 신장 부담 증가. 신기능 모니터링 필요."},
+  {a:"심장사상충(ivermectin)", b:"외부구충(afoxolaner)", sev:"minor", msg:"동시 투여 가능하나 투여 간격·체중 확인 권장."},
+  {a:"진통·신경", b:"코르티코스테로이드", sev:"moderate", msg:"진정 작용 가중 가능. 용량 조절 고려."},
+];
+function checkInteractions(drugNames){
+  const classes = drugNames.map(n=>(DRUG_DB[n]&&DRUG_DB[n].cls)||n);
+  const hits=[];
+  for(let i=0;i<classes.length;i++) for(let j=i+1;j<classes.length;j++){
+    DDI_RULES.forEach(r=>{
+      if((classes[i]===r.a&&classes[j]===r.b)||(classes[i]===r.b&&classes[j]===r.a))
+        hits.push({pair:[drugNames[i],drugNames[j]], sev:r.sev, msg:r.msg});
+    });
+  }
+  return hits;
+}
+
+/* =========================================================================
+   시드 데이터 (멀티펫·멀티보호자 시뮬레이션)
+   ========================================================================= */
+function seed(){
+  const t = todayISO();
+  const colaW = [
+    {d:addDays(t,-150),kg:5.8},{d:addDays(t,-120),kg:6.3},{d:addDays(t,-90),kg:6.9},
+    {d:addDays(t,-60),kg:7.4},{d:addDays(t,-30),kg:7.8},{d:addDays(t,-10),kg:8.1},{d:addDays(t,-2),kg:9.2},
+  ];
+  const namW = [
+    {d:addDays(t,-150),kg:4.2},{d:addDays(t,-110),kg:4.4},{d:addDays(t,-70),kg:4.5},
+    {d:addDays(t,-30),kg:4.6},{d:addDays(t,-5),kg:4.5},
+  ];
+  const cola = {
+    id:"pet_cola", name:"콜라", species:"dog", breed:"웰시코기", sex:"남(중성화)",
+    birth:addDays(t,-680), photo:null, emoji:"🐕", idealKg:8.0, activity:1.6, owner:"보호자A",
+    records:[
+      ...colaW.map(w=>({id:uid(),type:"weight",date:w.d,kg:w.kg,memo:""})),
+      {id:uid(),type:"visit",date:addDays(t,-40),title:"정기 건강검진",memo:"혈액검사 정상, 체중 관리 권고",vet:"김수의 원장",cost:88000},
+      {id:uid(),type:"symptom",date:addDays(t,-12),title:"가벼운 설사",memo:"하루 만에 호전, 사료 교체"},
+      {id:uid(),type:"symptom",date:addDays(t,-4),title:"식욕 저하",memo:"이틀째 사료 절반"},
+      {id:uid(),type:"med",date:addDays(t,-30),title:"심장사상충 예방약 투여",memo:"하트가드"},
+    ],
+    schedule:[
+      {id:uid(),cat:"종합백신(DHPPL)",type:"vac",cycleDays:365,last:addDays(t,-360),note:"성견 연 1회 추가접종"},
+      {id:uid(),cat:"광견병",type:"vac",cycleDays:365,last:addDays(t,-350),note:"법정 예방접종(연 1회)"},
+      {id:uid(),cat:"심장사상충 예방",type:"med",cycleDays:30,last:addDays(t,-30),note:"매월 1회 정기 투약"},
+      {id:uid(),cat:"외부구충(진드기·벼룩)",type:"parasite",cycleDays:30,last:addDays(t,-25),note:"월 1회 외부기생충"},
+      {id:uid(),cat:"척추(IVDD) 검진",type:"vac",cycleDays:365,last:addDays(t,-372),note:"장요추 디스크 호발 견종"},
+    ],
+    activityLog:[],
+    meds:["하트가드","NSAIDs(멜록시캄)","스테로이드(프레드니솔론)"], // v3 약물 상호작용 데모(의도적 충돌 포함)
+  };
+  const nam = {
+    id:"pet_nam", name:"나비", species:"cat", breed:"코리안숏헤어", sex:"여(중성화)",
+    birth:addDays(t,-1100), photo:null, emoji:"🐈", idealKg:4.4, activity:1.6, owner:"보호자A",
+    records:[
+      ...namW.map(w=>({id:uid(),type:"weight",date:w.d,kg:w.kg,memo:""})),
+      {id:uid(),type:"visit",date:addDays(t,-200),title:"치과 스케일링",memo:"치석 제거, 전신마취 회복 양호",vet:"박수의",cost:240000},
+      {id:uid(),type:"med",date:addDays(t,-15),title:"내·외부구충 투여",memo:"레볼루션"},
+    ],
+    schedule:[
+      {id:uid(),cat:"종합백신(FVRCP)",type:"vac",cycleDays:365,last:addDays(t,-380),note:"성묘 연 1회 추가접종"},
+      {id:uid(),cat:"심장사상충 예방",type:"med",cycleDays:30,last:addDays(t,-32),note:"매월 1회 정기 투약"},
+      {id:uid(),cat:"내·외부구충",type:"parasite",cycleDays:30,last:addDays(t,-15),note:"월 1회 기생충 예방"},
+      {id:uid(),cat:"구강 스케일링 검진",type:"vac",cycleDays:365,last:addDays(t,-210),note:"치주질환 예방"},
+    ],
+    activityLog:[],
+    meds:["레볼루션"],
+  };
+  const bori = {
+    id:"pet_bori", name:"보리", species:"dog", breed:"푸들", sex:"여", owner:"보호자B",
+    birth:addDays(t,-300), photo:null, emoji:"🐕", idealKg:3.2, activity:1.8,
+    records:[
+      {id:uid(),type:"weight",date:addDays(t,-60),kg:2.6},{id:uid(),type:"weight",date:addDays(t,-30),kg:2.9},
+      {id:uid(),type:"weight",date:addDays(t,-5),kg:3.1},
+      {id:uid(),type:"visit",date:addDays(t,-20),title:"2차 종합백신",memo:"이상 없음",vet:"김수의 원장",cost:45000},
+    ],
+    schedule:[
+      {id:uid(),cat:"종합백신(DHPPL)",type:"vac",cycleDays:365,last:addDays(t,-20),note:"퍼피 접종 완료"},
+      {id:uid(),cat:"심장사상충 예방",type:"med",cycleDays:30,last:addDays(t,-40),note:"매월 1회"},
+      {id:uid(),cat:"슬개골 탈구 검진",type:"vac",cycleDays:365,last:addDays(t,-365),note:"소형견 슬개골 호발"},
+    ],
+    activityLog:[],
+    meds:["하트가드"],
+  };
+  // 보험 청구 (상태추적 mock)
+  const claims=[
+    {id:"clm_"+uid(), petId:"pet_nam", petName:"나비", owner:"보호자A", hospital:"행복동물병원", dx:"치과 스케일링(치석 제거)",
+      treatDate:addDays(t,-200), amount:240000, claimRate:0.7, state:"approved", insurer:"메리츠 펫퍼민트",
+      submittedAt:addDays(t,-190), reviewedAt:addDays(t,-185), payout:168000, note:"전신마취 항목 보장 적용"},
+    {id:"clm_"+uid(), petId:"pet_cola", petName:"콜라", owner:"보호자A", hospital:"행복동물병원", dx:"정기 건강검진(혈액)",
+      treatDate:addDays(t,-40), amount:88000, claimRate:0.7, state:"review", insurer:"삼성화재 애니펫",
+      submittedAt:addDays(t,-6), reviewedAt:null, payout:null, note:""},
+    {id:"clm_"+uid(), petId:"pet_bori", petName:"보리", owner:"보호자B", hospital:"행복동물병원", dx:"2차 종합백신",
+      treatDate:addDays(t,-20), amount:45000, claimRate:0.6, state:"submitted", insurer:"DB손해보험 펫블리",
+      submittedAt:addDays(t,-3), reviewedAt:null, payout:null, note:""},
+  ];
+  return {
+    role:"guardian",
+    lang:"ko",
+    owner:"보호자A",
+    // v3 외부통합 상태
+    emr:{ connected:false, hospital:"행복동물병원 EMR(iVET)", lastSync:null, pulled:0 },
+    calendar:{ connected:false, provider:"Google Calendar", lastSync:null, events:0 },
+    oauth:{ wearable:{ connected:false, provider:"PetFit 스마트목걸이", token:null } },
+    insurers:["삼성화재 애니펫","메리츠 펫퍼민트","DB손해보험 펫블리"],
+    pets:[cola,nam,bori],
+    selected:"pet_cola",
+    clinicBookings:[
+      {id:uid(),petId:"pet_cola",hospital:"행복동물병원",date:addDays(t,-40),time:"10:00",reason:"정기 건강검진",confirmed:true},
+    ],
+    claims,
+    notifLog:[],   // 알림톡 발송 로그 (mock 통합 1)
+    notifications:[
+      {id:uid(),icon:"💉",title:"콜라 · 외부구충 D-5",sub:"행복동물병원 방문 권장",ts:addDays(t,-1),read:false},
+      {id:uid(),icon:"🏥",title:"나비 · 예약 확정",sub:"행복동물병원 예약이 확정되었어요",ts:addDays(t,-2),read:true},
+    ],
+    vetPatients:[],     // 수의사가 작성한 진료기록 (역할 분기)
+  };
+}
+
+/* ---------- 상태 로드/저장 ---------- */
+let state = load();
+function load(){
+  try{ const raw = localStorage.getItem(STORE_KEY); if(raw){ const s=JSON.parse(raw); LANG=s.lang||"ko"; return s; } }catch(e){}
+  const s = seed(); LANG=s.lang||"ko"; localStorage.setItem(STORE_KEY, JSON.stringify(s)); return s;
+}
+function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(state)); refreshBadges(); }
+const currentPet = ()=> state.pets.find(p=>p.id===state.selected) || state.pets[0];
+const myPets = ()=> state.pets.filter(p=> p.owner===state.owner);
+
+/* ---------- 스케줄 계산 엔진 ---------- */
+function schedItems(pet){
+  const t = todayISO();
+  return (pet.schedule||[]).map(s=>{
+    const next = addDays(s.last, s.cycleDays);
+    const dday = daysBetween(t, next);
+    let status = dday<0 ? "over" : (dday<=14 ? "due" : "ok");
+    return {...s, next, dday, status};
+  }).sort((a,b)=>a.dday-b.dday);
+}
+function upcomingAll(){
+  let out=[];
+  myPets().forEach(p=> schedItems(p).forEach(s=> out.push({...s, petName:p.name, petId:p.id, emoji:p.emoji})));
+  return out.sort((a,b)=>a.dday-b.dday);
+}
+const alertCount = ()=> upcomingAll().filter(s=>s.dday<=14).length;
+const unreadNotif = ()=> (state.notifications||[]).filter(n=>!n.read).length;
+
+/* ---------- 토스트 ---------- */
+let toastT;
+function toast(msg){ const el=$("#toast"); el.textContent=msg; el.classList.add("show"); clearTimeout(toastT);
+  toastT=setTimeout(()=>el.classList.remove("show"),2400); }
+
+/* ---------- 시트 ---------- */
+function openSheet(html){ $("#sheet").innerHTML = html; $("#sheet").classList.add("show"); $("#scrim").classList.add("show"); }
+function closeSheet(){ $("#sheet").classList.remove("show"); $("#scrim").classList.remove("show"); }
+$("#scrim").addEventListener("click", closeSheet);
+window.__close = closeSheet;
+
+/* =========================================================================
+   역할 기반 내비게이션 (RBAC) — 보호자 / 수의사 / 보험사
+   ========================================================================= */
+const ROLE_META = {
+  guardian:{ key:"guardian", emoji:"👤" },
+  vet:{ key:"vet", emoji:"🩺" },
+  insurer:{ key:"insurer", emoji:"🏛️" },
+  hospital:{ key:"hospital", emoji:"🏥" },
+};
+const roleLabel = (r)=> t(ROLE_META[r].key);
+// NAV: t=i18n key. tab:바텀탭 노출, badge:배지 종류
+const NAV = {
+  guardian:[
+    {sec:"nav_care"},
+    {v:"home", ic:"🏠", k:"home", tab:true, badge:"alert"},
+    {v:"pets", ic:"🐶", k:"pets", tab:true},
+    {v:"records", ic:"📋", k:"records", tab:true},
+    {v:"schedule", ic:"💉", k:"schedule", tab:true, badge:"alert"},
+    {sec:"nav_insight"},
+    {v:"report", ic:"🧠", k:"report"},
+    {v:"predict", ic:"🔮", k:"predict"},
+    {sec:"nav_link"},
+    {v:"clinic", ic:"🏥", k:"clinic"},
+    {v:"claims", ic:"🧾", k:"claims"},
+    {v:"integrations", ic:"🔌", k:"integrations"},
+    {v:"notifs", ic:"🔔", k:"notifs", badge:"notif"},
+  ],
+  vet:[
+    {sec:"nav_clinic"},
+    {v:"vetdash", ic:"🩺", k:"vetdash", tab:true},
+    {v:"vetpatients", ic:"📁", k:"vetpatients", tab:true},
+    {v:"vetwrite", ic:"✍️", k:"vetwrite", tab:true},
+    {sec:"nav_link"},
+    {v:"clinic", ic:"📅", k:"clinic", tab:true},
+  ],
+  insurer:[
+    {sec:"심사"},
+    {v:"insdash", ic:"🏛️", k:"insdash", tab:true},
+    {v:"insclaims", ic:"🧾", k:"insclaims", tab:true, badge:"insReview"},
+    {sec:"nav_risk"},
+    {v:"insrisk", ic:"📊", k:"insrisk", tab:true},
+  ],
+  hospital:[
+    {sec:"nav_admin"},
+    {v:"hospdash", ic:"🏥", k:"hospdash", tab:true},
+    {v:"hospsched", ic:"🗓️", k:"hospsched", tab:true, badge:"hospPending"},
+    {sec:"nav_clinic"},
+    {v:"vetpatients", ic:"📁", k:"vetpatients", tab:true},
+  ],
+};
+const TABMAP = {
+  guardian:["home","pets","records","schedule","notifs"],
+  vet:["vetdash","vetpatients","vetwrite","clinic"],
+  insurer:["insdash","insclaims","insrisk"],
+  hospital:["hospdash","hospsched","vetpatients"],
+};
+function navTitle(v){
+  for(const r in NAV){ const f=NAV[r].find(x=>x.v===v); if(f) return t(f.k); }
+  return "펫헬스북";
+}
+function badgeVal(kind){
+  if(kind==="alert") return alertCount();
+  if(kind==="notif") return unreadNotif();
+  if(kind==="insReview") return (state.claims||[]).filter(c=>c.state==="review"||c.state==="submitted").length;
+  if(kind==="hospPending") return (state.clinicBookings||[]).filter(b=>!b.confirmed).length;
+  return 0;
+}
+
+/* ---------- 언어 토글 ---------- */
+function langTogHTML(cls){
+  return `<span class="lang-tog ${cls||''}">
+    <button data-lang="ko" class="${LANG==='ko'?'active':''}">한국어</button>
+    <button data-lang="en" class="${LANG==='en'?'active':''}">EN</button></span>`;
+}
+function setLang(l){ if(l===LANG) return; LANG=l; state.lang=l; save();
+  $("#mtRole").textContent=roleLabel(state.role); renderShell(); render(); toast(l==='en'?"Switched to English.":"한국어로 전환했어요."); }
+
+/* ---------- 사이드바 / 드로어 렌더 ---------- */
+function roleSwitchHTML(){
+  return `<div class="role-switch">${Object.keys(ROLE_META).map(r=>`
+    <button data-role-pick="${r}" class="${state.role===r?'active':''}">
+      <span class="re">${ROLE_META[r].emoji}</span>${roleLabel(r)}</button>`).join("")}</div>`;
+}
+function navListHTML(){
+  return NAV[state.role].map(item=>{
+    if(item.sec) return `<div class="nav-sec">${t(item.sec)}</div>`;
+    const bv = item.badge?badgeVal(item.badge):0;
+    const badge = bv>0?`<span class="badge">${bv}</span>`:"";
+    return `<button class="nav-btn ${view===item.v?'active':''}" data-view="${item.v}"><span class="ic">${item.ic}</span>${t(item.k)}${badge}</button>`;
+  }).join("");
+}
+function renderShell(){
+  $("#sidebar").innerHTML = `
+    <div class="brand"><div class="logo">🐾</div><div><b>펫헬스북</b><small>${t("brandSub")}</small></div></div>
+    ${langTogHTML()}
+    <div class="nav-sec" style="padding-top:2px">${t("roleSwitch")}</div>
+    ${roleSwitchHTML()}
+    ${navListHTML()}
+    <div class="spacer"></div>
+    <div class="side-foot">v3 · ${LANG==='en'?'offline · 4 role workspaces':'오프라인 · 4역할 워크스페이스'}<br>${LANG==='en'?'Guardian·Vet·Insurer·Hospital admin':'보호자·수의사·보험사·병원 admin'}</div>`;
+  $("#drawer").innerHTML = `
+    <div class="brand"><div class="logo">🐾</div><div><b>펫헬스북</b><small>${t("brandSub")}</small></div></div>
+    ${langTogHTML()}
+    <div class="nav-sec" style="padding-top:2px">${t("roleSwitch")}</div>
+    ${roleSwitchHTML()}
+    ${navListHTML()}`;
+  // 바텀탭 (현재 역할의 탭)
+  $("#bottomnav").innerHTML = TABMAP[state.role].map(v=>{
+    const item = NAV[state.role].find(x=>x.v===v) || {ic:"•",k:v};
+    const bv = item.badge?badgeVal(item.badge):0;
+    const badge = bv>0?`<span class="badge">${bv}</span>`:"";
+    const lbl = t(item.k).split("·")[0];
+    return `<button data-view="${v}" class="${view===v?'active':''}"><span class="ic">${item.ic}</span>${LANG==='en'?lbl.slice(0,8):lbl.slice(0,5)}${badge}</button>`;
+  }).join("");
+  $("#mLangTog").innerHTML = langTogHTML();
+  $("#mtRole").textContent = roleLabel(state.role);
+  bindShell();
+}
+function bindShell(){
+  $$("[data-role-pick]").forEach(b=> b.addEventListener("click",()=>switchRole(b.dataset.rolePick)));
+  $$("[data-view]").forEach(b=> b.addEventListener("click",()=>{ setView(b.dataset.view); closeDrawer(); }));
+  $$("[data-lang]").forEach(b=> b.addEventListener("click",()=>setLang(b.dataset.lang)));
+}
+function switchRole(r){
+  state.role=r; document.body.dataset.role=r; save();
+  closeDrawer();
+  // 역할의 첫 탭으로 이동
+  view = TABMAP[r][0];
+  $("#mtTitle").textContent = navTitle(view);
+  renderShell(); render();
+  toast(`${ROLE_META[r].emoji} ${roleLabel(r)} ${LANG==='en'?'workspace':'워크스페이스로 전환했어요'}`);
+  window.scrollTo(0,0);
+}
+
+/* ---------- 모바일 드로어 ---------- */
+function openDrawer(){ document.body.classList.add("drawer-open"); }
+function closeDrawer(){ document.body.classList.remove("drawer-open"); }
+$("#hbBtn").addEventListener("click", openDrawer);
+$("#drawerScrim").addEventListener("click", closeDrawer);
+
+/* ---------- 배지 ---------- */
+function refreshBadges(){ renderShell(); }
+
+/* =========================================================================
+   라우팅
+   ========================================================================= */
+let view = "home";
+function setView(v){ view=v; renderShell(); $("#mtTitle").textContent=navTitle(v); render(); window.scrollTo(0,0); }
+function render(){
+  const c = $("#content");
+  const map = {
+    home:renderHome, pets:renderPets, records:renderRecords, schedule:renderSchedule,
+    report:renderReport, predict:renderPredict, clinic:renderClinic, claims:renderClaims, integrations:renderIntegrations, notifs:renderNotifs,
+    vetdash:renderVetDash, vetpatients:renderVetPatients, vetwrite:renderVetWrite,
+    insdash:renderInsDash, insclaims:renderInsClaims, insrisk:renderInsRisk,
+    hospdash:renderHospDash, hospsched:renderHospSched,
+  };
+  const fn = map[view] || renderHome;
+  c.innerHTML = fn();
+  bindView();
+}
+
+/* 공통 헬퍼 */
+function speciesKo(s){ return s==="dog"?"강아지":(s==="cat"?"고양이":"기타"); }
+function ageText(birth){ if(!birth) return "-"; const d=daysBetween(birth,todayISO()); const y=Math.floor(d/365); const m=Math.floor((d%365)/30); return y>0?`${y}살 ${m}개월`:`${m}개월`; }
+function petPickerHTML(){ return myPets().map(p=>`<button class="${p.id===state.selected?'active':''}" data-pick="${p.id}">${p.emoji} ${p.name}</button>`).join(""); }
+function schedRowHTML(s, withPet){
+  const ic = {vac:"vac",med:"med",parasite:"parasite"}[s.type]||"vac";
+  const emo = {vac:"💉",med:"💊",parasite:"🪱"}[s.type]||"💉";
+  const ddText = s.dday<0?`D+${-s.dday} 지남`:(s.dday===0?"D-DAY":`D-${s.dday}`);
+  const petTag = withPet?`<span class="chip ${s.emoji==='🐕'?'dog':'cat'}">${s.emoji} ${s.petName}</span> `:"";
+  const actions = withPet?"":`<button class="btn sm done-sched" data-id="${s.id}" data-pet="${currentPet().id}">완료</button>`;
+  const remind = withPet?"":`<button class="btn xs ghost remind-sched" data-id="${s.id}" data-pet="${currentPet().id}">🔔 알림톡</button>`;
+  return `<div class="sched-row">
+    <div class="ic ${ic}">${emo}</div>
+    <div class="grow"><b>${s.cat}</b><span>${petTag}다음 예정 ${fmtFull(s.next)} · ${s.note||""}</span></div>
+    <div style="text-align:right;display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+      <span class="dday ${s.status}">${ddText}</span>
+      <div style="display:flex;gap:6px">${remind}${actions}</div>
+    </div></div>`;
+}
+function recordHTML(r){
+  const map = {
+    weight:["weight",`<b>${r.kg}kg</b> 측정${r.memo?` · ${r.memo}`:""}`],
+    symptom:["symptom",`🩹 <b>${r.title}</b>${r.memo?` · ${r.memo}`:""}`],
+    visit:["visit",`🏥 <b>${r.title}</b>${r.memo?` · ${r.memo}`:""}${r.vet?` · ${r.vet}`:""}${r.cost?` · ${won(r.cost)}`:""}`],
+    med:["med",`💊 <b>${r.title}</b>${r.memo?` · ${r.memo}`:""}`],
+  };
+  const [cls,body] = map[r.type] || ["visit",r.title||""];
+  return `<div class="tl-item ${cls}"><div class="tl-date">${fmtFull(r.date)}</div><div class="tl-body">${body}</div></div>`;
+}
+
+/* =========================================================================
+   보호자 뷰 1: 멀티펫 홈 대시보드
+   ========================================================================= */
+function renderHome(){
+  const ups = upcomingAll();
+  const alerts = ups.filter(s=>s.dday<=14);
+  const overdue = ups.filter(s=>s.dday<0).length;
+  const pets = myPets();
+  // 멀티펫 위험 요약
+  const riskCards = pets.map(p=>{
+    const r=healthRisk(p); const b=calcBCS(p);
+    return `<div class="pet-card ${p.id===state.selected?'sel':''}" data-pick="${p.id}">
+      <div class="avatar">${p.emoji}</div>
+      <div class="meta" style="flex:1;min-width:0">
+        <b>${p.name}</b><span>${speciesKo(p.species)} · ${ageText(p.birth)}</span>
+        <div class="bar" style="margin-top:6px"><i style="width:${r.score}%;background:${r.color}"></i></div>
+      </div>
+      <div style="text-align:right"><span class="chip ${r.score<25?'ok':r.score<50?'brand':r.score<70?'due':'over'}">위험 ${r.score}</span>
+      <div class="muted" style="margin-top:4px">BCS ${b.bcs} ${b.label}</div></div>
+    </div>`;
+  }).join("");
+  const upcomingList = ups.slice(0,5).map(s=>schedRowHTML(s,true)).join("") || `<div class="empty"><div class="em">✅</div>다가오는 일정이 없습니다.</div>`;
+  return `
+  <div class="page-head"><div class="role-banner">👤 보호자 워크스페이스 · ${state.owner}</div>
+    <h1>안녕하세요, 보호자님 👋</h1><p>${pets.map(p=>p.emoji+p.name).join(" · ")} ${pets.length}마리의 건강을 한눈에 챙겨요.</p></div>
+  <div class="grid kpis" style="margin-bottom:18px">
+    <div class="kpi"><div class="lbl">등록 반려동물</div><div class="val">${pets.length}<small> 마리</small></div></div>
+    <div class="kpi warn"><div class="lbl">2주 내 일정</div><div class="val">${alerts.length}<small> 건</small></div></div>
+    <div class="kpi danger"><div class="lbl">지난 일정</div><div class="val">${overdue}<small> 건</small></div></div>
+    <div class="kpi purple"><div class="lbl">진행 보험청구</div><div class="val">${(state.claims||[]).filter(c=>c.owner===state.owner&&c.state!=="approved"&&c.state!=="rejected").length}<small> 건</small></div></div>
+  </div>
+  <div class="grid two-col" style="grid-template-columns:1.1fr .9fr;align-items:start" id="homeGrid">
+    <div class="card pad">
+      <div class="sec-title">🐾 우리 아이들 건강 점수 <button class="btn xs ghost" data-go="report" style="margin-left:auto">리포트 →</button></div>
+      <div class="grid" style="gap:10px">${riskCards}</div>
+    </div>
+    <div class="card pad">
+      <div class="sec-title">📅 다가오는 일정 <span class="chip ${alerts.length?'due':'ok'}" style="margin-left:auto">${alerts.length}건 알림</span></div>
+      ${upcomingList}
+      <button class="btn ghost block" data-go="schedule" style="margin-top:6px">전체 스케줄</button>
+    </div>
+  </div>`;
+}
+
+/* =========================================================================
+   보호자 뷰 2: 반려동물 프로필
+   ========================================================================= */
+function renderPets(){
+  const cards = myPets().map(p=>{
+    const sel = p.id===state.selected ? "sel":"";
+    const av = p.photo ? `<img class="avatar" src="${p.photo}" alt="${p.name}">` : `<div class="avatar">${p.emoji}</div>`;
+    return `<div class="pet-card ${sel}" data-pick="${p.id}">${av}
+      <div class="meta"><b>${p.name}</b><span>${speciesKo(p.species)} · ${p.breed} · ${ageText(p.birth)}</span><span>${p.sex}</span></div>
+      <span class="chip ${p.species}" style="margin-left:auto">${p.emoji} ${speciesKo(p.species)}</span></div>`;
+  }).join("");
+  const pet = currentPet();
+  const recCount = (pet.records||[]).length;
+  const proto = protocolFor(pet.species, pet.breed);
+  const protoExtra = proto.breedExtra.length
+    ? `<div class="card pad" style="margin-top:14px"><div class="sec-title">🧬 ${pet.breed} 맞춤 권장 검진 <span class="chip brand" style="margin-left:auto">견종 프로토콜</span></div>
+       ${proto.breedExtra.map(e=>`<div class="sched-row"><div class="ic clinic">🔎</div><div class="grow"><b>${e.key}</b><span>${e.note}</span></div></div>`).join("")}
+       <p class="muted">반려동물의 품종 위험요인을 기반으로 자동 추천된 검진 항목입니다.</p></div>`
+    : "";
+  return `
+  <div class="page-head"><div class="role-banner">👤 보호자 · ${state.owner}</div><h1>반려동물</h1><p>프로필을 등록하고 건강의 주인공을 선택하세요.</p></div>
+  <div class="card pad" style="margin-bottom:14px">
+    <div class="sec-title">🐾 내 반려동물 <button class="btn primary sm" id="addPet" style="margin-left:auto">+ 새 반려동물</button></div>
+    <div class="grid" style="gap:10px">${cards}</div>
+  </div>
+  <div class="card pad">
+    <div class="sec-title">선택됨 · ${pet.emoji} ${pet.name}</div>
+    <div class="grid pets-stats" style="grid-template-columns:repeat(4,1fr);gap:10px">
+      <div class="kpi"><div class="lbl">종</div><div class="val" style="font-size:18px">${speciesKo(pet.species)}</div></div>
+      <div class="kpi"><div class="lbl">품종</div><div class="val" style="font-size:18px">${pet.breed}</div></div>
+      <div class="kpi"><div class="lbl">나이</div><div class="val" style="font-size:18px">${ageText(pet.birth)}</div></div>
+      <div class="kpi"><div class="lbl">건강기록</div><div class="val" style="font-size:18px">${recCount}건</div></div>
+    </div>
+  </div>
+  ${protoExtra}`;
+}
+
+/* =========================================================================
+   보호자 뷰 3: 건강기록 타임라인
+   ========================================================================= */
+function renderRecords(){
+  const pet = currentPet();
+  const recs = [...(pet.records||[])].sort((a,b)=>b.date.localeCompare(a.date));
+  const items = recs.map(r=>recordHTML(r)).join("") || `<div class="empty"><div class="em">📋</div>아직 기록이 없습니다.</div>`;
+  return `
+  <div class="page-head"><div class="role-banner">👤 보호자 · ${state.owner}</div><h1>건강기록</h1><p>체중·증상·진료·투약을 시간순으로 기록하세요.</p></div>
+  <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+    <div class="seg">${petPickerHTML()}</div>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button class="btn ghost sm" id="exportRecCSV">⬇ CSV</button>
+      <button class="btn primary sm" id="addRec">+ 기록 추가</button>
+    </div>
+  </div>
+  <div class="card pad">
+    <div class="sec-title">${pet.emoji} ${pet.name}의 타임라인 <span style="margin-left:auto" class="muted">${recs.length}건</span></div>
+    <div class="timeline">${items}</div>
+  </div>`;
+}
+
+/* =========================================================================
+   보호자 뷰 4: 접종·투약·구충 스케줄
+   ========================================================================= */
+function renderSchedule(){
+  const pet = currentPet();
+  const items = schedItems(pet);
+  const list = items.map(s=>schedRowHTML(s,false)).join("") || `<div class="empty"><div class="em">💉</div>등록된 스케줄이 없습니다.</div>`;
+  const due = items.filter(s=>s.status!=="ok").length;
+  return `
+  <div class="page-head"><div class="role-banner">👤 보호자 · ${state.owner}</div><h1>접종·투약·구충 스케줄</h1><p>견종·묘종 프로토콜과 주기를 기반으로 다음 일정을 자동 계산합니다.</p></div>
+  <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+    <div class="seg">${petPickerHTML()}</div>
+    <button class="btn primary sm" id="addSched" style="margin-left:auto">+ 항목 추가</button>
+  </div>
+  <div class="card pad" style="margin-bottom:14px">
+    <div class="sec-title">⏰ ${pet.emoji} ${pet.name} 일정 <span class="chip ${due?'due':'ok'}" style="margin-left:auto">${due}건 챙길 것</span></div>
+    ${list}
+  </div>
+  <div class="card pad muted">
+    💡 <b>완료</b>를 누르면 접종일이 오늘로 갱신되고 주기에 맞춰 다음 일정이 자동 재계산됩니다.
+    <b>🔔 알림톡</b>은 보호자 휴대폰으로 카카오 알림톡 발송을 시뮬레이션하고 발송 로그를 남깁니다(데이터·연동 탭에서 확인).
+  </div>`;
+}
+
+/* =========================================================================
+   보호자 뷰 5: 건강 리포트 (알고리즘 집약) — 위험스코어·BCS·체중추세·이상치
+   ========================================================================= */
+function renderReport(){
+  const pet = currentPet();
+  const r = healthRisk(pet);
+  const b = calcBCS(pet);
+  const tr = weightTrend(pet);
+  const outlierRows = tr.outliers.length
+    ? tr.outliers.map(o=>`<div class="stat-row"><span>⚠️ ${fmtFull(o.date)} 체중 ${o.kg}kg</span><b style="color:var(--warn)">예상 ${o.expected}kg 대비 이탈</b></div>`).join("")
+    : `<div class="stat-row"><span>이상치</span><b style="color:var(--accent)">탐지 없음 (정상 범위)</b></div>`;
+  return `
+  <div class="page-head"><div class="role-banner">🧠 ${LANG==='en'?'AI Health Insights':'AI 건강 인사이트'}</div><h1>${t("report")}</h1><p>${LANG==='en'?`Algorithms analyze ${pet.name}'s weight·BCS·symptoms·schedule.`:`알고리즘이 ${pet.name}의 체중·체형·증상·일정을 분석해 위험도와 권고를 산출합니다.`}</p></div>
+  <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap"><div class="seg">${petPickerHTML()}</div>
+    <button class="btn ghost sm" data-go="predict" style="margin-left:auto">🔮 ${LANG==='en'?'Disease prediction →':'질병 위험 예측 →'}</button></div>
+  <div class="grid two-col" style="grid-template-columns:1fr 1fr;align-items:start" id="repGrid">
+    <div class="card pad">
+      <div class="sec-title">🎯 종합 건강 위험 스코어</div>
+      <div class="gauge">
+        <div class="ring" style="--p:${r.score};--c:${r.color}"><b>${r.score}<small>/100</small></b></div>
+        <div style="flex:1">
+          <span class="chip ${r.score<25?'ok':r.score<50?'brand':r.score<70?'due':'over'}">${r.level}</span>
+          <div style="margin-top:10px">
+            ${r.factors.map(f=>`<div class="stat-row"><span>${f.name} <span class="muted">(${f.detail})</span></span><b>+${f.w}</b></div>`).join("")}
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:14px;padding:13px;background:var(--surface-2);border-radius:13px">
+        <b style="font-size:14px">📌 권고</b>
+        <ul style="margin:8px 0 0 18px;font-size:13.5px;line-height:1.85;color:var(--ink-2)">${r.recs.map(x=>`<li>${x}</li>`).join("")}</ul>
+      </div>
+    </div>
+    <div class="card pad">
+      <div class="sec-title">⚖️ 체형 평가(BCS) · 권장 사료량</div>
+      <div class="gauge">
+        <div class="ring" style="--p:${b.bcs/9*100};--c:${b.color}"><b>${b.bcs}<small>/9</small></b></div>
+        <div style="flex:1">
+          <span class="chip ${b.bcs===5?'ok':b.bcs===9?'over':'due'}">${b.label}</span>
+          <div style="margin-top:10px">
+            <div class="stat-row"><span>현재 체중</span><b>${b.cur??"-"} kg</b></div>
+            <div class="stat-row"><span>이상 체중</span><b>${b.ideal} kg</b></div>
+            <div class="stat-row"><span>휴식 에너지(RER)</span><b>${b.rer?Math.round(b.rer):"-"} kcal</b></div>
+            <div class="stat-row"><span>권장 칼로리(DER)</span><b style="color:var(--accent)">${b.der?Math.round(b.der):"-"} kcal/일</b></div>
+            <div class="stat-row"><span>활동 계수</span><b>×${b.af}</b></div>
+          </div>
+        </div>
+      </div>
+      <p class="muted" style="margin-top:10px">DER = 70 × 체중^0.75 × 활동계수. 사료 패키지 kcal/g 으로 일일 급여량을 환산하세요.</p>
+    </div>
+    <div class="card pad" style="grid-column:1/-1">
+      <div class="sec-title">📈 체중 추세 + 이상치 탐지 <span class="chip ${tr.slope>0.05?'due':tr.slope<-0.05?'over':'ok'}" style="margin-left:auto">${tr.trendLabel}</span></div>
+      <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+      <div style="margin-top:12px">
+        <div class="stat-row"><span>추세 기울기</span><b>${tr.slope>0?'+':''}${tr.slope} kg/측정</b></div>
+        ${outlierRows}
+      </div>
+      <p class="muted" style="margin-top:8px">이동평균(3점) ± 2σ 밴드를 벗어난 측정값을 이상치로 탐지합니다. 급격한 체중 변화는 질환 신호일 수 있습니다.</p>
+    </div>
+  </div>`;
+}
+
+/* =========================================================================
+   보호자 뷰 (v3): 질병 위험 예측 — 로지스틱 회귀 · 성장곡선 percentile · 약물 상호작용
+   ========================================================================= */
+function renderPredict(){
+  const pet=currentPet();
+  const preds=diseasePredict(pet);
+  const gc=growthCurve(pet);
+  const ddi=checkInteractions(pet.meds||[]);
+  const en = LANG==='en';
+  const colorFor=(p)=> p<15?'var(--accent)':p<35?'var(--brand)':p<55?'var(--warn)':'var(--danger)';
+  const predRows=preds.map(p=>`<div class="pred-row">
+    <span class="pn">${p.key}${p.breedFlag?` <span class="chip dog" style="height:22px">${en?'breed risk':'견종 위험'}</span>`:""}</span>
+    <span class="pb"><i style="width:${p.prob}%;background:${colorFor(p.prob)}"></i></span>
+    <span class="pv" style="color:${colorFor(p.prob)}">${p.prob}%</span></div>`).join("");
+  const top=preds[0];
+  const ddiHTML = (pet.meds&&pet.meds.length)
+    ? (ddi.length? ddi.map(d=>`<div class="ddi ${d.sev}"><span class="di">${d.sev==='major'?'⛔':d.sev==='moderate'?'⚠️':'ℹ️'}</span>
+        <div><b>${d.pair.join(' + ')}</b> <span class="chip ${d.sev==='major'?'over':d.sev==='moderate'?'due':'gray'}" style="height:20px">${d.sev}</span><div style="margin-top:3px">${d.msg}</div></div></div>`).join("")
+        : `<div class="ddi minor"><span class="di">✅</span><div>${en?'No significant interactions among current medications.':'현재 투약 약물 간 유의한 상호작용이 없습니다.'}</div></div>`)
+    : `<div class="empty" style="padding:18px"><div class="em">💊</div>${en?'No medications registered.':'등록된 투약 약물이 없습니다.'}</div>`;
+  return `
+  <div class="page-head"><div class="role-banner">🔮 ${en?'AI Disease Risk Prediction':'AI 질병 위험 예측'} <span class="ver-pill">v3</span></div>
+    <h1>${t("predict")}</h1><p>${en?'Logistic-regression risk by disease, growth-curve percentile, and drug-interaction check.':'로지스틱 회귀로 질환별 발병 확률을 추정하고, 성장곡선 percentile·약물 상호작용을 점검합니다.'}</p></div>
+  <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap"><div class="seg">${petPickerHTML()}</div></div>
+  <div class="grid two-col" style="grid-template-columns:1.05fr .95fr;align-items:start" id="predGrid">
+    <div class="card pad">
+      <div class="sec-title">🔮 ${en?'Disease risk (logistic regression)':'질환별 발병 위험 (로지스틱 회귀)'}</div>
+      <p class="muted" style="margin-bottom:8px">${en?'sigmoid(w·x+b) over age·BCS·symptoms·overdue·breed features.':'연령·체형(BCS)·최근 증상·일정 지연·견종 위험을 피처로 sigmoid(w·x+b) 계산.'}</p>
+      ${predRows}
+      <div style="margin-top:14px;padding:13px;background:var(--surface-2);border-radius:13px;font-size:13.5px">
+        <b>📌 ${en?'Top risk':'최우선 위험'}: ${top.key} (${top.prob}%)</b>
+        <div class="muted" style="margin-top:5px">${en?'Recommend a targeted screening within 1–3 months. Model is a demo heuristic; clinical confirmation required.':'1~3개월 내 표적 검진을 권장합니다. 본 모델은 데모용 휴리스틱이며 임상 확진이 필요합니다.'}</div>
+      </div>
+    </div>
+    <div class="card pad">
+      <div class="sec-title">📏 ${en?'Growth curve percentile':'성장곡선 percentile'}</div>
+      <p class="muted" style="margin-bottom:6px">${en?`Breed standard ${gc.std.m}±${gc.std.sd}kg adult.`:`품종 표준 성체 ${gc.std.m}±${gc.std.sd}kg 대비 z-score → percentile.`}</p>
+      <div class="chart-wrap"><canvas id="growthChart"></canvas></div>
+      <div style="margin-top:10px">
+        <div class="stat-row"><span>${en?'Current percentile':'현재 percentile'}</span><b style="color:${gc.last&&(gc.last.pct<15||gc.last.pct>85)?'var(--warn)':'var(--accent)'}">${gc.last?gc.last.pct+'p':'-'}</b></div>
+        <div class="stat-row"><span>${en?'Band':'판정'}</span><b>${gc.band}</b></div>
+      </div>
+    </div>
+    <div class="card pad" style="grid-column:1/-1">
+      <div class="sec-title">💊 ${en?'Drug interaction check':'약물 상호작용 체크'} <span class="chip gray" style="margin-left:auto">${(pet.meds||[]).length} ${en?'meds':'약물'}</span></div>
+      <p class="muted" style="margin-bottom:10px">${en?'Current meds: ':'현재 투약: '}${(pet.meds||[]).join(', ')||'-'}</p>
+      ${ddiHTML}
+      <button class="btn ghost sm" id="addMed" style="margin-top:6px">+ ${en?'Add medication':'약물 추가'}</button>
+    </div>
+  </div>`;
+}
+
+/* =========================================================================
+   보호자 뷰 6: 병원 예약
+   ========================================================================= */
+function renderClinic(){
+  const pet = currentPet();
+  // 수의사 역할이면 전체 예약 관리, 보호자면 내 펫
+  const isVet = state.role==="vet";
+  const all = (state.clinicBookings||[]);
+  const bookings = (isVet? all : all.filter(b=>{ const p=state.pets.find(x=>x.id===b.petId); return p && p.owner===state.owner; }))
+    .sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
+  const petName=(id)=>{ const p=state.pets.find(x=>x.id===id); return p?`${p.emoji} ${p.name}`:"-"; };
+  const bookList = bookings.map(b=>`
+    <div class="sched-row"><div class="ic clinic">🏥</div>
+      <div class="grow"><b>${b.hospital}</b><span>${petName(b.petId)} · ${fmtFull(b.date)} ${b.time} · ${b.reason}</span></div>
+      <div style="text-align:right;display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+        <span class="pill-state ${b.confirmed?'approved':'submitted'}">${b.confirmed?'확정':'신청됨'}</span>
+        ${(isVet && !b.confirmed)?`<button class="btn xs role confirm-bk" data-id="${b.id}">예약 확정</button>`:""}
+      </div>
+    </div>`).join("") || `<div class="empty" style="padding:24px"><div class="em">📭</div>예약 내역이 없습니다.</div>`;
+  if(isVet){
+    return `<div class="page-head"><div class="role-banner">🩺 수의사 · 예약 관리</div><h1>예약 관리</h1><p>보호자 예약 신청을 확정하고 알림톡으로 안내합니다.</p></div>
+    <div class="card pad"><div class="sec-title">🗓️ 전체 예약 (${bookings.length})</div>${bookList}</div>`;
+  }
+  return `
+  <div class="page-head"><div class="role-banner">👤 보호자 · ${state.owner}</div><h1>병원 예약</h1><p>병원 예약을 잡고, 건강수첩 PDF를 발행하세요.</p></div>
+  <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap"><div class="seg">${petPickerHTML()}</div></div>
+  <div class="grid two-col" style="grid-template-columns:1fr 1fr;align-items:start" id="clinicGrid">
+    <div class="card pad">
+      <div class="sec-title">🗓️ 병원 예약</div>
+      <form id="bookForm">
+        <div class="field"><label>병원명</label><input id="bk_hosp" value="행복동물병원" required></div>
+        <div class="field row2">
+          <div><label>날짜</label><input id="bk_date" type="date" value="${addDays(todayISO(),3)}" required></div>
+          <div><label>시간</label><input id="bk_time" type="time" value="14:30" required></div>
+        </div>
+        <div class="field"><label>방문 사유</label><input id="bk_reason" value="종합백신 추가접종" required></div>
+        <button class="btn primary block" type="submit">예약 신청 (알림톡 발송)</button>
+      </form>
+      <div style="margin-top:16px"><div class="sec-title" style="font-size:14px">내 예약 내역</div>${bookList}</div>
+    </div>
+    <div class="card pad">
+      <div class="sec-title">📕 건강수첩 PDF</div>
+      <p class="muted" style="margin-bottom:14px">${pet.emoji} <b>${pet.name}</b>의 프로필·접종이력·건강기록·위험스코어를 한 장으로 정리해 병원 제출·보험청구에 활용하세요.</p>
+      <button class="btn accent block" id="genPDF">📕 건강수첩 PDF 발행·다운로드</button>
+      <button class="btn ghost block" id="genVisitPDF" style="margin-top:10px">🧾 보험청구용 진료요약 PDF</button>
+    </div>
+  </div>`;
+}
+
+/* =========================================================================
+   보호자 뷰 7: 보험청구 (외부통합 — PDF·제출·상태추적 mock)
+   ========================================================================= */
+function renderClaims(){
+  const myClaims = (state.claims||[]).filter(c=>c.owner===state.owner).sort((a,b)=>(b.submittedAt||b.treatDate).localeCompare(a.submittedAt||a.treatDate));
+  const stateMap={draft:"작성중",submitted:"제출됨",review:"심사중",approved:"승인",rejected:"반려"};
+  const rows = myClaims.map(c=>`
+    <tr class="click" data-claim="${c.id}">
+      <td>${fmtFull(c.treatDate)}</td>
+      <td>${c.petName}</td>
+      <td>${c.dx}</td>
+      <td>${won(c.amount)}</td>
+      <td>${c.insurer}</td>
+      <td><span class="pill-state ${c.state}">${stateMap[c.state]}</span></td>
+      <td>${c.payout!=null?won(c.payout):"-"}</td>
+    </tr>`).join("") || `<tr><td colspan="7" style="text-align:center;color:var(--ink-3);padding:24px">청구 내역이 없습니다.</td></tr>`;
+  const totalPayout=myClaims.filter(c=>c.state==="approved").reduce((a,c)=>a+(c.payout||0),0);
+  return `
+  <div class="page-head"><div class="role-banner">👤 보호자 · 보험청구</div><h1>보험청구</h1><p>진료기록으로 청구서를 만들고 보험사에 제출, 심사 상태를 추적합니다.</p></div>
+  <div class="grid kpis" style="margin-bottom:16px">
+    <div class="kpi"><div class="lbl">총 청구</div><div class="val">${myClaims.length}<small> 건</small></div></div>
+    <div class="kpi warn"><div class="lbl">심사중</div><div class="val">${myClaims.filter(c=>c.state==='review'||c.state==='submitted').length}<small> 건</small></div></div>
+    <div class="kpi accent"><div class="lbl">승인</div><div class="val">${myClaims.filter(c=>c.state==='approved').length}<small> 건</small></div></div>
+    <div class="kpi purple"><div class="lbl">수령 보험금</div><div class="val" style="font-size:22px">${won(totalPayout)}</div></div>
+  </div>
+  <div class="card pad" style="margin-bottom:14px">
+    <div class="sec-title">🧾 청구 내역 <button class="btn primary sm" id="newClaim" style="margin-left:auto">+ 새 청구 작성</button></div>
+    <div class="tbl-wrap"><table class="dt"><thead><tr><th>진료일</th><th>반려동물</th><th>진단·항목</th><th>진료비</th><th>보험사</th><th>상태</th><th>수령액</th></tr></thead><tbody>${rows}</tbody></table></div>
+  </div>
+  <div class="card pad muted">행을 누르면 청구 상세·제출 흐름(PDF 생성→제출→접수번호→심사)을 확인할 수 있어요.</div>`;
+}
+
+/* =========================================================================
+   보호자 뷰 8: 데이터·연동 (외부통합 — 알림톡 로그 / CSV·JSON / 웨어러블)
+   ========================================================================= */
+function renderIntegrations(){
+  const logs = (state.notifLog||[]).slice().reverse();
+  const logHTML = logs.length ? logs.map(l=>`<div class="log-line"><span class="t">[${l.ts}]</span> <span class="ok">${l.channel}</span> → ${l.to} · ${l.msg}</div>`).join("")
+    : `<div class="empty" style="padding:22px"><div class="em">📨</div>발송 로그가 없습니다. 스케줄·예약에서 알림톡을 발송해 보세요.</div>`;
+  const pet=currentPet();
+  const oauth=(state.oauth&&state.oauth.wearable)||{connected:false,provider:"PetFit 스마트목걸이"};
+  const actLog=(pet.activityLog||[]).slice(-7);
+  const actChart = actLog.length?`<div class="chart-wrap sm"><canvas id="actChart"></canvas></div>`
+    :`<div class="empty" style="padding:18px"><div class="em">⌚</div>아직 가져온 활동량이 없습니다.</div>`;
+  return `
+  <div class="page-head"><div class="role-banner">🔌 외부 시스템 연동</div><h1>데이터 · 연동</h1><p>알림톡 발송 로그, 건강데이터 입출력, 웨어러블 활동량 가져오기.</p></div>
+  <div class="grid two-col" style="grid-template-columns:1fr 1fr;align-items:start">
+    <div class="card pad">
+      <div class="sec-title">📨 카카오 알림톡 발송 로그 <span class="chip gray" style="margin-left:auto">mock</span></div>
+      <p class="muted" style="margin-bottom:10px">D-day 도래·예약 확정 시 발송되는 알림톡을 시뮬레이션합니다(실 발송 키 없이 로그 기록).</p>
+      <button class="btn role sm" id="runNotifSweep" style="margin-bottom:12px">⏱ D-day 일괄 발송 실행</button>
+      <div class="card" style="max-height:240px;overflow:auto;border-radius:12px">${logHTML}</div>
+    </div>
+    <div class="card pad">
+      <div class="sec-title">🔁 건강데이터 입출력 <span class="chip gray" style="margin-left:auto">CSV / JSON</span></div>
+      <p class="muted" style="margin-bottom:12px">전체 건강 데이터를 백업(JSON)하거나, 기록을 CSV로 내보내 엑셀·병원과 공유하세요. 가져오기로 복원합니다.</p>
+      <div style="display:grid;gap:9px">
+        <button class="btn ghost block" id="expJSON">⬇ 전체 백업 (JSON 다운로드)</button>
+        <button class="btn ghost block" id="expCSV">⬇ 건강기록 CSV 내보내기</button>
+        <label class="btn ghost block" style="cursor:pointer">⬆ JSON 백업 가져오기<input id="impJSON" type="file" accept=".json,application/json" hidden></label>
+      </div>
+      <div style="margin-top:18px">
+        <div class="sec-title" style="font-size:14px">⌚ 웨어러블 활동량 <span class="chip ${oauth.connected?'ok':'gray'}" style="margin-left:auto">${oauth.connected?'OAuth 연결됨':'OAuth mock'}</span></div>
+        <p class="muted" style="margin-bottom:10px">${oauth.provider} · ${pet.emoji} ${pet.name}의 활동량(걸음·활동시간)을 가져옵니다.</p>
+        ${oauth.connected
+          ? `<button class="btn role sm" id="syncWearable" style="margin-bottom:10px">↻ 활동량 동기화</button>`
+          : `<button class="btn role sm" id="oauthWearable" style="margin-bottom:10px">🔗 ${oauth.provider} 계정 연결 (OAuth)</button>`}
+        ${actChart}
+      </div>
+    </div>
+    <div class="card pad">
+      <div class="sec-title">🔗 외부 시스템 연동 현황 <span class="chip gray" style="margin-left:auto">v3</span></div>
+      <p class="muted" style="margin-bottom:10px">병원 EMR·캘린더·웨어러블·보험사 API 연동 상태(모두 mock, 키 0).</p>
+      <div class="stat-row"><span>🏥 ${(state.emr||{}).hospital||'병원 EMR'}</span><b style="color:${(state.emr||{}).connected?'var(--accent)':'var(--ink-3)'}">${(state.emr||{}).connected?'연결됨':'미연결'}</b></div>
+      <div class="stat-row"><span>📆 ${(state.calendar||{}).provider||'캘린더'}</span><b style="color:${(state.calendar||{}).connected?'var(--accent)':'var(--ink-3)'}">${(state.calendar||{}).connected?'동기화':'미연동'}</b></div>
+      <div class="stat-row"><span>⌚ ${oauth.provider}</span><b style="color:${oauth.connected?'var(--accent)':'var(--ink-3)'}">${oauth.connected?'OAuth 연결':'미연결'}</b></div>
+      <div class="stat-row"><span>🏛️ 보험사 청구 API</span><b>${(state.insurers||[]).length}개사 연동</b></div>
+      <p class="muted" style="margin-top:8px">병원 admin·보험사 워크스페이스에서 각 연동을 실행할 수 있어요.</p>
+    </div>
+  </div>`;
+}
+
+/* =========================================================================
+   보호자 뷰 9: 알림센터
+   ========================================================================= */
+function renderNotifs(){
+  const ns=(state.notifications||[]).slice().sort((a,b)=>b.ts.localeCompare(a.ts));
+  const list=ns.map(n=>`<div class="notif ${n.read?'':'unread'}" data-notif="${n.id}">
+    <div class="ni">${n.icon}</div>
+    <div style="flex:1;min-width:0"><b>${n.title}</b><div class="sub">${n.sub}</div></div>
+    <time>${fmtFull(n.ts)}</time>
+  </div>`).join("") || `<div class="empty"><div class="em">🔕</div>알림이 없습니다.</div>`;
+  return `
+  <div class="page-head"><div class="role-banner">🔔 알림센터</div><h1>알림센터</h1><p>일정·예약·청구 상태 변화 알림을 모았습니다.</p></div>
+  <div style="display:flex;margin-bottom:12px"><button class="btn ghost sm" id="readAll" style="margin-left:auto">모두 읽음 처리</button></div>
+  <div class="card pad">${list}</div>`;
+}
+
+/* =========================================================================
+   수의사 뷰 1: 진료 대시보드
+   ========================================================================= */
+function renderVetDash(){
+  const today=todayISO();
+  const bookings=(state.clinicBookings||[]);
+  const todayBk=bookings.filter(b=>b.date>=today).length;
+  const written=(state.vetPatients||[]).length;
+  const pending=bookings.filter(b=>!b.confirmed).length;
+  // 위험 환자 리스트 (전체 펫 중 위험 높은 순)
+  const ranked=state.pets.map(p=>({p, r:healthRisk(p)})).sort((a,b)=>b.r.score-a.r.score).slice(0,5);
+  const rows=ranked.map(x=>`<tr class="click" data-vetpet="${x.p.id}">
+    <td>${x.p.emoji} ${x.p.name}</td><td>${speciesKo(x.p.species)} · ${x.p.breed}</td><td>${ageText(x.p.birth)}</td>
+    <td>${x.p.owner}</td>
+    <td><span class="chip ${x.r.score<25?'ok':x.r.score<50?'brand':x.r.score<70?'due':'over'}">${x.r.score} ${x.r.level}</span></td>
+  </tr>`).join("");
+  return `
+  <div class="page-head"><div class="role-banner">🩺 수의사 워크스페이스 · 김수의 원장</div><h1>진료 대시보드</h1><p>보호자 데이터를 열람하고 진료기록을 작성합니다(B2B2C).</p></div>
+  <div class="grid kpis" style="margin-bottom:16px">
+    <div class="kpi role"><div class="lbl">예정 예약</div><div class="val">${todayBk}<small> 건</small></div></div>
+    <div class="kpi warn"><div class="lbl">미확정 예약</div><div class="val">${pending}<small> 건</small></div></div>
+    <div class="kpi"><div class="lbl">작성 진료기록</div><div class="val">${written}<small> 건</small></div></div>
+    <div class="kpi"><div class="lbl">연계 보호자</div><div class="val">${[...new Set(state.pets.map(p=>p.owner))].length}<small> 명</small></div></div>
+  </div>
+  <div class="card pad">
+    <div class="sec-title">⚠️ 위험도 상위 환자 <button class="btn role sm" data-go="vetwrite" style="margin-left:auto">진료기록 작성 →</button></div>
+    <div class="tbl-wrap"><table class="dt"><thead><tr><th>환자</th><th>종/품종</th><th>나이</th><th>보호자</th><th>위험 스코어</th></tr></thead><tbody>${rows}</tbody></table></div>
+  </div>`;
+}
+
+/* =========================================================================
+   수의사 뷰 2: 환자 차트
+   ========================================================================= */
+let vetSelPet = null;
+function renderVetPatients(){
+  if(!vetSelPet) vetSelPet=state.pets[0].id;
+  const sel=state.pets.find(p=>p.id===vetSelPet)||state.pets[0];
+  const cards=state.pets.map(p=>`<button class="seg" style="display:block;margin-bottom:0"><span class="${p.id===vetSelPet?'active':''}" data-vetpick="${p.id}" style="display:inline-flex;height:38px;padding:0 14px;border-radius:9px;align-items:center;font-weight:700;font-size:14px;color:${p.id===vetSelPet?'var(--role)':'var(--ink-3)'}">${p.emoji} ${p.name}</span></button>`).join("");
+  const r=healthRisk(sel); const b=calcBCS(sel);
+  const recs=[...(sel.records||[])].sort((a,b)=>b.date.localeCompare(a.date));
+  const vetNotes=(state.vetPatients||[]).filter(n=>n.petId===sel.id).sort((a,b)=>b.date.localeCompare(a.date));
+  const noteHTML=vetNotes.map(n=>`<div class="tl-item visit"><div class="tl-date">${fmtFull(n.date)} · ${n.vet}</div><div class="tl-body">🩺 <b>${n.dx}</b> · ${n.plan}${n.cost?` · ${won(n.cost)}`:""}</div></div>`).join("");
+  return `
+  <div class="page-head"><div class="role-banner">🩺 수의사 · 환자 차트</div><h1>환자 차트</h1><p>보호자가 공유한 건강 데이터를 열람합니다.</p></div>
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">${state.pets.map(p=>`<button class="btn xs ${p.id===vetSelPet?'role':'ghost'}" data-vetpick="${p.id}">${p.emoji} ${p.name}</button>`).join("")}</div>
+  <div class="grid two-col" style="grid-template-columns:.85fr 1.15fr;align-items:start" id="vetGrid">
+    <div class="card pad">
+      <div class="sec-title">${sel.emoji} ${sel.name} <span class="chip ${sel.species}" style="margin-left:auto">${speciesKo(sel.species)}</span></div>
+      <div class="stat-row"><span>품종</span><b>${sel.breed}</b></div>
+      <div class="stat-row"><span>나이</span><b>${ageText(sel.birth)}</b></div>
+      <div class="stat-row"><span>보호자</span><b>${sel.owner}</b></div>
+      <div class="stat-row"><span>위험 스코어</span><b style="color:${r.color}">${r.score} (${r.level})</b></div>
+      <div class="stat-row"><span>체형(BCS)</span><b>${b.bcs}/9 ${b.label}</b></div>
+      <div class="stat-row"><span>권장 칼로리</span><b>${b.der?Math.round(b.der):"-"} kcal/일</b></div>
+      <button class="btn role block" id="vetWriteHere" style="margin-top:14px">✍️ ${sel.name} 진료기록 작성</button>
+    </div>
+    <div class="card pad">
+      <div class="sec-title">🩺 진료기록 (수의사 작성)</div>
+      <div class="timeline">${noteHTML||`<div class="empty" style="padding:16px"><div class="em">📝</div>작성된 진료기록이 없습니다.</div>`}</div>
+      <div class="sec-title" style="margin-top:18px">📋 보호자 공유 기록</div>
+      <div class="timeline">${recs.slice(0,8).map(recordHTML).join("")}</div>
+    </div>
+  </div>`;
+}
+
+/* =========================================================================
+   수의사 뷰 3: 진료기록 작성
+   ========================================================================= */
+function renderVetWrite(){
+  if(!vetSelPet) vetSelPet=state.pets[0].id;
+  return `
+  <div class="page-head"><div class="role-banner">🩺 수의사 · 진료기록 작성</div><h1>진료기록 작성</h1><p>진단·처치를 기록하면 보호자 타임라인에 자동 반영됩니다.</p></div>
+  <div class="card pad" style="max-width:640px">
+    <form id="vetForm">
+      <div class="field"><label>환자</label><select id="vw_pet">${state.pets.map(p=>`<option value="${p.id}" ${p.id===vetSelPet?'selected':''}>${p.emoji} ${p.name} · ${p.owner}</option>`).join("")}</select></div>
+      <div class="field row2">
+        <div><label>진료일</label><input id="vw_date" type="date" value="${todayISO()}"></div>
+        <div><label>진료비(원)</label><input id="vw_cost" type="number" value="50000"></div>
+      </div>
+      <div class="field"><label>진단명</label><input id="vw_dx" placeholder="예: 위장염, 외이염, 슬개골 1기"></div>
+      <div class="field"><label>처치·처방 계획</label><textarea id="vw_plan" placeholder="예: 수액·항생제 3일 처방, 1주 후 재진"></textarea></div>
+      <div class="field"><label>담당 수의사</label><input id="vw_vet" value="김수의 원장"></div>
+      <button class="btn role block" type="submit">진료기록 저장 (보호자에게 공유)</button>
+    </form>
+  </div>`;
+}
+
+/* =========================================================================
+   보험사 뷰 1: 청구 대시보드
+   ========================================================================= */
+function renderInsDash(){
+  const c=(state.claims||[]);
+  const total=c.length;
+  const pending=c.filter(x=>x.state==='review'||x.state==='submitted').length;
+  const approved=c.filter(x=>x.state==='approved');
+  const payout=approved.reduce((a,x)=>a+(x.payout||0),0);
+  const lossRatio= c.reduce((a,x)=>a+x.amount,0)? Math.round(payout/c.reduce((a,x)=>a+x.amount,0)*100):0;
+  return `
+  <div class="page-head"><div class="role-banner">🏛️ 보험사 워크스페이스 · 메리츠 펫퍼민트</div><h1>청구 대시보드</h1><p>제출된 펫보험 청구를 검토·심사하고 리스크를 분석합니다.</p></div>
+  <div class="grid kpis" style="margin-bottom:16px">
+    <div class="kpi"><div class="lbl">총 청구</div><div class="val">${total}<small> 건</small></div></div>
+    <div class="kpi warn"><div class="lbl">심사 대기</div><div class="val">${pending}<small> 건</small></div></div>
+    <div class="kpi role"><div class="lbl">승인</div><div class="val">${approved.length}<small> 건</small></div></div>
+    <div class="kpi purple"><div class="lbl">지급 보험금</div><div class="val" style="font-size:22px">${won(payout)}</div></div>
+  </div>
+  <div class="grid two-col" style="grid-template-columns:1fr 1fr;align-items:start" id="insGrid">
+    <div class="card pad">
+      <div class="sec-title">💸 손해율(Loss Ratio)</div>
+      <div class="gauge"><div class="ring" style="--p:${Math.min(lossRatio,100)};--c:${lossRatio<70?'var(--accent)':lossRatio<100?'var(--warn)':'var(--danger)'}"><b>${lossRatio}<small>%</small></b></div>
+        <div class="muted">지급 보험금 / 청구 진료비 합계. 70% 미만 건전.</div></div>
+    </div>
+    <div class="card pad">
+      <div class="sec-title">📋 빠른 작업 <button class="btn role sm" data-go="insclaims" style="margin-left:auto">청구 검토 →</button></div>
+      <div class="stat-row"><span>심사 대기 청구</span><b style="color:var(--warn)">${pending}건</b></div>
+      <div class="stat-row"><span>평균 청구액</span><b>${total?won(Math.round(c.reduce((a,x)=>a+x.amount,0)/total)):"-"}</b></div>
+      <div class="stat-row"><span>승인율</span><b>${total?Math.round(approved.length/total*100):0}%</b></div>
+    </div>
+  </div>`;
+}
+
+/* =========================================================================
+   보험사 뷰 2: 청구 검토
+   ========================================================================= */
+function renderInsClaims(){
+  const c=(state.claims||[]).slice().sort((a,b)=>{
+    const order={review:0,submitted:1,approved:2,rejected:3,draft:4};
+    return (order[a.state]-order[b.state]) || (b.submittedAt||"").localeCompare(a.submittedAt||"");
+  });
+  const stateMap={draft:"작성중",submitted:"제출됨",review:"심사중",approved:"승인",rejected:"반려"};
+  const rows=c.map(x=>`<tr class="click" data-insclaim="${x.id}">
+    <td>${fmtFull(x.treatDate)}</td><td>${x.petName}</td><td>${x.owner}</td><td>${x.dx}</td>
+    <td>${won(x.amount)}</td><td>${Math.round(x.claimRate*100)}%</td>
+    <td><span class="pill-state ${x.state}">${stateMap[x.state]}</span></td>
+  </tr>`).join("");
+  return `
+  <div class="page-head"><div class="role-banner">🏛️ 보험사 · 청구 검토</div><h1>청구 검토</h1><p>제출된 청구를 열어 승인·반려를 결정합니다.</p></div>
+  <div class="card pad"><div class="sec-title">🧾 전체 청구 (${c.length})</div>
+    <div class="tbl-wrap"><table class="dt"><thead><tr><th>진료일</th><th>반려동물</th><th>보호자</th><th>진단·항목</th><th>진료비</th><th>보장률</th><th>상태</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="muted" style="margin-top:10px">행을 누르면 청구 상세·진료요약을 열람하고 심사(승인/반려)할 수 있어요.</p>
+  </div>`;
+}
+
+/* =========================================================================
+   보험사 뷰 3: 리스크 분석
+   ========================================================================= */
+function renderInsRisk(){
+  // 종/품종별 위험 분포
+  const byBreed={};
+  state.pets.forEach(p=>{ const r=healthRisk(p); (byBreed[p.breed]=byBreed[p.breed]||[]).push(r.score); });
+  const rows=Object.entries(byBreed).map(([br,arr])=>{
+    const avg=Math.round(arr.reduce((a,b)=>a+b,0)/arr.length);
+    return `<div class="stat-row"><span>${br} <span class="muted">(${arr.length}두)</span></span>
+      <div style="display:flex;align-items:center;gap:10px;width:55%"><div class="bar" style="flex:1"><i style="width:${avg}%;background:${avg<25?'var(--accent)':avg<50?'var(--brand)':avg<70?'var(--warn)':'var(--danger)'}"></i></div><b>${avg}</b></div></div>`;
+  }).join("");
+  return `
+  <div class="page-head"><div class="role-banner">🏛️ 보험사 · 리스크 분석</div><h1>리스크 분석</h1><p>건강 데이터 기반 품종별 평균 위험도 — 언더라이팅·요율 산정 근거.</p></div>
+  <div class="grid two-col" style="grid-template-columns:1.1fr .9fr;align-items:start">
+    <div class="card pad">
+      <div class="sec-title">📊 품종별 평균 건강 위험도</div>
+      ${rows}
+      <p class="muted" style="margin-top:10px">펫헬스북의 건강 위험 스코어를 집계해 품종별 리스크 풀을 시각화합니다. 위험도가 높은 풀은 요율·면책 설계에 반영됩니다.</p>
+    </div>
+    <div class="card pad">
+      <div class="sec-title">📈 위험도 분포</div>
+      <div class="chart-wrap"><canvas id="riskChart"></canvas></div>
+    </div>
+  </div>`;
+}
+
+/* =========================================================================
+   병원 admin 뷰 1 (v3): 병원 운영 대시보드
+   ========================================================================= */
+function renderHospDash(){
+  const en=LANG==='en';
+  const bookings=(state.clinicBookings||[]);
+  const pending=bookings.filter(b=>!b.confirmed).length;
+  const confirmed=bookings.filter(b=>b.confirmed).length;
+  const patients=state.pets.length;
+  const owners=[...new Set(state.pets.map(p=>p.owner))].length;
+  const revenue=(state.vetPatients||[]).reduce((a,n)=>a+(n.cost||0),0)+state.pets.reduce((a,p)=>a+(p.records||[]).filter(r=>r.type==='visit').reduce((s,r)=>s+(r.cost||0),0),0);
+  // EMR 연동 상태
+  const emr=state.emr||{};
+  return `
+  <div class="page-head"><div class="role-banner">🏥 ${en?'Hospital Admin · Happy Animal Clinic':'병원 admin · 행복동물병원'} <span class="ver-pill">v3</span></div>
+    <h1>${t("hospdash")}</h1><p>${en?'Operate bookings, EMR sync and patient base for the clinic (B2B SaaS).':'예약·EMR 연동·환자 기반을 운영하는 병원용 SaaS 워크스페이스(B2B).'}</p></div>
+  <div class="grid kpis" style="margin-bottom:16px">
+    <div class="kpi role"><div class="lbl">${en?'Pending bookings':'미확정 예약'}</div><div class="val">${pending}<small> ${en?'':'건'}</small></div></div>
+    <div class="kpi"><div class="lbl">${en?'Confirmed':'확정 예약'}</div><div class="val">${confirmed}<small> ${en?'':'건'}</small></div></div>
+    <div class="kpi"><div class="lbl">${en?'Patients':'등록 환자'}</div><div class="val">${patients}<small> ${en?'':'두'}</small></div></div>
+    <div class="kpi purple"><div class="lbl">${en?'Logged revenue':'기록 매출'}</div><div class="val" style="font-size:20px">${won(revenue)}</div></div>
+  </div>
+  <div class="grid two-col" style="grid-template-columns:1fr 1fr;align-items:start" id="hospGrid">
+    <div class="card pad">
+      <div class="sec-title">🔗 ${en?'EMR Integration':'EMR(병원 진료시스템) 연동'} <span class="chip gray" style="margin-left:auto">mock</span></div>
+      <p class="muted" style="margin-bottom:10px">${en?'Pull/push records between the clinic EMR and PetHealthBook.':`병원 진료시스템(${emr.hospital})과 펫헬스북 간 진료기록을 양방향 동기화합니다.`}</p>
+      <div class="stat-row"><span>${en?'Connection':'연결 상태'}</span><b style="color:${emr.connected?'var(--accent)':'var(--ink-3)'}">${emr.connected?(en?'Connected':'연결됨'):(en?'Not connected':'미연결')}</b></div>
+      <div class="stat-row"><span>${en?'Last sync':'최근 동기화'}</span><b>${emr.lastSync?fmtFull(emr.lastSync):'-'}</b></div>
+      <div class="stat-row"><span>${en?'Records pulled':'가져온 기록'}</span><b>${emr.pulled||0}${en?'':'건'}</b></div>
+      <button class="btn role block" id="emrSync" style="margin-top:12px">${emr.connected?(en?'↻ Re-sync EMR':'↻ EMR 재동기화'):(en?'🔗 Connect EMR':'🔗 EMR 연동하기')}</button>
+    </div>
+    <div class="card pad">
+      <div class="sec-title">⚠️ ${en?'High-risk patients':'위험도 상위 환자'} <button class="btn role sm" data-go="hospsched" style="margin-left:auto">${en?'Calendar →':'캘린더 →'}</button></div>
+      <div class="tbl-wrap"><table class="dt"><thead><tr><th>${en?'Patient':'환자'}</th><th>${en?'Owner':'보호자'}</th><th>${t("risk")}</th></tr></thead><tbody>
+        ${state.pets.map(p=>({p,r:healthRisk(p)})).sort((a,b)=>b.r.score-a.r.score).slice(0,5).map(x=>`<tr class="click" data-vetpet="${x.p.id}"><td>${x.p.emoji} ${x.p.name}</td><td>${x.p.owner}</td><td><span class="chip ${x.r.score<25?'ok':x.r.score<50?'brand':x.r.score<70?'due':'over'}">${x.r.score}</span></td></tr>`).join("")}
+      </tbody></table></div>
+    </div>
+  </div>`;
+}
+
+/* =========================================================================
+   병원 admin 뷰 2 (v3): 예약·진료 캘린더 + 캘린더 동기화
+   ========================================================================= */
+function renderHospSched(){
+  const en=LANG==='en';
+  const bookings=(state.clinicBookings||[]).slice().sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+  const petName=(id)=>{ const p=state.pets.find(x=>x.id===id); return p?`${p.emoji} ${p.name} (${p.owner})`:"-"; };
+  const cal=state.calendar||{};
+  const rows=bookings.map(b=>`<tr>
+    <td>${fmtFull(b.date)} ${b.time}</td><td>${petName(b.petId)}</td><td>${b.hospital}</td><td>${b.reason}</td>
+    <td><span class="pill-state ${b.confirmed?'approved':'submitted'}">${b.confirmed?(en?'Confirmed':'확정'):(en?'Requested':'신청')}</span></td>
+    <td>${!b.confirmed?`<button class="btn xs role confirm-bk" data-id="${b.id}">${en?'Confirm':'확정'}</button>`:'-'}</td>
+  </tr>`).join("") || `<tr><td colspan="6" style="text-align:center;color:var(--ink-3);padding:24px">${en?'No bookings.':'예약이 없습니다.'}</td></tr>`;
+  return `
+  <div class="page-head"><div class="role-banner">🗓️ ${en?'Hospital · Booking Calendar':'병원 · 예약 캘린더'} <span class="ver-pill">v3</span></div>
+    <h1>${t("hospsched")}</h1><p>${en?'Confirm bookings and sync to an external calendar.':'예약을 확정하고 외부 캘린더(구글 캘린더)와 동기화합니다.'}</p></div>
+  <div class="card pad" style="margin-bottom:14px">
+    <div class="sec-title">📆 ${en?'Calendar sync':'캘린더 동기화'} <span class="chip gray" style="margin-left:auto">${cal.provider}</span></div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+      <div class="stat-row" style="flex:1;border:none"><span>${en?'Status':'상태'}</span><b style="color:${cal.connected?'var(--accent)':'var(--ink-3)'};margin-left:8px">${cal.connected?(en?'Synced':'동기화됨'):(en?'Off':'미연동')}</b></div>
+      <div class="muted">${en?'Events synced':'동기화 일정'}: <b>${cal.events||0}</b> · ${en?'last':'최근'} ${cal.lastSync?fmtFull(cal.lastSync):'-'}</div>
+      <button class="btn role sm" id="calSync">${cal.connected?(en?'↻ Re-sync':'↻ 재동기화'):(en?'🔗 Connect Google Calendar':'🔗 구글 캘린더 연동')}</button>
+    </div>
+  </div>
+  <div class="card pad">
+    <div class="sec-title">🗓️ ${en?'All bookings':'전체 예약'} (${bookings.length})</div>
+    <div class="tbl-wrap"><table class="dt"><thead><tr><th>${en?'When':'일시'}</th><th>${en?'Patient':'환자'}</th><th>${en?'Clinic':'병원'}</th><th>${en?'Reason':'사유'}</th><th>${en?'Status':'상태'}</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+  </div>`;
+}
+
+/* =========================================================================
+   뷰별 바인딩
+   ========================================================================= */
+function bindView(){
+  $$("[data-pick]").forEach(el=> el.addEventListener("click",()=>{ state.selected=el.dataset.pick; save(); render(); }));
+  $$("[data-go]").forEach(el=> el.addEventListener("click",()=> setView(el.dataset.go)));
+  $$("[data-vetpick]").forEach(el=> el.addEventListener("click",()=>{ vetSelPet=el.dataset.vetpick; render(); }));
+  $$("[data-vetpet]").forEach(el=> el.addEventListener("click",()=>{ vetSelPet=el.dataset.vetpet; setView("vetpatients"); }));
+
+  if(view==="home"){}
+  if(view==="pets") $("#addPet")?.addEventListener("click", openAddPet);
+  if(view==="records"){
+    $("#addRec")?.addEventListener("click", openAddRecord);
+    $("#exportRecCSV")?.addEventListener("click", ()=>exportRecordsCSV(currentPet()));
+  }
+  if(view==="schedule"){
+    $("#addSched")?.addEventListener("click", openAddSched);
+    $$(".done-sched").forEach(b=> b.addEventListener("click",()=>completeSched(b.dataset.pet,b.dataset.id)));
+    $$(".remind-sched").forEach(b=> b.addEventListener("click",()=>sendSchedReminder(b.dataset.pet,b.dataset.id)));
+  }
+  if(view==="report") drawTrendChart();
+  if(view==="predict"){ drawGrowthChart(); $("#addMed")?.addEventListener("click", openAddMed); }
+  if(view==="hospdash"){ $("#emrSync")?.addEventListener("click", emrSync); }
+  if(view==="hospsched"){
+    $("#calSync")?.addEventListener("click", calendarSync);
+    $$(".confirm-bk").forEach(b=> b.addEventListener("click",()=>confirmBooking(b.dataset.id)));
+  }
+  if(view==="clinic"){
+    $("#bookForm")?.addEventListener("submit", submitBooking);
+    $("#genPDF")?.addEventListener("click", ()=>genHealthPDF(currentPet()));
+    $("#genVisitPDF")?.addEventListener("click", ()=>genVisitPDF(currentPet()));
+    $$(".confirm-bk").forEach(b=> b.addEventListener("click",()=>confirmBooking(b.dataset.id)));
+  }
+  if(view==="claims"){
+    $("#newClaim")?.addEventListener("click", openNewClaim);
+    $$("[data-claim]").forEach(r=> r.addEventListener("click",()=>openClaimDetail(r.dataset.claim,false)));
+  }
+  if(view==="integrations"){
+    $("#runNotifSweep")?.addEventListener("click", runNotifSweep);
+    $("#expJSON")?.addEventListener("click", exportJSON);
+    $("#expCSV")?.addEventListener("click", ()=>exportRecordsCSV(currentPet()));
+    $("#impJSON")?.addEventListener("change", importJSON);
+    $("#syncWearable")?.addEventListener("click", syncWearable);
+    $("#oauthWearable")?.addEventListener("click", oauthWearable);
+    drawActChart();
+  }
+  if(view==="notifs"){
+    $("#readAll")?.addEventListener("click", ()=>{ (state.notifications||[]).forEach(n=>n.read=true); save(); render(); toast("모든 알림을 읽음 처리했어요."); });
+    $$("[data-notif]").forEach(el=> el.addEventListener("click",()=>{ const n=state.notifications.find(x=>x.id===el.dataset.notif); if(n){n.read=true; save(); render();} }));
+  }
+  if(view==="vetwrite" || view==="vetpatients"){
+    $("#vetForm")?.addEventListener("submit", submitVetRecord);
+    $("#vetWriteHere")?.addEventListener("click", ()=>setView("vetwrite"));
+  }
+  if(view==="insclaims") $$("[data-insclaim]").forEach(r=> r.addEventListener("click",()=>openClaimDetail(r.dataset.insclaim,true)));
+  if(view==="insrisk") drawRiskChart();
+}
+
+/* ---------- 차트 ---------- */
+let trendObj, actObj, riskObj;
+function drawTrendChart(){
+  const pet=currentPet(); const tr=weightTrend(pet);
+  const ctx=$("#trendChart"); if(!ctx) return; trendObj?.destroy();
+  const labels=tr.points.map(x=>fmtDate(x.date));
+  const outSet=new Set(tr.outliers.map(o=>o.date));
+  trendObj=new Chart(ctx,{type:"line",
+    data:{labels,datasets:[
+      {label:"체중",data:tr.points.map(x=>x.kg),borderColor:"#11b0a6",backgroundColor:"rgba(17,176,166,.12)",fill:false,tension:.3,borderWidth:3,
+        pointRadius:tr.points.map(x=>outSet.has(x.date)?7:4),
+        pointBackgroundColor:tr.points.map(x=>outSet.has(x.date)?"#e0474f":"#11b0a6")},
+      {label:"이동평균",data:tr.ma,borderColor:"#2f6df0",borderDash:[5,4],borderWidth:2,pointRadius:0,tension:.3},
+      {label:"+2σ",data:tr.upper,borderColor:"rgba(232,134,43,.5)",borderWidth:1,pointRadius:0,fill:"+1",backgroundColor:"rgba(232,134,43,.06)"},
+      {label:"-2σ",data:tr.lower,borderColor:"rgba(232,134,43,.5)",borderWidth:1,pointRadius:0},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,labels:{boxWidth:12,font:{size:11},color:"#76839b"}}},
+      scales:{y:{grid:{color:"#eef1f6"},ticks:{color:"#76839b"}},x:{grid:{display:false},ticks:{color:"#76839b",maxRotation:0}}}}});
+}
+function drawActChart(){
+  const pet=currentPet(); const log=(pet.activityLog||[]).slice(-7);
+  const ctx=$("#actChart"); if(!ctx||!log.length) return; actObj?.destroy();
+  actObj=new Chart(ctx,{type:"bar",
+    data:{labels:log.map(x=>fmtDate(x.date)),datasets:[{label:"걸음수",data:log.map(x=>x.steps),backgroundColor:"#2f6df0",borderRadius:6}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{y:{grid:{color:"#eef1f6"},ticks:{color:"#76839b"}},x:{grid:{display:false},ticks:{color:"#76839b"}}}}});
+}
+function drawRiskChart(){
+  const ctx=$("#riskChart"); if(!ctx) return; riskObj?.destroy();
+  const buckets={양호:0,주의:0,경계:0,위험:0};
+  state.pets.forEach(p=>{ const r=healthRisk(p); buckets[r.level]++; });
+  riskObj=new Chart(ctx,{type:"doughnut",
+    data:{labels:Object.keys(buckets),datasets:[{data:Object.values(buckets),
+      backgroundColor:["#11b0a6","#2f6df0","#e8862b","#e0474f"]}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{color:"#76839b",font:{size:12}}}}}});
+}
+let growthObj;
+function drawGrowthChart(){
+  const pet=currentPet(); const gc=growthCurve(pet);
+  const ctx=$("#growthChart"); if(!ctx) return; growthObj?.destroy();
+  const en=LANG==='en';
+  growthObj=new Chart(ctx,{type:"line",
+    data:{labels:gc.pts.map(p=>`${p.ageMo}${en?'mo':'개월'}`),datasets:[
+      {label:en?'Actual':'실측 체중',data:gc.pts.map(p=>p.kg),borderColor:"#2f6df0",backgroundColor:"rgba(47,109,240,.1)",borderWidth:3,tension:.3,pointRadius:4,fill:false},
+      {label:en?'Breed expected':'품종 기대치',data:gc.pts.map(p=>p.expected),borderColor:"#11b0a6",borderDash:[5,4],borderWidth:2,pointRadius:0,tension:.3},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,labels:{boxWidth:12,font:{size:11},color:"#76839b"}}},
+      scales:{y:{grid:{color:"#eef1f6"},ticks:{color:"#76839b"},title:{display:true,text:"kg",color:"#76839b"}},x:{grid:{display:false},ticks:{color:"#76839b",maxRotation:0}}}}});
+}
+
+/* ---------- v3: 약물 추가 (상호작용 재계산) ---------- */
+function openAddMed(){
+  const en=LANG==='en';
+  const opts=Object.keys(DRUG_DB).map(d=>`<option value="${d}">${d} · ${DRUG_DB[d].cls}</option>`).join("");
+  openSheet(`
+    <button class="close" onclick="window.__close()">✕</button>
+    <h3>${en?'Add medication':'약물 추가'}</h3><div class="sub">${currentPet().emoji} ${currentPet().name} · ${en?'interaction re-checked instantly':'추가 시 상호작용을 즉시 재점검합니다'}</div>
+    <div class="field"><label>${en?'Medication':'약물'}</label><select id="md_name">${opts}</select></div>
+    <button class="btn primary block" id="md_save">${en?'Add':'추가'}</button>`);
+  $("#md_save").addEventListener("click",()=>{
+    const pet=currentPet(); pet.meds=pet.meds||[];
+    const v=$("#md_name").value; if(!pet.meds.includes(v)) pet.meds.push(v);
+    save(); closeSheet(); toast(en?`${v} added — interactions re-checked.`:`${v} 추가 — 상호작용 재점검 완료.`); render();
+  });
+}
+
+/* ---------- v3 외부통합 5: 병원 EMR 연동 (mock) ---------- */
+function emrSync(){
+  const en=LANG==='en';
+  state.emr=state.emr||{hospital:"행복동물병원 EMR(iVET)",pulled:0};
+  state.emr.connected=true; state.emr.lastSync=todayISO();
+  // EMR에서 진료기록 1건을 끌어와 보호자 타임라인+수의사기록에 반영 (양방향 동기화 mock)
+  const pet=state.pets[0];
+  const note={id:uid(),petId:pet.id,date:todayISO(),dx:"EMR 동기화: 외이도 검사",plan:"외이 세정 처치, 점이액 처방",vet:"행복동물병원 EMR",cost:35000};
+  (state.vetPatients=state.vetPatients||[]).push(note);
+  pet.records.push({id:uid(),type:"visit",date:note.date,title:note.dx,memo:note.plan,vet:note.vet,cost:note.cost});
+  state.emr.pulled=(state.emr.pulled||0)+1;
+  pushNotifLog("EMR API(iVET, mock)", state.emr.hospital, `${pet.name} 진료기록 1건 양방향 동기화 (pull→보호자 타임라인 반영)`);
+  save(); toast(en?"🔗 EMR synced — 1 record pulled to guardian timeline.":"🔗 EMR 연동 완료 — 진료기록 1건을 보호자 타임라인에 반영했어요."); render();
+}
+
+/* ---------- v3 외부통합 6: 캘린더 동기화 (mock) ---------- */
+function calendarSync(){
+  const en=LANG==='en';
+  state.calendar=state.calendar||{provider:"Google Calendar",events:0};
+  state.calendar.connected=true; state.calendar.lastSync=todayISO();
+  const upcoming=upcomingAll().filter(s=>s.dday<=60).length + (state.clinicBookings||[]).filter(b=>b.date>=todayISO()).length;
+  state.calendar.events=upcoming;
+  pushNotifLog("Calendar API(mock)", state.calendar.provider, `예약·접종 일정 ${upcoming}건을 외부 캘린더에 push 동기화`);
+  save(); toast(en?`📆 Synced ${upcoming} events to ${state.calendar.provider}.`:`📆 ${upcoming}건 일정을 ${state.calendar.provider}에 동기화했어요.`); render();
+}
+
+/* ---------- v3 외부통합 7: 웨어러블 OAuth (mock 토큰) ---------- */
+function oauthWearable(){
+  const en=LANG==='en';
+  state.oauth=state.oauth||{wearable:{provider:"PetFit 스마트목걸이"}};
+  state.oauth.wearable.connected=true;
+  state.oauth.wearable.token="mock_oauth_"+uid();
+  pushNotifLog("OAuth 2.0(mock)", state.oauth.wearable.provider, `웨어러블 계정 인가 완료 · access_token=${state.oauth.wearable.token.slice(0,16)}…`);
+  save(); toast(en?"🔗 Wearable connected via OAuth (mock token).":"🔗 웨어러블 OAuth 연결 완료(mock 토큰). 이제 활동량을 동기화하세요."); render();
+}
+
+/* ---------- 펫 추가 (사진 업로드) ---------- */
+function openAddPet(){
+  openSheet(`
+    <button class="close" onclick="window.__close()">✕</button>
+    <h3>새 반려동물 등록</h3><div class="sub">사진을 올리면 프로필에 바로 반영돼요. 견종·묘종 프로토콜이 자동 적용됩니다.</div>
+    <div style="display:flex;gap:14px;align-items:center;margin-bottom:16px">
+      <div class="upload-prev" id="petPrev">🐾</div>
+      <div><label class="btn ghost sm" style="cursor:pointer">사진 선택<input id="petPhoto" type="file" accept="image/*" hidden></label></div>
+    </div>
+    <form id="petForm">
+      <div class="field"><label>이름</label><input id="np_name" placeholder="예: 보리" required></div>
+      <div class="field row2">
+        <div><label>종</label><select id="np_species"><option value="dog">강아지</option><option value="cat">고양이</option></select></div>
+        <div><label>성별</label><select id="np_sex"><option>남(중성화)</option><option>남</option><option>여(중성화)</option><option>여</option></select></div>
+      </div>
+      <div class="field row2">
+        <div><label>품종</label><input id="np_breed" value="믹스"></div>
+        <div><label>생년월일</label><input id="np_birth" type="date" value="${addDays(todayISO(),-365)}"></div>
+      </div>
+      <button class="btn primary block" type="submit">등록하기</button>
+    </form>`);
+  let photoData=null;
+  $("#petPhoto").addEventListener("change",(e)=>{
+    const f=e.target.files[0]; if(!f) return; const r=new FileReader();
+    r.onload=()=>{ photoData=r.result; $("#petPrev").innerHTML=`<img src="${r.result}" style="width:100%;height:100%;object-fit:cover;border-radius:16px">`; };
+    r.readAsDataURL(f);
+  });
+  $("#petForm").addEventListener("submit",(e)=>{
+    e.preventDefault();
+    const sp=$("#np_species").value, breed=$("#np_breed").value.trim()||"믹스";
+    const pet={ id:"pet_"+uid(), name:$("#np_name").value.trim()||"이름없음", species:sp, breed, sex:$("#np_sex").value,
+      birth:$("#np_birth").value, photo:photoData, emoji:sp==="dog"?"🐕":"🐈", owner:state.owner, records:[], schedule:[], activityLog:[] };
+    const proto=protocolFor(sp,breed);
+    [...proto.base, ...proto.breedExtra].forEach(c=> pet.schedule.push({id:uid(),cat:c.key,type:c.type,cycleDays:c.cycleDays,last:todayISO(),note:c.note}));
+    state.pets.push(pet); state.selected=pet.id; save(); closeSheet();
+    toast(`${pet.emoji} ${pet.name} 등록! ${proto.breedExtra.length?breed+' 맞춤 검진 포함 ':''}기본 스케줄을 만들었어요.`); render();
+  });
+}
+
+/* ---------- 건강기록 추가 ---------- */
+function openAddRecord(){
+  openSheet(`
+    <button class="close" onclick="window.__close()">✕</button>
+    <h3>건강기록 추가</h3><div class="sub">${currentPet().emoji} ${currentPet().name}의 새 기록</div>
+    <div class="field"><label>기록 유형</label>
+      <select id="rt"><option value="weight">⚖️ 체중</option><option value="symptom">🩹 증상</option><option value="visit">🏥 진료</option><option value="med">💊 투약</option></select></div>
+    <div class="field"><label>날짜</label><input id="rdate" type="date" value="${todayISO()}"></div>
+    <div id="rDyn"></div>
+    <button class="btn primary block" id="saveRec">저장</button>`);
+  const dyn=$("#rDyn");
+  const drawDyn=()=>{ const t=$("#rt").value;
+    if(t==="weight") dyn.innerHTML=`<div class="field"><label>체중(kg)</label><input id="rkg" type="number" step="0.1" placeholder="예: 8.1"></div>`;
+    else dyn.innerHTML=`<div class="field"><label>제목</label><input id="rtitle" placeholder="${t==='symptom'?'예: 식욕부진':(t==='visit'?'예: 정기검진':'예: 심장사상충 예방약')}"></div>
+      <div class="field"><label>메모</label><textarea id="rmemo" placeholder="상세 내용(선택)"></textarea></div>`;
+  };
+  $("#rt").addEventListener("change",drawDyn); drawDyn();
+  $("#saveRec").addEventListener("click",()=>{
+    const t=$("#rt").value,date=$("#rdate").value,pet=currentPet(); let rec={id:uid(),type:t,date};
+    if(t==="weight"){ const kg=parseFloat($("#rkg").value); if(!kg){toast("체중을 입력해 주세요.");return;} rec.kg=kg; rec.memo=""; }
+    else { const title=$("#rtitle").value.trim(); if(!title){toast("제목을 입력해 주세요.");return;} rec.title=title; rec.memo=$("#rmemo").value.trim(); }
+    pet.records.push(rec); save(); closeSheet(); toast("기록을 저장했어요."); render();
+  });
+}
+
+/* ---------- 스케줄 항목 추가 ---------- */
+function openAddSched(){
+  const pet=currentPet();
+  const proto=protocolFor(pet.species,pet.breed);
+  const opts=[...proto.base,...proto.breedExtra].map(c=>`<option value="${c.key}" data-type="${c.type}" data-cycle="${c.cycleDays}" data-note="${c.note}">${c.key}</option>`).join("");
+  openSheet(`
+    <button class="close" onclick="window.__close()">✕</button>
+    <h3>스케줄 항목 추가</h3><div class="sub">주기를 정하면 다음 일정이 자동 계산돼요.</div>
+    <div class="field"><label>항목</label><select id="sc_cat">${opts}<option value="__custom">직접 입력…</option></select></div>
+    <div class="field" id="customWrap" hidden><label>항목명 직접 입력</label><input id="sc_custom" placeholder="예: 슬개골 재검"></div>
+    <div class="field row2">
+      <div><label>유형</label><select id="sc_type"><option value="vac">💉 접종</option><option value="med">💊 투약</option><option value="parasite">🪱 구충</option></select></div>
+      <div><label>주기(일)</label><input id="sc_cycle" type="number" value="365"></div>
+    </div>
+    <div class="field"><label>마지막 시행일</label><input id="sc_last" type="date" value="${todayISO()}"></div>
+    <button class="btn primary block" id="saveSched">추가</button>`);
+  const sync=()=>{ const o=$("#sc_cat").selectedOptions[0];
+    if(o.value==="__custom"){ $("#customWrap").hidden=false; return; }
+    $("#customWrap").hidden=true; $("#sc_type").value=o.dataset.type; $("#sc_cycle").value=o.dataset.cycle; };
+  $("#sc_cat").addEventListener("change",sync); sync();
+  $("#saveSched").addEventListener("click",()=>{
+    const catSel=$("#sc_cat").value;
+    const cat=catSel==="__custom"?($("#sc_custom").value.trim()||"기타 일정"):catSel;
+    pet.schedule.push({id:uid(),cat,type:$("#sc_type").value,cycleDays:parseInt($("#sc_cycle").value)||365,last:$("#sc_last").value,note:catSel==="__custom"?"사용자 지정":($("#sc_cat").selectedOptions[0].dataset.note||"")});
+    save(); closeSheet(); toast("스케줄을 추가했어요."); render();
+  });
+}
+function completeSched(petId,id){
+  const pet=state.pets.find(p=>p.id===petId); const s=pet.schedule.find(x=>x.id===id); if(!s) return;
+  s.last=todayISO();
+  const tmap={vac:["visit","접종 완료"],med:["med","투약 완료"],parasite:["med","구충 완료"]};
+  const [rt,label]=tmap[s.type]||["visit","완료"];
+  pet.records.push({id:uid(),type:rt,date:todayISO(),title:`${s.cat} ${label}`,memo:`다음 예정 ${fmtFull(addDays(s.last,s.cycleDays))}`});
+  save(); toast(`✅ ${s.cat} 완료! 다음 일정 ${fmtFull(addDays(s.last,s.cycleDays))}`); render();
+}
+
+/* ---------- 외부통합 1: 카카오 알림톡 발송 mock ---------- */
+function pushNotifLog(channel,to,msg){ (state.notifLog=state.notifLog||[]).push({ts:nowStamp(),channel,to,msg}); }
+function sendSchedReminder(petId,id){
+  const pet=state.pets.find(p=>p.id===petId); const it=schedItems(pet).find(x=>x.id===id); if(!it) return;
+  const dd=it.dday<0?`${-it.dday}일 지남`:`D-${it.dday}`;
+  pushNotifLog("알림톡(KakaoBiz)", `${state.owner}님 휴대폰`, `[펫헬스북] ${pet.name} '${it.cat}' 예정일 ${fmtFull(it.next)} (${dd}). 병원 방문을 잊지 마세요!`);
+  state.notifications.push({id:uid(),icon:"💉",title:`${pet.name} · ${it.cat} 알림 발송`,sub:`알림톡으로 ${dd} 안내를 보냈어요`,ts:todayISO(),read:false});
+  save(); toast(`🔔 ${pet.name} '${it.cat}' 알림톡을 발송했어요(연동 탭 로그).`); render();
+}
+function runNotifSweep(){
+  const due=upcomingAll().filter(s=>s.dday<=7);
+  if(!due.length){ toast("발송 대상(D-7 이내) 일정이 없습니다."); return; }
+  due.forEach(s=>{ const dd=s.dday<0?`${-s.dday}일 지남`:`D-${s.dday}`;
+    pushNotifLog("알림톡(KakaoBiz)",`${state.owner}님 휴대폰`,`[펫헬스북] ${s.petName} '${s.cat}' ${dd} — ${fmtFull(s.next)} 예정`); });
+  save(); toast(`📨 ${due.length}건 알림톡을 일괄 발송했어요.`); render();
+}
+
+/* ---------- 외부통합 2: 병원 예약 + 확정 알림톡 ---------- */
+function submitBooking(e){
+  e.preventDefault();
+  const b={id:uid(),petId:currentPet().id,hospital:$("#bk_hosp").value.trim(),date:$("#bk_date").value,time:$("#bk_time").value,reason:$("#bk_reason").value.trim(),confirmed:false};
+  if(!b.hospital||!b.date){ toast("병원명과 날짜를 입력해 주세요."); return; }
+  state.clinicBookings.push(b);
+  pushNotifLog("알림톡(KakaoBiz)",`${state.owner}님 휴대폰`,`[${b.hospital}] ${currentPet().name} ${fmtFull(b.date)} ${b.time} 예약이 접수되었습니다. 병원 확정을 기다려 주세요.`);
+  save(); toast(`🏥 ${fmtFull(b.date)} ${b.time} 예약 신청 + 알림톡 발송`); render();
+}
+function confirmBooking(id){
+  const b=state.clinicBookings.find(x=>x.id===id); if(!b) return; b.confirmed=true;
+  const p=state.pets.find(x=>x.id===b.petId);
+  pushNotifLog("알림톡(KakaoBiz)",`${p?p.owner:'보호자'}님 휴대폰`,`[${b.hospital}] ${p?p.name:''} ${fmtFull(b.date)} ${b.time} 예약이 확정되었습니다.`);
+  state.notifications.push({id:uid(),icon:"🏥",title:`${p?p.name:''} · 예약 확정`,sub:`${b.hospital} ${fmtFull(b.date)} ${b.time}`,ts:todayISO(),read:false});
+  save(); toast(`✅ 예약 확정 + 보호자에게 알림톡 발송`); render();
+}
+
+/* ---------- 외부통합 3: CSV/JSON 입출력 ---------- */
+function download(filename,content,mime){ const blob=new Blob([content],{type:mime}); const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url); }
+function exportRecordsCSV(pet){
+  const rows=[["날짜","유형","내용","메모/체중","진료비"]];
+  (pet.records||[]).sort((a,b)=>a.date.localeCompare(b.date)).forEach(r=>{
+    rows.push([r.date, r.type, r.title||(r.kg?r.kg+"kg":""), r.memo||"", r.cost||""]);
+  });
+  const csv="﻿"+rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
+  download(`건강기록_${pet.name}_${todayISO()}.csv`, csv, "text/csv;charset=utf-8");
+  toast("⬇ 건강기록 CSV를 내보냈어요.");
+}
+function exportJSON(){ download(`펫헬스북_백업_${todayISO()}.json`, JSON.stringify(state,null,2), "application/json"); toast("⬇ 전체 데이터를 JSON으로 백업했어요."); }
+function importJSON(e){
+  const f=e.target.files[0]; if(!f) return; const r=new FileReader();
+  r.onload=()=>{ try{ const obj=JSON.parse(r.result); if(!obj.pets) throw 0; state=obj; document.body.dataset.role=state.role||"guardian"; save(); toast("⬆ 백업을 가져왔어요."); renderShell(); render(); }
+    catch(err){ toast("올바른 백업 파일이 아닙니다."); } };
+  r.readAsText(f);
+}
+
+/* ---------- 외부통합 4: 웨어러블 활동량 mock ---------- */
+function syncWearable(){
+  if(!(state.oauth&&state.oauth.wearable&&state.oauth.wearable.connected)){ toast(LANG==='en'?"Connect via OAuth first.":"먼저 OAuth로 웨어러블을 연결하세요."); return; }
+  const pet=currentPet(); pet.activityLog=pet.activityLog||[];
+  const base=pet.species==="cat"?2200:8500;
+  for(let i=6;i>=0;i--){ const d=addDays(todayISO(),-i);
+    if(!pet.activityLog.find(x=>x.date===d)) pet.activityLog.push({date:d,steps:Math.round(base*(0.7+Math.random()*0.6)),activeMin:Math.round(40+Math.random()*60)});
+  }
+  pet.activityLog=pet.activityLog.slice(-14);
+  save(); toast(`⌚ ${pet.name}의 최근 7일 활동량을 가져왔어요.`); render();
+}
+
+/* ---------- 보험청구 (외부통합 — PDF·제출·상태추적) ---------- */
+function openNewClaim(){
+  const visits=[]; myPets().forEach(p=>(p.records||[]).filter(r=>(r.type==="visit"||r.type==="med")&&r.cost).forEach(r=>visits.push({pet:p,r})));
+  const opts=visits.map((v,i)=>`<option value="${i}">${v.pet.name} · ${fmtFull(v.r.date)} · ${v.r.title} (${won(v.r.cost)})</option>`).join("") || `<option value="-1">청구 가능한 진료(진료비 기록)가 없습니다</option>`;
+  openSheet(`
+    <button class="close" onclick="window.__close()">✕</button>
+    <h3>새 보험청구 작성</h3><div class="sub">진료기록을 선택하면 청구서가 자동 구성됩니다.</div>
+    <div class="field"><label>진료 항목</label><select id="cl_src">${opts}</select></div>
+    <div class="field row2">
+      <div><label>보험사</label><select id="cl_ins">${(state.insurers||["삼성화재 애니펫","메리츠 펫퍼민트","DB손해보험 펫블리"]).map(i=>`<option>${i}</option>`).join("")}</select></div>
+      <div><label>보장률(%)</label><input id="cl_rate" type="number" value="70"></div>
+    </div>
+    <button class="btn primary block" id="cl_make">청구서 생성 → 제출</button>`);
+  $("#cl_make").addEventListener("click",()=>{
+    const idx=parseInt($("#cl_src").value); if(idx<0||!visits[idx]){ toast("청구할 진료를 선택하세요."); return; }
+    const v=visits[idx]; const rate=(parseInt($("#cl_rate").value)||70)/100;
+    const c={id:"clm_"+uid(),petId:v.pet.id,petName:v.pet.name,owner:state.owner,hospital:"행복동물병원",dx:v.r.title,
+      treatDate:v.r.date,amount:v.r.cost,claimRate:rate,state:"submitted",insurer:$("#cl_ins").value,submittedAt:todayISO(),reviewedAt:null,payout:null,note:""};
+    state.claims.push(c);
+    pushNotifLog("보험사 API(mock)",`${c.insurer}`,`청구 접수 ${c.id} · ${c.petName} ${c.dx} ${won(c.amount)} (보장 ${Math.round(rate*100)}%)`);
+    state.notifications.push({id:uid(),icon:"🧾",title:`${c.petName} · 보험청구 제출`,sub:`${c.insurer} 접수번호 ${c.id}`,ts:todayISO(),read:false});
+    // 자동으로 심사중 전이 (mock)
+    setTimeout(()=>{ c.state="review"; save(); if(view==="claims") render(); },50);
+    save(); closeSheet(); toast(`🧾 청구서를 생성·제출했어요. 접수번호 ${c.id}`); openClaimDetail(c.id,false);
+  });
+}
+function openClaimDetail(id, asInsurer){
+  const c=state.claims.find(x=>x.id===id); if(!c) return;
+  const stateMap={draft:"작성중",submitted:"제출됨",review:"심사중",approved:"승인",rejected:"반려"};
+  const steps=["submitted","review","approved"];
+  const stepIdx=c.state==="rejected"?1:steps.indexOf(c.state);
+  const flow=steps.map((s,i)=>`<div style="flex:1;text-align:center">
+    <div style="width:30px;height:30px;border-radius:50%;margin:0 auto;display:grid;place-items:center;font-weight:800;font-size:13px;
+      background:${i<=stepIdx?'var(--role)':'var(--surface-2)'};color:${i<=stepIdx?'#fff':'var(--ink-3)'}">${i+1}</div>
+    <div class="muted" style="margin-top:5px;font-size:11.5px">${stateMap[s]}</div></div>`).join('<div style="flex:0 0 18px;align-self:flex-start;margin-top:14px;color:var(--ink-3)">→</div>');
+  const insurerActions = asInsurer && (c.state==="submitted"||c.state==="review")
+    ? `<div style="display:flex;gap:9px;margin-top:16px">
+        <button class="btn role row-grow" id="clApprove">승인 (보험금 지급)</button>
+        <button class="btn ghost row-grow" id="clReject" style="flex:1">반려</button></div>` : "";
+  const guardianActions = !asInsurer
+    ? `<button class="btn accent block" id="clPDF" style="margin-top:14px">📄 청구서 PDF 다운로드</button>` : "";
+  openSheet(`
+    <button class="close" onclick="window.__close()">✕</button>
+    <h3>보험청구 상세</h3><div class="sub">접수번호 ${c.id} · ${c.insurer}</div>
+    <div style="display:flex;align-items:flex-start;margin:6px 0 18px">${flow}</div>
+    <div class="card pad" style="background:var(--surface-2);border:none">
+      <div class="stat-row"><span>반려동물</span><b>${c.petName}</b></div>
+      <div class="stat-row"><span>보호자</span><b>${c.owner}</b></div>
+      <div class="stat-row"><span>진료일</span><b>${fmtFull(c.treatDate)}</b></div>
+      <div class="stat-row"><span>진단·항목</span><b>${c.dx}</b></div>
+      <div class="stat-row"><span>진료비</span><b>${won(c.amount)}</b></div>
+      <div class="stat-row"><span>보장률</span><b>${Math.round(c.claimRate*100)}%</b></div>
+      <div class="stat-row"><span>예상/지급 보험금</span><b style="color:var(--role)">${won(c.payout!=null?c.payout:Math.round(c.amount*c.claimRate))}</b></div>
+      <div class="stat-row"><span>상태</span><span class="pill-state ${c.state}">${stateMap[c.state]}</span></div>
+      ${c.note?`<div class="stat-row"><span>심사 메모</span><b>${c.note}</b></div>`:""}
+    </div>
+    ${guardianActions}${insurerActions}`);
+  $("#clPDF")?.addEventListener("click",()=>genClaimPDF(c));
+  $("#clApprove")?.addEventListener("click",()=>{ c.state="approved"; c.reviewedAt=todayISO(); c.payout=Math.round(c.amount*c.claimRate); c.note="보장 약관에 따라 승인";
+    pushNotifLog("보험사 API(mock)",`${c.owner}님 휴대폰(알림톡)`,`[${c.insurer}] ${c.petName} 청구 ${c.id} 승인 · 보험금 ${won(c.payout)} 지급 예정`);
+    state.notifications.push({id:uid(),icon:"✅",title:`${c.petName} · 청구 승인`,sub:`보험금 ${won(c.payout)} 지급`,ts:todayISO(),read:false});
+    save(); closeSheet(); toast(`✅ 청구 승인 · 보험금 ${won(c.payout)}`); render(); });
+  $("#clReject")?.addEventListener("click",()=>{ c.state="rejected"; c.reviewedAt=todayISO(); c.payout=0; c.note="보장 범위 외(약관 면책)";
+    pushNotifLog("보험사 API(mock)",`${c.owner}님 휴대폰(알림톡)`,`[${c.insurer}] ${c.petName} 청구 ${c.id} 반려 · 사유: 보장 범위 외`);
+    state.notifications.push({id:uid(),icon:"🚫",title:`${c.petName} · 청구 반려`,sub:`보장 범위 외`,ts:todayISO(),read:false});
+    save(); closeSheet(); toast(`청구를 반려 처리했어요.`); render(); });
+}
+
+/* ---------- 수의사 진료기록 작성 (역할 분기 — 보호자 타임라인에 반영) ---------- */
+function submitVetRecord(e){
+  e.preventDefault();
+  const petId=$("#vw_pet").value; const pet=state.pets.find(p=>p.id===petId); if(!pet) return;
+  const note={id:uid(),petId,date:$("#vw_date").value,dx:$("#vw_dx").value.trim()||"진료",plan:$("#vw_plan").value.trim()||"-",vet:$("#vw_vet").value.trim()||"수의사",cost:parseInt($("#vw_cost").value)||0};
+  (state.vetPatients=state.vetPatients||[]).push(note);
+  // 보호자 타임라인에도 진료 기록으로 자동 반영
+  pet.records.push({id:uid(),type:"visit",date:note.date,title:note.dx,memo:note.plan,vet:note.vet,cost:note.cost});
+  // 보호자에게 알림
+  state.notifications.push({id:uid(),icon:"🩺",title:`${pet.name} · 진료기록 도착`,sub:`${note.vet}: ${note.dx}`,ts:note.date,read:false});
+  pushNotifLog("알림톡(KakaoBiz)",`${pet.owner}님 휴대폰`,`[행복동물병원] ${pet.name} 진료기록이 등록되었습니다: ${note.dx}`);
+  vetSelPet=petId; save(); toast(`✍️ ${pet.name} 진료기록 저장 — 보호자에게 공유했어요.`); setView("vetpatients");
+}
+
+/* =========================================================================
+   PDF — jsPDF (한글: canvas 렌더 방식 → 한글 깨짐 0)
+   ========================================================================= */
+function canvasToPDF(drawFn, filename){
+  const { jsPDF } = window.jspdf;
+  const scale=2, Wmm=210, Hmm=297;
+  const cv=document.createElement("canvas");
+  cv.width=Math.round(Wmm*3.78*scale); cv.height=Math.round(Hmm*3.78*scale);
+  const g=cv.getContext("2d"); g.scale(scale,scale);
+  const W=Wmm*3.78, H=Hmm*3.78;
+  g.fillStyle="#ffffff"; g.fillRect(0,0,W,H); drawFn(g,W,H);
+  const img=cv.toDataURL("image/png");
+  const pdf=new jsPDF({orientation:"p",unit:"mm",format:"a4"});
+  pdf.addImage(img,"PNG",0,0,Wmm,Hmm); pdf.save(filename);
+}
+const TEAL="#11b0a6", INK="#14233d", INK3="#76839b", BRAND="#2f6df0", PURPLE="#7c5cf0";
+function pdfHeader(g,W,title,sub,color){
+  g.fillStyle=color||BRAND; g.fillRect(0,0,W,84);
+  g.fillStyle="#ffffff"; g.font="700 30px -apple-system,'Apple SD Gothic Neo',sans-serif"; g.fillText("🐾 펫헬스북",40,52);
+  g.font="600 15px -apple-system,'Apple SD Gothic Neo',sans-serif"; g.fillText(title,40,72);
+  g.textAlign="right"; g.font="400 12px sans-serif"; g.fillText(sub,W-40,72); g.textAlign="left";
+}
+function pdfLine(g,x,y,w){ g.strokeStyle="#e7ebf2"; g.lineWidth=1; g.beginPath(); g.moveTo(x,y); g.lineTo(x+w,y); g.stroke(); }
+function genHealthPDF(pet){
+  const recs=[...(pet.records||[])];
+  const weights=recs.filter(r=>r.type==="weight").sort((a,b)=>a.date.localeCompare(b.date));
+  const lastKg=weights.length?weights[weights.length-1].kg:"-";
+  const sched=schedItems(pet); const risk=healthRisk(pet); const bcs=calcBCS(pet);
+  canvasToPDF((g,W,H)=>{
+    pdfHeader(g,W,"반려동물 건강수첩 (v2)",`발행일 ${fmtFull(todayISO())}`);
+    let y=120;
+    g.fillStyle=INK; g.font="700 22px -apple-system,'Apple SD Gothic Neo',sans-serif"; g.fillText(`${pet.emoji} ${pet.name}`,40,y);
+    g.fillStyle=INK3; g.font="400 14px -apple-system,'Apple SD Gothic Neo',sans-serif";
+    g.fillText(`${speciesKo(pet.species)} · ${pet.breed} · ${pet.sex} · ${ageText(pet.birth)}`,40,y+24);
+    y+=58; pdfLine(g,40,y,W-80); y+=30;
+    g.fillStyle=TEAL; g.font="700 16px sans-serif"; g.fillText("■ 건강 요약 (AI 분석)",40,y); y+=26;
+    g.fillStyle=INK; g.font="400 14px -apple-system,'Apple SD Gothic Neo',sans-serif";
+    [["최근 체중",`${lastKg} kg`],["건강 위험 스코어",`${risk.score}/100 (${risk.level})`],["체형(BCS)",`${bcs.bcs}/9 ${bcs.label}`],["권장 칼로리",`${bcs.der?Math.round(bcs.der):"-"} kcal/일`]].forEach((r,i)=>{
+      const cx=40+(i%2)*(W/2-40); const cy=y+Math.floor(i/2)*26;
+      g.fillStyle=INK3; g.fillText(r[0],cx,cy); g.fillStyle=INK; g.fillText(r[1],cx+140,cy);
+    });
+    y+=62; pdfLine(g,40,y,W-80); y+=30;
+    g.fillStyle=TEAL; g.font="700 16px sans-serif"; g.fillText("■ 접종·구충 이력 및 다음 예정",40,y); y+=26;
+    g.font="400 13.5px -apple-system,'Apple SD Gothic Neo',sans-serif";
+    sched.forEach(s=>{ g.fillStyle=INK; g.fillText(`• ${s.cat}`,40,y);
+      g.fillStyle=INK3; g.fillText(`최근 ${fmtFull(s.last)} → 다음 ${fmtFull(s.next)} (${s.dday<0?'지남':'D-'+s.dday})`,300,y); y+=24; });
+    y+=10; pdfLine(g,40,y,W-80); y+=30;
+    g.fillStyle=TEAL; g.font="700 16px sans-serif"; g.fillText("■ 최근 진료·증상 기록",40,y); y+=26;
+    g.font="400 13.5px -apple-system,'Apple SD Gothic Neo',sans-serif";
+    const notable=recs.filter(r=>r.type!=="weight").sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
+    notable.forEach(r=>{ g.fillStyle=INK3; g.fillText(fmtFull(r.date),40,y);
+      g.fillStyle=INK; g.fillText(`${r.type==='visit'?'🏥':r.type==='med'?'💊':'🩹'} ${r.title}${r.memo?' · '+r.memo:''}`.slice(0,46),160,y); y+=24; });
+    g.fillStyle=INK3; g.font="400 11px sans-serif"; g.fillText(`본 건강수첩은 펫헬스북 v2에서 ${fmtFull(todayISO())} 자동 발행. 위험스코어·BCS는 보호자 기록 기반 추정치입니다.`,40,H-40);
+  }, `건강수첩_${pet.name}_${todayISO()}.pdf`);
+  toast("📕 건강수첩 PDF를 다운로드했어요.");
+}
+function genVisitPDF(pet){
+  const visits=(pet.records||[]).filter(r=>r.type==="visit"||r.type==="med").sort((a,b)=>b.date.localeCompare(a.date));
+  canvasToPDF((g,W,H)=>{
+    pdfHeader(g,W,"보험청구용 진료요약서",`발행일 ${fmtFull(todayISO())}`);
+    let y=120; g.fillStyle=INK; g.font="700 20px -apple-system,'Apple SD Gothic Neo',sans-serif"; g.fillText(`${pet.emoji} ${pet.name} 진료내역 요약`,40,y); y+=30;
+    g.fillStyle=INK3; g.font="400 13px -apple-system,'Apple SD Gothic Neo',sans-serif"; g.fillText(`${speciesKo(pet.species)} · ${pet.breed} · ${pet.sex} · ${ageText(pet.birth)}`,40,y); y+=30;
+    pdfLine(g,40,y,W-80); y+=28;
+    g.fillStyle=TEAL; g.font="700 14px sans-serif"; g.fillText("진료일",40,y); g.fillText("구분",170,y); g.fillText("내용",250,y); g.fillText("진료비",W-110,y); y+=10; pdfLine(g,40,y,W-80); y+=24;
+    g.font="400 13px -apple-system,'Apple SD Gothic Neo',sans-serif";
+    visits.forEach(r=>{ g.fillStyle=INK; g.fillText(fmtFull(r.date),40,y); g.fillStyle=INK3; g.fillText(r.type==="visit"?"진료":"투약",170,y);
+      g.fillStyle=INK; g.fillText(`${r.title}`.slice(0,30),250,y); g.fillText(r.cost?won(r.cost):"-",W-110,y); y+=24; pdfLine(g,40,y-8,W-80); });
+    y+=20; g.fillStyle=INK3; g.font="400 12px -apple-system,'Apple SD Gothic Neo',sans-serif"; g.fillText(`총 ${visits.length}건의 진료·투약 내역. 펫보험 청구 시 영수증·진단서와 함께 제출하세요.`,40,y);
+    g.fillStyle=INK3; g.font="400 11px sans-serif"; g.fillText(`펫헬스북 자동 발행 · ${fmtFull(todayISO())}`,40,H-40);
+  }, `진료요약_${pet.name}_${todayISO()}.pdf`);
+  toast("🧾 보험청구용 진료요약 PDF를 다운로드했어요.");
+}
+function genClaimPDF(c){
+  canvasToPDF((g,W,H)=>{
+    pdfHeader(g,W,"펫보험 청구서",`접수번호 ${c.id}`,PURPLE);
+    let y=120; g.fillStyle=INK; g.font="700 20px -apple-system,'Apple SD Gothic Neo',sans-serif"; g.fillText(`${c.insurer} 보험금 청구서`,40,y); y+=34; pdfLine(g,40,y,W-80); y+=28;
+    g.font="400 15px -apple-system,'Apple SD Gothic Neo',sans-serif";
+    [["반려동물",c.petName],["보호자",c.owner],["병원",c.hospital],["진료일",fmtFull(c.treatDate)],["진단·항목",c.dx],["총 진료비",won(c.amount)],["보장률",`${Math.round(c.claimRate*100)}%`],["청구 보험금",won(Math.round(c.amount*c.claimRate))]].forEach(r=>{
+      g.fillStyle=INK3; g.fillText(r[0],40,y); g.fillStyle=INK; g.font="700 15px -apple-system,'Apple SD Gothic Neo',sans-serif"; g.fillText(r[1],240,y);
+      g.font="400 15px -apple-system,'Apple SD Gothic Neo',sans-serif"; y+=30; pdfLine(g,40,y-10,W-80);
+    });
+    y+=20; g.fillStyle=INK3; g.font="400 12px -apple-system,'Apple SD Gothic Neo',sans-serif"; g.fillText(`펫헬스북에서 자동 생성된 청구서. 본 서류는 보험사 제출용이며 진료영수증 원본과 함께 제출합니다.`,40,y);
+    g.fillText(`발행 ${fmtFull(todayISO())} · 펫헬스북 v2`,40,H-40);
+  }, `보험청구서_${c.petName}_${c.id}.pdf`);
+  toast("📄 청구서 PDF를 다운로드했어요.");
+}
+
+/* ---------- 부트 ---------- */
+LANG = state.lang || "ko";
+document.body.dataset.role = state.role||"guardian";
+view = TABMAP[state.role][0];
+renderShell();
+setView(view);
+
+</script>
+</body>
+</html>
