@@ -1,0 +1,1488 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>리걸체크 — 계약서 AI 검토·협업 플랫폼 (v2)</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  /* ===== 디자인 토큰 (Apple × Toss, 브랜드 = 신뢰 인디고) ===== */
+  :root{
+    --brand:#3d4fd6; --brand-strong:#2f3eb3; --brand-soft:#eef0fd;
+    --ink:#1c2030; --ink-2:#565d72; --ink-3:#8b91a6;
+    --bg:#f5f6fb; --surface:#ffffff; --surface-2:#fafbff; --line:#e7e9f3;
+    --danger:#d8443c; --danger-soft:#fdecea;
+    --warn:#c47b12; --warn-soft:#fbf2e2;
+    --safe:#1f9d6b; --safe-soft:#e6f6ee;
+    --info:#2f6fd8; --info-soft:#e8f0fd;
+    --radius:16px; --shadow-float:0 12px 32px rgba(28,32,48,.16);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Segoe UI",Roboto,sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(1200px 600px at 88% -8%, rgba(61,79,214,.07), transparent 60%),
+      radial-gradient(900px 500px at -5% 110%, rgba(61,79,214,.05), transparent 55%),
+      var(--bg);
+    min-height:100vh; overflow-x:hidden; -webkit-font-smoothing:antialiased;
+  }
+  button{font-family:inherit;cursor:pointer;border:none;background:none;}
+  button:active{transform:scale(.97);}
+  .app{display:flex;min-height:100vh;}
+
+  /* ===== 사이드바 (데스크톱) ===== */
+  .sidebar{
+    width:252px;flex:0 0 252px;background:#171a2b;color:#e9ebf6;
+    padding:20px 14px;position:sticky;top:0;height:100vh;
+    display:flex;flex-direction:column;gap:4px;overflow-y:auto;
+  }
+  .brand{display:flex;align-items:center;gap:11px;padding:6px 8px 14px;}
+  .brand .mark{width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,#5566ec,#3d4fd6);
+    display:grid;place-items:center;font-weight:800;color:#fff;font-size:18px;}
+  .brand .name{font-weight:800;font-size:18px;letter-spacing:-.3px;}
+  .brand .sub{font-size:11px;color:#9aa0c4;margin-top:2px;}
+  .nav-sec{font-size:10.5px;font-weight:700;letter-spacing:.4px;color:#6b7299;text-transform:uppercase;padding:12px 10px 5px;}
+  .nav-btn{
+    display:flex;align-items:center;gap:11px;width:100%;text-align:left;
+    padding:10px 12px;border-radius:11px;color:#c3c8e6;font-size:14.5px;font-weight:600;
+    transition:background .15s,color .15s;min-height:44px;
+  }
+  .nav-btn .ic{font-size:17px;width:20px;text-align:center;}
+  .nav-btn:hover{background:rgba(255,255,255,.06);color:#fff;}
+  .nav-btn.active{background:var(--brand);color:#fff;}
+  .nav-btn .badge{margin-left:auto;background:rgba(255,255,255,.16);color:#fff;font-size:11px;font-weight:800;
+    border-radius:999px;padding:1px 8px;min-width:20px;text-align:center;}
+  .nav-btn.hideRole{display:none;}
+
+  /* 역할 스위처 */
+  .role-switch{margin:6px 8px 4px;background:#1f2336;border:1px solid #2a2f49;border-radius:12px;padding:9px 10px;}
+  .role-switch .lbl{font-size:10.5px;color:#8b92b8;font-weight:700;margin-bottom:7px;}
+  .role-opts{display:flex;gap:4px;}
+  .role-opt{flex:1;font-size:11.5px;font-weight:700;padding:7px 4px;border-radius:8px;color:#aab1d6;
+    background:#262b42;text-align:center;transition:.15s;line-height:1.2;}
+  .role-opt.on{background:var(--brand);color:#fff;}
+  .side-foot{margin-top:auto;font-size:11px;color:#7a809f;padding:8px;line-height:1.5;}
+
+  /* ===== 본문 ===== */
+  .main{flex:1;min-width:0;padding:28px 32px 60px;}
+  .view{display:none;animation:fade .25s ease;}
+  .view.active{display:block;}
+  @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+  .page-head{margin-bottom:20px;display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+  .page-head .ht h1{font-size:26px;font-weight:800;letter-spacing:-.5px;margin:0 0 6px;}
+  .page-head .ht p{margin:0;color:var(--ink-2);font-size:14.5px;line-height:1.5;}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px;}
+  .card + .card{margin-top:16px;}
+  .card h2{font-size:16px;font-weight:700;margin:0 0 13px;letter-spacing:-.3px;}
+  .card h2 .muted{font-weight:400;}
+  .muted{color:var(--ink-3);font-size:13px;}
+
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:16px;}
+  .kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:15px 17px;}
+  .kpi .lbl{font-size:12.5px;color:var(--ink-2);font-weight:600;}
+  .kpi .val{font-size:28px;font-weight:800;letter-spacing:-1px;margin-top:5px;line-height:1;}
+  .kpi .val.sm{font-size:21px;}
+  .kpi .sub{font-size:11.5px;color:var(--ink-3);margin-top:5px;}
+
+  textarea,input[type=text],input[type=number],select{
+    width:100%;border:1px solid var(--line);border-radius:12px;padding:12px 13px;font-size:15px;
+    font-family:inherit;color:var(--ink);background:var(--surface-2);resize:vertical;
+  }
+  textarea{min-height:210px;line-height:1.6;}
+  textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft);}
+  label.field{display:block;font-size:13px;font-weight:700;color:var(--ink-2);margin:0 0 7px;}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    height:46px;padding:0 18px;border-radius:12px;font-size:14.5px;font-weight:700;
+    background:var(--brand);color:#fff;transition:background .15s,opacity .15s;}
+  .btn:hover{background:var(--brand-strong);}
+  .btn:focus-visible{outline:none;box-shadow:0 0 0 3px var(--brand-soft),0 0 0 5px var(--brand);}
+  .btn.full{width:100%;height:52px;}
+  .btn.ghost{background:var(--brand-soft);color:var(--brand-strong);}
+  .btn.ghost:hover{background:#e3e6fc;}
+  .btn.line{background:transparent;border:1px solid var(--line);color:var(--ink);}
+  .btn.line:hover{background:var(--surface-2);}
+  .btn.danger{background:var(--danger);} .btn.danger:hover{background:#b5362f;}
+  .btn.sm{height:36px;padding:0 13px;font-size:13px;border-radius:10px;}
+  .btn:disabled{opacity:.35;cursor:default;}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;}
+
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;font-size:12px;font-weight:700;}
+  .pill.hi{background:var(--danger-soft);color:var(--danger);}
+  .pill.mid{background:var(--warn-soft);color:var(--warn);}
+  .pill.lo{background:var(--safe-soft);color:var(--safe);}
+  .pill.info{background:var(--info-soft);color:var(--info);}
+  .pill.neutral{background:var(--surface-2);color:var(--ink-2);border:1px solid var(--line);}
+
+  .doc-view{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:17px;
+    line-height:1.85;font-size:14.5px;white-space:pre-wrap;word-break:break-word;max-height:520px;overflow:auto;}
+  mark.hl{padding:1px 3px;border-radius:5px;cursor:pointer;font-weight:600;}
+  mark.hl.hi{background:#fbd5d2;color:#9a2620;}
+  mark.hl.mid{background:#f6e4bf;color:#8a5708;}
+  mark.hl.lo{background:#cdeeda;color:#136844;}
+
+  .gauge-wrap{display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+  .gauge{position:relative;width:124px;height:124px;flex:0 0 auto;}
+  .gauge .num{position:absolute;inset:0;display:grid;place-items:center;text-align:center;}
+  .gauge .num b{font-size:32px;font-weight:800;letter-spacing:-1px;display:block;line-height:1;}
+  .gauge .num span{font-size:12px;color:var(--ink-3);}
+
+  .finding{border:1px solid var(--line);border-radius:13px;padding:14px 15px;margin-bottom:11px;background:var(--surface);}
+  .finding .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+  .finding .top .ttl{font-weight:700;font-size:14.5px;}
+  .finding .quote{background:var(--surface-2);border-left:3px solid var(--line);padding:8px 11px;border-radius:8px;
+    font-size:13px;color:var(--ink-2);margin:6px 0 9px;line-height:1.6;}
+  .finding .sugg{font-size:13px;color:var(--ink);line-height:1.6;}
+  .finding .sugg b{color:var(--brand-strong);}
+  .finding .metaline{display:flex;gap:14px;flex-wrap:wrap;margin-top:9px;padding-top:9px;border-top:1px dashed var(--line);font-size:12px;color:var(--ink-2);}
+  .finding .metaline b{color:var(--ink);font-weight:800;}
+  .finding.hi{border-left:4px solid var(--danger);}
+  .finding.mid{border-left:4px solid var(--warn);}
+  .finding.lo{border-left:4px solid var(--safe);}
+
+  table{width:100%;border-collapse:collapse;font-size:14px;}
+  th,td{text-align:left;padding:10px 11px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  th{color:var(--ink-2);font-weight:700;font-size:12.5px;background:var(--surface-2);white-space:nowrap;}
+  tr:hover td{background:var(--surface-2);}
+  .table-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px;}
+
+  .chart-box{position:relative;height:230px;}
+
+  .chiprow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+  .chip{padding:9px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);
+    font-size:13px;font-weight:600;color:var(--ink-2);min-height:42px;display:inline-flex;align-items:center;}
+  .chip.on{background:var(--brand-soft);color:var(--brand-strong);border-color:#cdd3f8;}
+
+  .steps{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap;}
+  .step{flex:1;min-width:110px;display:flex;align-items:center;gap:8px;padding:10px 11px;border-radius:12px;
+    background:var(--surface);border:1px solid var(--line);font-size:12.5px;font-weight:600;color:var(--ink-3);}
+  .step .dot{width:22px;height:22px;border-radius:50%;background:var(--line);color:#fff;display:grid;place-items:center;
+    font-size:11px;font-weight:800;flex:0 0 auto;}
+  .step.done{color:var(--safe);border-color:#bfe7d3;background:var(--safe-soft);}
+  .step.done .dot{background:var(--safe);}
+  .step.cur{color:var(--brand-strong);border-color:#cdd3f8;background:var(--brand-soft);}
+  .step.cur .dot{background:var(--brand);}
+
+  .empty{text-align:center;padding:38px 16px;color:var(--ink-3);}
+  .empty .big{font-size:32px;margin-bottom:8px;}
+
+  .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%) translateY(20px);
+    background:rgba(23,26,43,.94);color:#fff;padding:13px 20px;border-radius:12px;font-size:14px;font-weight:600;
+    box-shadow:var(--shadow-float);opacity:0;pointer-events:none;transition:.28s;z-index:120;backdrop-filter:blur(8px);max-width:88vw;text-align:center;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .twocol.wide{grid-template-columns:1.15fr .85fr;}
+  .preview-doc{background:var(--surface-2);border:1px dashed var(--line);border-radius:12px;padding:17px;
+    font-size:13px;line-height:1.75;white-space:pre-wrap;max-height:460px;overflow:auto;color:var(--ink);}
+
+  /* 케이스 보드 */
+  .case-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;}
+  .case-card{border:1px solid var(--line);border-radius:14px;padding:16px;background:var(--surface);cursor:pointer;transition:box-shadow .15s,border-color .15s;}
+  .case-card:hover{box-shadow:0 6px 18px rgba(28,32,48,.08);border-color:#cdd3f8;}
+  .case-card .ttl{font-weight:800;font-size:15px;letter-spacing:-.3px;margin-bottom:4px;}
+  .case-card .meta{font-size:12px;color:var(--ink-3);margin-bottom:11px;}
+  .case-card .row{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+  .case-card .scorebig{font-size:30px;font-weight:800;letter-spacing:-1px;margin-left:auto;line-height:1;}
+  .stage-flag{font-size:11px;font-weight:800;padding:3px 9px;border-radius:7px;}
+  .stage-draft{background:#eef0f7;color:#5b6378;}
+  .stage-review{background:var(--info-soft);color:var(--info);}
+  .stage-negot{background:var(--warn-soft);color:var(--warn);}
+  .stage-sign{background:#efe9fb;color:#6b3fc4;}
+  .stage-done{background:var(--safe-soft);color:var(--safe);}
+
+  /* diff */
+  .diff-row{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:12px;}
+  .diff-col{padding:13px 15px;font-size:13px;line-height:1.65;}
+  .diff-col.left{background:var(--danger-soft);border-right:1px solid var(--line);}
+  .diff-col.right{background:var(--safe-soft);}
+  .diff-col .lbl{font-size:11px;font-weight:800;letter-spacing:.3px;margin-bottom:6px;text-transform:uppercase;}
+  .diff-col.left .lbl{color:var(--danger);}
+  .diff-col.right .lbl{color:var(--safe);}
+  .diff-col.missing{background:var(--warn-soft);}
+  .diff-col.missing .lbl{color:var(--warn);}
+  .simbar{height:9px;border-radius:999px;background:var(--line);overflow:hidden;margin-top:5px;}
+  .simbar > i{display:block;height:100%;border-radius:999px;background:var(--brand);}
+
+  /* 코멘트 */
+  .comment{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:var(--surface);}
+  .comment .ch{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .comment .av{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:12px;color:#fff;flex:0 0 auto;}
+  .comment .who{font-weight:700;font-size:13px;}
+  .comment .when{font-size:11px;color:var(--ink-3);margin-left:auto;}
+  .comment .body{font-size:13.5px;line-height:1.6;color:var(--ink);}
+  .comment.resolved{opacity:.6;}
+  .comment.resolved .body{text-decoration:line-through;}
+
+  /* 서명/타임라인 */
+  .timeline{position:relative;padding-left:24px;}
+  .timeline:before{content:"";position:absolute;left:7px;top:4px;bottom:4px;width:2px;background:var(--line);}
+  .tl-item{position:relative;margin-bottom:16px;}
+  .tl-item:last-child{margin-bottom:0;}
+  .tl-item .dot{position:absolute;left:-24px;top:2px;width:16px;height:16px;border-radius:50%;border:3px solid var(--surface);background:var(--ink-3);box-shadow:0 0 0 2px var(--line);}
+  .tl-item.done .dot{background:var(--safe);box-shadow:0 0 0 2px #bfe7d3;}
+  .tl-item.cur .dot{background:var(--brand);box-shadow:0 0 0 2px #cdd3f8;}
+  .tl-item .ti{font-weight:700;font-size:14px;}
+  .tl-item .ts{font-size:12px;color:var(--ink-3);margin-top:2px;}
+
+  .signer{display:flex;align-items:center;gap:12px;padding:13px 14px;border:1px solid var(--line);border-radius:12px;margin-bottom:10px;}
+  .signer .av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#fff;flex:0 0 auto;}
+  .signer .info{flex:1;min-width:0;}
+  .signer .nm{font-weight:700;font-size:14px;}
+  .signer .rl{font-size:12px;color:var(--ink-3);}
+
+  .seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:3px;gap:3px;flex-wrap:wrap;}
+  .seg button{font-size:13px;font-weight:700;color:var(--ink-2);padding:8px 14px;border-radius:8px;min-height:38px;}
+  .seg button.on{background:var(--surface);color:var(--brand-strong);box-shadow:0 1px 3px rgba(28,32,48,.08);}
+
+  .logline{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;background:#0f1322;color:#cbd2f5;
+    padding:11px 13px;border-radius:10px;line-height:1.7;white-space:pre-wrap;word-break:break-all;}
+  .logline .ok{color:#74e0a8;} .logline .k{color:#8fb4ff;} .logline .t{color:#9aa0c4;}
+
+  /* ===== 모바일 셸 ===== */
+  .mobile-appbar{display:none;}
+  .bottomnav{display:none;}
+  .drawer-backdrop{display:none;}
+
+  @media (max-width:767px){
+    .app{display:block;}
+    .sidebar{
+      position:fixed;inset-block:0;left:0;width:80vw;max-width:300px;z-index:110;
+      transform:translateX(-100%);transition:transform .25s ease;height:100vh;
+    }
+    body.drawer-open .sidebar{transform:translateX(0);}
+    .drawer-backdrop{display:block;position:fixed;inset:0;background:rgba(15,18,34,.4);z-index:105;
+      opacity:0;pointer-events:none;transition:opacity .25s;backdrop-filter:blur(2px);}
+    body.drawer-open .drawer-backdrop{opacity:1;pointer-events:auto;}
+    .mobile-appbar{
+      display:flex;align-items:center;gap:11px;position:sticky;top:0;z-index:50;
+      padding:12px 14px;background:rgba(255,255,255,.85);backdrop-filter:saturate(180%) blur(18px);
+      border-bottom:1px solid var(--line);
+    }
+    .mobile-appbar .ham{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;font-size:20px;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);}
+    .mobile-appbar .mark{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#5566ec,#3d4fd6);
+      display:grid;place-items:center;font-weight:800;color:#fff;font-size:15px;}
+    .mobile-appbar .name{font-weight:800;font-size:16px;letter-spacing:-.3px;}
+    .mobile-appbar .roletag{margin-left:auto;}
+    .main{padding:16px 15px 100px;}
+    .page-head{display:block;}
+    .page-head .ht h1{font-size:22px;}
+    .page-head .pa{margin-top:12px;}
+    .kpis{grid-template-columns:1fr 1fr;gap:10px;}
+    .kpi .val{font-size:24px;}
+    .twocol,.twocol.wide{grid-template-columns:1fr;}
+    .card{padding:16px;}
+    .case-grid{grid-template-columns:1fr;}
+    .diff-row{grid-template-columns:1fr;}
+    .diff-col.left{border-right:none;border-bottom:1px solid var(--line);}
+    .bottomnav{
+      display:flex;position:fixed;bottom:0;left:0;right:0;z-index:60;
+      background:rgba(255,255,255,.92);backdrop-filter:saturate(180%) blur(18px);
+      border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+    }
+    .bottomnav button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+      min-height:54px;border-radius:12px;color:var(--ink-3);font-size:11px;font-weight:700;padding:4px 2px;position:relative;}
+    .bottomnav button .ic{font-size:20px;line-height:1;}
+    .bottomnav button.active{color:var(--brand);}
+    .bottomnav button .ndot{position:absolute;top:6px;right:50%;margin-right:-16px;width:7px;height:7px;border-radius:50%;background:var(--danger);}
+    .steps{flex-direction:column;}
+    .step{min-width:0;}
+    .gauge-wrap{justify-content:center;}
+    .page-head .ht p{font-size:13.5px;}
+  }
+  @media (max-width:380px){ .kpis{grid-template-columns:1fr 1fr;} }
+
+  /* 바텀시트 (모바일 더보기) */
+  .sheet-backdrop{position:fixed;inset:0;background:rgba(15,18,34,.4);z-index:115;opacity:0;pointer-events:none;transition:.25s;backdrop-filter:blur(2px);}
+  .sheet-backdrop.show{opacity:1;pointer-events:auto;}
+  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:116;background:var(--surface);border-radius:20px 20px 0 0;
+    padding:10px 16px calc(20px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .28s;box-shadow:var(--shadow-float);}
+  .sheet.show{transform:translateY(0);}
+  .sheet .grip{width:40px;height:4px;border-radius:999px;background:var(--line);margin:6px auto 12px;}
+  .sheet .sheet-item{display:flex;align-items:center;gap:13px;padding:14px 8px;font-size:15px;font-weight:600;border-bottom:1px solid var(--line);}
+  .sheet .sheet-item:last-child{border-bottom:none;}
+  .sheet .sheet-item .ic{font-size:19px;width:24px;text-align:center;}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- 데스크톱 사이드바 -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="mark">법</div>
+      <div>
+        <div class="name">리걸체크</div>
+        <div class="sub">계약서 AI 검토·협업</div>
+      </div>
+    </div>
+
+    <div class="role-switch">
+      <div class="lbl">현재 역할 (RBAC)</div>
+      <div class="role-opts" id="roleOpts">
+        <button class="role-opt on" data-role="client">의뢰인</button>
+        <button class="role-opt" data-role="reviewer">검토자</button>
+        <button class="role-opt" data-role="admin">관리자</button>
+      </div>
+    </div>
+
+    <div class="nav-sec">워크스페이스</div>
+    <button class="nav-btn active" data-view="board"><span class="ic">🗂️</span>케이스 보드<span class="badge" id="navBoardBadge">0</span></button>
+    <button class="nav-btn" data-view="input"><span class="ic">📄</span>계약서 입력</button>
+    <button class="nav-btn" data-view="analysis"><span class="ic">🔎</span>위험 분석</button>
+    <button class="nav-btn" data-view="diff"><span class="ic">⚖️</span>표준 대비 diff</button>
+    <button class="nav-btn" data-view="negotiate"><span class="ic">🎯</span>협상 우선순위</button>
+    <button class="nav-btn" data-view="generate"><span class="ic">🧾</span>표준계약서 생성</button>
+
+    <div class="nav-sec">협업·완료</div>
+    <button class="nav-btn" data-view="collab"><span class="ic">💬</span>협업 코멘트<span class="badge" id="navCollabBadge">0</span></button>
+    <button class="nav-btn" data-view="sign"><span class="ic">✍️</span>전자서명</button>
+    <button class="nav-btn roleOnly-admin hideRole" data-view="admin"><span class="ic">📊</span>관리자 리포트</button>
+    <button class="nav-btn" data-view="history"><span class="ic">🕘</span>검토 이력</button>
+
+    <div class="side-foot">
+      룰기반 결정론 엔진(20룰)<br/>법률 자문 대체 아님(참고용)
+    </div>
+  </aside>
+
+  <!-- 모바일 앱바 -->
+  <header class="mobile-appbar">
+    <button class="ham" id="hamBtn" aria-label="메뉴">☰</button>
+    <div class="mark">법</div>
+    <div class="name">리걸체크</div>
+    <span class="pill info roletag" id="mobRoleTag">의뢰인</span>
+  </header>
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+
+  <main class="main">
+    <!-- ① 케이스 보드 -->
+    <section class="view active" id="view-board">
+      <div class="page-head">
+        <div class="ht"><h1 id="boardTitle">케이스 보드</h1><p id="boardSub">검토 중인 모든 계약 케이스를 한눈에 관리합니다.</p></div>
+        <div class="pa"><button class="btn ghost sm" id="seedDemo">데모 케이스 채우기</button> <button class="btn sm" data-view="input">+ 새 케이스</button></div>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="lbl">전체 케이스</div><div class="val sm" id="bTotal">0</div><div class="sub" id="bStageSub">—</div></div>
+        <div class="kpi"><div class="lbl">평균 위험점수</div><div class="val sm" id="bAvg">0</div><div class="sub">100점 만점</div></div>
+        <div class="kpi"><div class="lbl">고위험 케이스</div><div class="val sm" id="bHi" style="color:var(--danger)">0</div><div class="sub">즉시 협상 권고</div></div>
+        <div class="kpi"><div class="lbl">미해결 코멘트</div><div class="val sm" id="bOpen" style="color:var(--warn)">0</div><div class="sub">협업 대기</div></div>
+      </div>
+      <div class="card" id="reviewerQueueCard" style="display:none">
+        <h2>검토자 작업 큐 <span class="muted">(검토 요청된 케이스)</span></h2>
+        <div id="reviewerQueue"></div>
+      </div>
+      <div class="card">
+        <h2>케이스 목록 <span class="muted" id="boardStageMuted"></span></h2>
+        <div class="seg" id="stageFilter" style="margin-bottom:14px">
+          <button class="on" data-stage="all">전체</button>
+          <button data-stage="draft">초안</button>
+          <button data-stage="review">검토중</button>
+          <button data-stage="negot">협상중</button>
+          <button data-stage="sign">서명중</button>
+          <button data-stage="done">완료</button>
+        </div>
+        <div class="case-grid" id="caseGrid"></div>
+        <div id="caseEmpty" class="empty" style="display:none"><div class="big">🗂️</div>아직 케이스가 없습니다. ‘데모 케이스 채우기’ 또는 ‘새 케이스’로 시작하세요.</div>
+      </div>
+    </section>
+
+    <!-- ② 계약서 입력 -->
+    <section class="view" id="view-input">
+      <div class="page-head"><div class="ht"><h1>계약서 입력</h1><p>텍스트를 붙여넣거나 .txt 파일을 올리면, 20종 룰셋이 위험 조항을 자동 탐지합니다.</p></div></div>
+      <div class="steps" id="inputSteps">
+        <div class="step cur"><div class="dot">1</div>입력</div>
+        <div class="step"><div class="dot">2</div>분석</div>
+        <div class="step"><div class="dot">3</div>표준 diff</div>
+        <div class="step"><div class="dot">4</div>협상</div>
+        <div class="step"><div class="dot">5</div>서명</div>
+      </div>
+      <div class="card">
+        <label class="field" for="ctName">케이스/계약서 제목</label>
+        <input type="text" id="ctName" placeholder="예: ○○물품 공급계약서" />
+        <div style="height:14px"></div>
+        <label class="field" for="ctType">계약 유형 (표준 대비용)</label>
+        <select id="ctType">
+          <option value="service">용역(개발)계약</option>
+          <option value="supply">물품공급계약</option>
+          <option value="lease">상가임대차계약</option>
+        </select>
+        <div style="height:14px"></div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:8px;">
+          <label class="field" for="ctText" style="margin:0">계약서 본문</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn line sm" id="loadSample">예시 불러오기</button>
+            <label class="btn line sm" style="margin:0">.txt 업로드<input type="file" id="fileInput" accept=".txt,text/plain" hidden /></label>
+          </div>
+        </div>
+        <div style="height:7px"></div>
+        <textarea id="ctText" placeholder="여기에 계약서 전문을 붙여넣으세요…"></textarea>
+        <div class="muted" id="charCount" style="margin-top:8px">0자 입력됨</div>
+        <button class="btn full" id="analyzeBtn" style="margin-top:16px">조항 분석 시작 →</button>
+      </div>
+    </section>
+
+    <!-- ③ 위험 분석 -->
+    <section class="view" id="view-analysis">
+      <div class="page-head"><div class="ht"><h1>위험 분석</h1><p>가중치 모델(유형 가중 × 심각도 × 발생빈도)로 0~100 종합 위험점수를 산출했습니다.</p></div></div>
+      <div id="analysisEmpty" class="card"><div class="empty"><div class="big">🔎</div>아직 분석한 계약서가 없습니다.<br/>먼저 ‘계약서 입력’에서 분석을 실행하세요.</div></div>
+      <div id="analysisBody" style="display:none">
+        <div class="kpis">
+          <div class="kpi"><div class="lbl">위험 점수</div><div class="val" id="kRisk">—</div><div class="sub" id="kRiskSub">가중치 종합</div></div>
+          <div class="kpi"><div class="lbl">고위험 조항</div><div class="val sm" id="kHi" style="color:var(--danger)">0</div><div class="sub">서명 전 협상</div></div>
+          <div class="kpi"><div class="lbl">중위험 조항</div><div class="val sm" id="kMid" style="color:var(--warn)">0</div><div class="sub">검토 권장</div></div>
+          <div class="kpi"><div class="lbl">점검 항목</div><div class="val sm" id="kTotal">0</div><div class="sub" id="kCoverage">/20룰</div></div>
+        </div>
+        <div class="twocol">
+          <div class="card"><h2>위험 등급 분포</h2><div class="chart-box"><canvas id="riskChart"></canvas></div></div>
+          <div class="card"><h2>카테고리별 위험 가중</h2><div class="chart-box"><canvas id="catChart"></canvas></div></div>
+        </div>
+        <div class="card">
+          <h2>종합 위험도 <span class="muted">(가중치 모델 산출)</span></h2>
+          <div class="gauge-wrap">
+            <div class="gauge"><canvas id="gaugeChart"></canvas><div class="num"><div><b id="gaugeNum">0</b><span>/100</span></div></div></div>
+            <div style="flex:1;min-width:160px">
+              <div id="gradeBadge" class="pill mid" style="font-size:14px;margin-bottom:10px">중위험</div>
+              <p class="muted" id="gradeDesc" style="line-height:1.6"></p>
+              <div class="muted" id="scoreFormula" style="margin-top:10px;font-size:12px"></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h2>본문 하이라이트 <span class="muted">(색칠된 부분을 누르면 협상 우선순위로 이동)</span></h2>
+          <div class="doc-view" id="docView"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn ghost" data-view="diff">표준 대비 diff →</button>
+          <button class="btn line" data-view="negotiate">협상 우선순위 →</button>
+          <button class="btn" id="pdfFromAnalysis">검토 리포트 PDF 발행</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ④ 표준 대비 diff -->
+    <section class="view" id="view-diff">
+      <div class="page-head"><div class="ht"><h1>표준 대비 조항 diff</h1><p>입력 계약서를 균형 표준계약서와 조항별로 비교합니다. 토큰 유사도로 누락·독소 조항을 자동 탐지합니다.</p></div></div>
+      <div id="diffEmpty" class="card"><div class="empty"><div class="big">⚖️</div>분석을 먼저 실행하면 표준 대비 diff가 표시됩니다.</div></div>
+      <div id="diffBody" style="display:none">
+        <div class="kpis">
+          <div class="kpi"><div class="lbl">표준 정합도</div><div class="val sm" id="dAlign">0%</div><div class="sub">평균 토큰 유사도</div></div>
+          <div class="kpi"><div class="lbl">독소 조항</div><div class="val sm" id="dToxic" style="color:var(--danger)">0</div><div class="sub">표준과 상충</div></div>
+          <div class="kpi"><div class="lbl">누락 조항</div><div class="val sm" id="dMissing" style="color:var(--warn)">0</div><div class="sub">표준에 있으나 부재</div></div>
+          <div class="kpi"><div class="lbl">정합 조항</div><div class="val sm" id="dOk" style="color:var(--safe)">0</div><div class="sub">표준과 유사</div></div>
+        </div>
+        <div class="card"><h2>조항별 비교 <span class="muted">(좌=내 계약 / 우=균형 표준 · 유사도 막대)</span></h2><div id="diffList"></div></div>
+      </div>
+    </section>
+
+    <!-- ⑤ 협상 우선순위 -->
+    <section class="view" id="view-negotiate">
+      <div class="page-head"><div class="ht"><h1>협상 우선순위</h1><p>리스크 임팩트 × 교섭난이도로 우선순위를 랭킹합니다. ROI 높은 조항부터 협상하세요.</p></div></div>
+      <div id="negEmpty" class="card"><div class="empty"><div class="big">🎯</div>분석을 먼저 실행하면 협상 우선순위가 계산됩니다.</div></div>
+      <div id="negBody" style="display:none">
+        <div class="card" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <div><b id="adoptCount" style="font-size:20px">0</b> <span class="muted">/ <span id="adoptTotal">0</span>건 채택됨</span></div>
+          <div class="muted" id="negSummary"></div>
+          <div class="btn-row" style="margin:0;margin-left:auto">
+            <button class="btn line sm" id="adoptAll">전체 채택</button>
+            <button class="btn ghost sm" data-view="generate">표준계약서로 보완 →</button>
+          </div>
+        </div>
+        <div class="card"><h2>협상 ROI 분포 <span class="muted">(임팩트 vs 난이도)</span></h2><div class="chart-box"><canvas id="negChart"></canvas></div></div>
+        <div id="findingList"></div>
+      </div>
+    </section>
+
+    <!-- ⑥ 표준계약서 생성 -->
+    <section class="view" id="view-generate">
+      <div class="page-head"><div class="ht"><h1>표준계약서 생성기</h1><p>유형을 고르고 항목을 채우면, 균형 잡힌 표준 조항으로 계약서 초안을 만듭니다.</p></div></div>
+      <div class="twocol">
+        <div class="card">
+          <h2>1. 계약 유형</h2>
+          <div class="chiprow" id="tplChips"></div>
+          <h2 style="margin-top:6px">2. 주요 항목</h2>
+          <div id="tplFields"></div>
+          <button class="btn full" id="genDocBtn" style="margin-top:16px">표준계약서 생성</button>
+        </div>
+        <div class="card">
+          <h2>미리보기</h2>
+          <div class="preview-doc" id="genPreview"><div class="empty"><div class="big">🧾</div>유형을 고르고 ‘생성’을 누르면<br/>여기에 표준계약서가 만들어집니다.</div></div>
+          <div class="btn-row">
+            <button class="btn line" id="genToInput" disabled>이 초안을 새 케이스로</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ⑦ 협업 코멘트 -->
+    <section class="view" id="view-collab">
+      <div class="page-head"><div class="ht"><h1>협업 코멘트</h1><p>의뢰인·검토자가 조항별로 의견을 남기고 해결 처리합니다. 역할별로 색이 구분됩니다.</p></div></div>
+      <div id="collabEmpty" class="card"><div class="empty"><div class="big">💬</div>현재 케이스가 없습니다. 케이스 보드에서 케이스를 열어주세요.</div></div>
+      <div id="collabBody" style="display:none">
+        <div class="kpis">
+          <div class="kpi"><div class="lbl">전체 코멘트</div><div class="val sm" id="cAll">0</div></div>
+          <div class="kpi"><div class="lbl">미해결</div><div class="val sm" id="cOpen" style="color:var(--warn)">0</div></div>
+          <div class="kpi"><div class="lbl">해결됨</div><div class="val sm" id="cResolved" style="color:var(--safe)">0</div></div>
+          <div class="kpi"><div class="lbl">검토자 의견</div><div class="val sm" id="cReviewer" style="color:var(--info)">0</div></div>
+        </div>
+        <div class="card">
+          <h2>새 코멘트 작성 <span class="muted" id="collabAsWho"></span></h2>
+          <select id="commentClause" style="margin-bottom:10px"></select>
+          <textarea id="commentText" placeholder="이 조항에 대한 의견을 남기세요…" style="min-height:90px"></textarea>
+          <button class="btn" id="addComment" style="margin-top:12px">코멘트 등록</button>
+        </div>
+        <div class="card"><h2>코멘트 스레드</h2><div id="commentList"></div></div>
+      </div>
+    </section>
+
+    <!-- ⑧ 전자서명 -->
+    <section class="view" id="view-sign">
+      <div class="page-head"><div class="ht"><h1>전자서명 요청</h1><p>(외부 통합 mock) 서명자에게 서명 요청을 발송하고 상태를 추적합니다. 카카오 알림톡 발송 로그도 기록됩니다.</p></div></div>
+      <div id="signEmpty" class="card"><div class="empty"><div class="big">✍️</div>현재 케이스가 없습니다. 케이스 보드에서 케이스를 열어주세요.</div></div>
+      <div id="signBody" style="display:none">
+        <div class="twocol wide">
+          <div class="card">
+            <h2>서명자 목록</h2>
+            <div id="signerList"></div>
+            <div class="btn-row">
+              <button class="btn" id="sendSign">서명 요청 발송 (전자서명 API mock)</button>
+              <button class="btn line" id="signAll">전원 서명 완료 시뮬레이트</button>
+            </div>
+          </div>
+          <div class="card">
+            <h2>서명 진행 타임라인</h2>
+            <div class="timeline" id="signTimeline"></div>
+          </div>
+        </div>
+        <div class="card">
+          <h2>외부 발송 로그 <span class="muted">(알림톡 mock · 전자서명 webhook mock)</span></h2>
+          <div class="logline" id="sendLog">// 발송 로그가 여기에 기록됩니다.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ⑨ 관리자 리포트 -->
+    <section class="view" id="view-admin">
+      <div class="page-head"><div class="ht"><h1>관리자 리포트</h1><p>(관리자 전용) 전체 케이스 포트폴리오·검토자 처리량·위험 추이를 집계합니다.</p></div></div>
+      <div class="kpis">
+        <div class="kpi"><div class="lbl">총 케이스</div><div class="val sm" id="aTotal">0</div></div>
+        <div class="kpi"><div class="lbl">완료율</div><div class="val sm" id="aDone" style="color:var(--safe)">0%</div></div>
+        <div class="kpi"><div class="lbl">평균 위험</div><div class="val sm" id="aAvg">0</div></div>
+        <div class="kpi"><div class="lbl">처리 코멘트</div><div class="val sm" id="aComments">0</div></div>
+      </div>
+      <div class="twocol">
+        <div class="card"><h2>단계별 케이스 분포</h2><div class="chart-box"><canvas id="adminStageChart"></canvas></div></div>
+        <div class="card"><h2>위험 카테고리 누적</h2><div class="chart-box"><canvas id="adminCatChart"></canvas></div></div>
+      </div>
+      <div class="card">
+        <h2>데이터 입출력 <span class="muted">(외부 통합: CSV / JSON)</span></h2>
+        <p class="muted" style="margin:0 0 12px">전체 케이스 포트폴리오를 외부 시스템으로 내보내거나, 백업본을 가져옵니다.</p>
+        <div class="btn-row" style="margin:0">
+          <button class="btn line" id="exportCsv">CSV 내보내기</button>
+          <button class="btn line" id="exportJson">JSON 백업 내보내기</button>
+          <label class="btn ghost" style="margin:0">JSON 가져오기<input type="file" id="importJson" accept=".json,application/json" hidden /></label>
+        </div>
+        <div class="table-scroll" style="margin-top:14px"><table>
+          <thead><tr><th>제목</th><th>유형</th><th>위험</th><th>단계</th><th>코멘트</th><th>담당</th></tr></thead>
+          <tbody id="adminTable"></tbody>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- ⑩ 검토 이력 -->
+    <section class="view" id="view-history">
+      <div class="page-head"><div class="ht"><h1>검토 이력</h1><p>분석·검토된 케이스가 자동 저장됩니다(브라우저 로컬). PDF 리포트를 다시 받을 수 있습니다.</p></div></div>
+      <div class="kpis">
+        <div class="kpi"><div class="lbl">총 검토</div><div class="val sm" id="hCount">0</div></div>
+        <div class="kpi"><div class="lbl">평균 위험점수</div><div class="val sm" id="hAvg">0</div></div>
+        <div class="kpi"><div class="lbl">고위험 검토</div><div class="val sm" id="hHi" style="color:var(--danger)">0</div></div>
+        <div class="kpi"><div class="lbl">최근 검토</div><div class="val sm" id="hLast" style="font-size:15px">—</div></div>
+      </div>
+      <div class="card">
+        <h2>검토 목록</h2>
+        <div class="table-scroll"><table>
+          <thead><tr><th>일시</th><th>제목</th><th>위험점수</th><th>등급</th><th>단계</th><th>조치</th></tr></thead>
+          <tbody id="historyBody"></tbody>
+        </table></div>
+        <div id="historyEmpty" class="empty" style="display:none"><div class="big">🕘</div>아직 검토 이력이 없습니다.</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- 모바일 바텀 탭바 -->
+<nav class="bottomnav">
+  <button class="active" data-view="board"><span class="ic">🗂️</span>보드</button>
+  <button data-view="input"><span class="ic">📄</span>입력</button>
+  <button data-view="analysis"><span class="ic">🔎</span>분석</button>
+  <button data-view="negotiate"><span class="ic">🎯</span>협상</button>
+  <button id="moreTab"><span class="ic">⋯</span>더보기</button>
+</nav>
+
+<!-- 모바일 더보기 시트 -->
+<div class="sheet-backdrop" id="sheetBackdrop"></div>
+<div class="sheet" id="moreSheet">
+  <div class="grip"></div>
+  <div class="sheet-item" data-view="diff"><span class="ic">⚖️</span>표준 대비 diff</div>
+  <div class="sheet-item" data-view="generate"><span class="ic">🧾</span>표준계약서 생성</div>
+  <div class="sheet-item" data-view="collab"><span class="ic">💬</span>협업 코멘트</div>
+  <div class="sheet-item" data-view="sign"><span class="ic">✍️</span>전자서명</div>
+  <div class="sheet-item roleOnly-admin" data-view="admin" style="display:none"><span class="ic">📊</span>관리자 리포트</div>
+  <div class="sheet-item" data-view="history"><span class="ic">🕘</span>검토 이력</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   리걸체크 v2 — 룰기반 계약서 검토·협업 플랫폼 (결정론적, LLM 아님)
+   외부 API·키 없음. 전부 클라이언트 룰/알고리즘 매칭.
+   v2 추가: 20룰·가중치 모델·표준 대비 토큰 유사도 diff·협상 ROI 랭킹
+            ·3역할 RBAC·케이스 보드·협업 코멘트·전자서명 mock·CSV/JSON 입출력·알림톡 로그
+   ============================================================ */
+
+/* ---------- 위험 룰셋 v2 (10 → 20종) ----------
+   각 룰: severity(심각도 1~10) · freqBase(기준 발생빈도, 가중 정규화용) · negotEffort(교섭난이도 1~5)
+   가중치 모델: ruleWeight = severity × typeWeight(계약유형별) × freqFactor(문서 내 출현강도) */
+const RULES = [
+  { id:"penalty", cat:"과도한 위약금", level:"hi", severity:9, negotEffort:3,
+    patterns:[/위약금|손해배상.{0,6}예정|배상액|지체상금/g],
+    quals:[/\b([2-9]\d|[1-9]\d{2,})\s*%/, /\d+\s*배/, /\b10\s*%|\b20\s*%/],
+    std:"위약금은 계약금액의 10% 이내로 하고, 민법 제398조에 따른 감액 가능성을 명시한다.",
+    why:"위약금·손해배상 예정액이 거래 규모에 비해 과다하면 민법 제398조에 따라 법원이 감액할 수 있으나, 분쟁·자금 부담의 원인이 됩니다.",
+    fix:"손해배상 예정액을 ‘실손해 범위 내’ 또는 ‘계약금액의 10% 이내’로 한정하고, 감액 가능 문구를 명시하세요." },
+  { id:"unilateral", cat:"일방적 해지권", level:"hi", severity:8, negotEffort:4,
+    patterns:[/(갑|발주자|회사|임대인)[은는이가].{0,30}(언제든지|즉시|일방적으로).{0,20}해[지제]/g, /최고\s*없이.{0,12}해[지제]/g],
+    quals:[],
+    std:"해지권은 30일의 사전 서면 통지 후 양 당사자에게 대칭적으로 부여한다.",
+    why:"한쪽만 사전 통지·최고 없이 즉시 해지할 수 있으면, 상대방은 사업 예측가능성을 잃고 일방에게 종속됩니다.",
+    fix:"해지권을 ‘상당 기간(예: 30일)의 사전 서면 통지 후’로 균형화하고, 양 당사자에게 대칭적으로 부여하세요." },
+  { id:"autorenew", cat:"자동 갱신·해지 제한", level:"mid", severity:5, negotEffort:2,
+    patterns:[/자동(으로)?\s*(연장|갱신)/g, /이의가?\s*없으면.{0,12}(연장|갱신)/g],
+    quals:[],
+    std:"갱신 거절 통지 기한을 만료 30일 전으로 두고, 갱신 시 가격 변경 한도를 명시한다.",
+    why:"자동 갱신은 편리하지만, 해지 통지 기한이 과도하게 길거나 위약금과 결합되면 사실상 이탈을 막는 족쇄가 됩니다.",
+    fix:"갱신 거절 통지 기한을 ‘만료 30일 전’ 등 합리적으로 두고, 갱신 시 가격 변경 한도를 명시하세요." },
+  { id:"jurisdiction", cat:"일방 편의 관할", level:"mid", severity:4, negotEffort:2,
+    patterns:[/(갑|회사|발주자|임대인)\s*(의|소재지)?.{0,10}(주소지|본점|소재지).{0,14}관할/g, /관할\s*법원[은는].{0,18}(갑|회사)/g],
+    quals:[],
+    std:"분쟁은 피고 주소지 관할 또는 중재·조정 절차를 우선 합의한다.",
+    why:"분쟁 관할을 한쪽 소재지 법원으로만 고정하면, 원거리 상대방은 소송 비용·접근성에서 불리해집니다.",
+    fix:"‘피고 주소지 관할’ 또는 ‘민사소송법상 관할’로 두거나, 중재·조정 절차를 우선 합의하세요." },
+  { id:"ipall", cat:"포괄적 권리 귀속", level:"hi", severity:8, negotEffort:4,
+    patterns:[/(일체의|모든)\s*(지식재산권|저작권|특허|권리).{0,16}(갑|발주자|회사)[에게의].{0,8}귀속/g, /(저작인격권).{0,12}행사하지\s*않/g],
+    quals:[],
+    std:"IP 귀속은 본 계약 목적물에 한정하고, 기존 보유 IP·일반 노하우는 제외(carve-out)한다.",
+    why:"용역·납품의 결과물뿐 아니라 사전 보유 IP·노하우까지 무상 포괄 귀속되면, 수급인의 핵심 자산이 유실됩니다.",
+    fix:"귀속 범위를 ‘본 계약 목적물에 한정’하고, 기존 보유 IP·재사용 가능한 일반 노하우는 제외(carve-out)하세요." },
+  { id:"payment", cat:"불리한 대금 지급조건", level:"mid", severity:6, negotEffort:3,
+    patterns:[/검수\s*후.{0,10}(\d{2,3})\s*일/g, /지급(은|을).{0,10}(익월|말일|\d{2,3}\s*일)/g, /선급금\s*없[이음]/g],
+    quals:[/([6-9]\d|[1-9]\d{2})\s*일/],
+    std:"대금은 검수 완료 후 30일 이내 지급하고, 지연 시 지연이자(연 6%)와 검수 기준을 명시한다.",
+    why:"대금 지급 기일이 과도하게 길거나 검수 기준이 모호하면, 수급인의 자금 회전이 막힙니다(하도급법상 60일 이내 지급 원칙).",
+    fix:"대금 지급 기일을 ‘검수 완료 후 30일 이내’ 등으로 단축하고, 지연 시 지연이자(연 %)와 검수 기준을 명시하세요." },
+  { id:"confid", cat:"비대칭 비밀유지", level:"mid", severity:4, negotEffort:2,
+    patterns:[/비밀유지\s*의무[는은].{0,18}(만|한정)/g, /(을|를)\s*제외하고.{0,16}비밀/g, /(을|을의)\s*비밀유지\s*의무[는은]/g],
+    quals:[],
+    std:"비밀유지·반환·파기 의무를 양 당사자 상호 부담으로 하고 존속기간(3년)을 명시한다.",
+    why:"비밀유지 의무가 한쪽에만 부과되면, 정보 제공자 보호와 형평이 어긋납니다.",
+    fix:"비밀유지·반환·파기 의무를 ‘양 당사자 상호’ 부담으로 대칭화하고, 존속 기간(예: 계약 종료 후 3년)을 명시하세요." },
+  { id:"liability", cat:"무제한 손해배상 책임", level:"hi", severity:9, negotEffort:4,
+    patterns:[/(모든|일체의|전부의)\s*손해.{0,14}배상/g, /책임[을의].{0,10}제한.{0,10}(하지\s*않|없)/g, /간접.{0,4}손해.{0,12}포함/g],
+    quals:[/간접.{0,4}손해/],
+    std:"손해배상 총액은 계약금액을 한도로 하고, 고의·중과실 외 간접·결과적 손해는 면책한다.",
+    why:"책임 상한(LoL) 없이 간접·결과적 손해까지 무제한 배상하게 하면, 작은 과실이 회사 존립을 위협할 수 있습니다.",
+    fix:"손해배상 총액을 ‘계약금액 한도’로 제한하고, 고의·중과실을 제외한 간접·결과적·일실손해는 면책하세요." },
+  { id:"noncompete", cat:"과도한 경업금지", level:"mid", severity:5, negotEffort:3,
+    patterns:[/경업\s*금지/g, /(\d)\s*년간.{0,18}(동종|유사).{0,10}(사업|업무|영업)/g, /퇴직\s*후.{0,14}(종사|취업)하지/g],
+    quals:[/([2-9])\s*년간/],
+    std:"경업금지는 1년 이내·합리적 지역/업종으로 좁히고 보상(대가) 지급을 함께 규정한다.",
+    why:"기간·지역·범위가 과도한 경업금지·전직금지는 직업 선택의 자유를 침해해 무효가 될 수 있고, 상대에게 부당한 족쇄가 됩니다.",
+    fix:"경업금지 기간을 ‘1년 이내’, 지역·업종을 합리적 범위로 좁히고, 보상(대가) 지급을 함께 규정하세요." },
+  { id:"changeorder", cat:"일방적 계약변경", level:"mid", severity:6, negotEffort:3,
+    patterns:[/(갑|회사|발주자)[은는이가].{0,24}(임의로|일방적으로).{0,16}(변경|조정)할\s*수\s*있/g, /통지(만으로|로).{0,14}(변경|조정)/g],
+    quals:[],
+    std:"계약 변경은 양 당사자의 서면 합의로만 가능하며, 변경 시 대금·일정 조정 원칙을 명시한다.",
+    why:"한쪽이 단가·범위·일정을 임의로 변경할 수 있으면, 상대방은 비용·리스크를 통제할 수 없습니다.",
+    fix:"계약 변경은 ‘양 당사자의 서면 합의’로만 가능하도록 하고, 변경에 따른 대금·일정 조정 원칙을 명시하세요." },
+  /* ---- v2 신규 10종 ---- */
+  { id:"latefee", cat:"과도한 지연이자율", level:"hi", severity:7, negotEffort:2,
+    patterns:[/지연이자|연체(이자|료)|연\s*(\d{2,})\s*%/g],
+    quals:[/연\s*(1[5-9]|[2-9]\d)\s*%/, /일\s*([1-9])\s*%/],
+    std:"지연이자율은 상사법정이율(연 6%) 또는 합리적 범위로 제한한다.",
+    why:"지연이자율이 법정이율을 크게 초과하면 사실상 과중한 위약 효과로 작용해 자금난을 가중합니다.",
+    fix:"지연이자율을 상사법정이율(연 6%) 수준 또는 합리적 한도로 낮추고, 상한을 명시하세요." },
+  { id:"warranty", cat:"과도한 하자담보 기간", level:"mid", severity:5, negotEffort:3,
+    patterns:[/하자\s*(담보|보수)/g, /무상\s*(보수|수리|하자)/g, /(\d)\s*년간?\s*무상/g],
+    quals:[/([3-9]|1\d)\s*년/],
+    std:"하자담보 기간은 업계 통상 범위(예: 1년)로 하고 무상 보수 범위를 한정한다.",
+    why:"하자담보·무상보수 기간이 과도하게 길면 수급인이 통제 불가한 장기 리스크를 떠안습니다.",
+    fix:"하자담보 기간을 업계 통상(예: 1년)으로 한정하고, 사용자 과실·소모성 항목은 제외하세요." },
+  { id:"setoff", cat:"일방적 상계·공제권", level:"mid", severity:6, negotEffort:3,
+    patterns:[/(갑|발주자|회사)[은는이가].{0,20}(임의로|일방적으로)?.{0,12}상계/g, /대금에서\s*공제/g, /채권.{0,8}상계할\s*수\s*있/g],
+    quals:[],
+    std:"상계·공제는 확정된 채권에 한하고, 사전 통지·이의 절차를 둔다.",
+    why:"확정되지 않은 채권까지 일방이 대금에서 임의 상계하면 수급인은 대금을 일방적으로 깎일 수 있습니다.",
+    fix:"상계 대상을 ‘확정·합의된 채권’에 한정하고, 상계 전 서면 통지·이의 기간을 두세요." },
+  { id:"forcemajeure", cat:"불공정 불가항력", level:"mid", severity:4, negotEffort:2,
+    patterns:[/불가항력/g, /천재지변.{0,20}(을|를)?\s*제외/g, /면책되지\s*않/g],
+    quals:[],
+    std:"불가항력 사유를 합리적으로 정의하고, 양 당사자에게 대칭적으로 면책·통지 의무를 둔다.",
+    why:"불가항력 면책을 한쪽에만 인정하거나 사유를 과도하게 좁히면, 통제 불가 상황의 리스크가 일방에 전가됩니다.",
+    fix:"불가항력 사유를 합리적으로 정의하고 면책을 양 당사자에 대칭 적용, 통지·완화 의무를 함께 두세요." },
+  { id:"assignment", cat:"일방적 권리양도", level:"mid", severity:5, negotEffort:2,
+    patterns:[/(갑|회사)[은는이가].{0,16}(제3자|타인)에게.{0,12}양도할\s*수\s*있/g, /동의\s*없이.{0,12}양도/g],
+    quals:[],
+    std:"계약상 지위·권리의 양도는 상대방의 사전 서면 동의를 받도록 한다.",
+    why:"한쪽이 상대 동의 없이 계약을 제3자에게 양도하면, 상대방은 알 수 없는 당사자와 거래하게 됩니다.",
+    fix:"권리·지위 양도 시 ‘상대방의 사전 서면 동의’를 요건으로 두세요(상호 적용)." },
+  { id:"audit", cat:"과도한 감사·자료요구", level:"lo", severity:3, negotEffort:2,
+    patterns:[/(갑|회사)[은는이가].{0,16}(언제든지|수시로).{0,14}(감사|열람|자료\s*요구)/g, /장부.{0,10}열람할\s*수\s*있/g],
+    quals:[],
+    std:"감사·자료 요구는 합리적 사전 통지와 업무시간 내, 목적 범위로 한정한다.",
+    why:"상대가 언제든 무제한 감사·자료 열람을 요구할 수 있으면 영업 비밀·업무 부담이 과중해집니다.",
+    fix:"감사 빈도·범위를 제한하고, 사전 통지(예: 7일)와 비밀유지 전제를 두세요." },
+  { id:"exclusivity", cat:"포괄적 독점·전속", level:"mid", severity:6, negotEffort:4,
+    patterns:[/독점적으로\s*(공급|제공)/g, /전속\s*계약/g, /제3자와.{0,14}(거래|계약)하지\s*(못|아니)/g],
+    quals:[],
+    std:"독점·전속은 기간·지역·물량을 한정하고 최소구매·해지 조건을 둔다.",
+    why:"기간·범위 제한 없는 독점·전속은 한쪽의 영업 자유를 장기간 봉쇄합니다.",
+    fix:"독점 범위를 기간·지역·품목으로 한정하고, 최소구매 미달 시 독점 해제 등 출구를 두세요." },
+  { id:"indemnify", cat:"광범위 면책·구상", level:"hi", severity:7, negotEffort:4,
+    patterns:[/면책(시킨다|한다|하여야)/g, /(을|를)\s*면책하고\s*배상/g, /제3자\s*청구.{0,14}책임진다/g],
+    quals:[],
+    std:"면책·구상은 귀책 범위에 비례하고 상한을 두며, 상대 통제 영역은 제외한다.",
+    why:"상대방의 모든 제3자 청구까지 무제한 면책·구상하게 하면, 통제 불가 손실을 떠안습니다.",
+    fix:"면책 범위를 ‘자기 귀책 비율’로 한정하고 상한을 두며, 방어권·통지 절차를 명시하세요." },
+  { id:"survivor", cat:"부당 의무 존속", level:"lo", severity:3, negotEffort:1,
+    patterns:[/(영구히|기한\s*없이).{0,12}(존속|유지)/g, /계약\s*종료\s*후에도.{0,16}(영구|무기한)/g],
+    quals:[],
+    std:"계약 종료 후 존속 의무는 합리적 기간(예: 3년)으로 한정한다.",
+    why:"계약 종료 후에도 의무가 무기한 존속하면 당사자에게 영구적 부담이 됩니다.",
+    fix:"존속 의무에 기한(예: 3년)을 두어 무기한 부담을 제거하세요." },
+  { id:"pricelock", cat:"일방적 단가 인상권", level:"mid", severity:6, negotEffort:3,
+    patterns:[/(갑|회사|공급자)[은는이가].{0,16}(단가|가격|요금)[을를].{0,12}인상할\s*수\s*있/g, /통지로.{0,12}(가격|단가).{0,8}(변경|인상)/g],
+    quals:[],
+    std:"단가 인상은 양 당사자 합의 또는 객관적 지수 연동으로 하고 인상 상한을 둔다.",
+    why:"한쪽이 일방적으로 단가를 올릴 수 있으면 상대방의 원가 예측이 불가능해집니다.",
+    fix:"가격 변경을 ‘합의’ 또는 ‘물가지수 연동·상한 명시’로 제한하세요." },
+];
+
+/* 계약 유형별 가중치 (특정 조항이 그 유형에서 더 치명적) */
+const TYPE_WEIGHT = {
+  service:{ ipall:1.4, payment:1.3, liability:1.25, noncompete:1.2, indemnify:1.2 },
+  supply:{ payment:1.35, warranty:1.3, penalty:1.2, pricelock:1.25, exclusivity:1.2 },
+  lease:{ autorenew:1.4, changeorder:1.2, pricelock:1.3, unilateral:1.25, jurisdiction:1.15 },
+};
+
+/* 예시 계약서 (다수 독소조항 + v2 신규 룰 트리거 포함) */
+const SAMPLE = `물품 공급 및 용역 계약서
+
+제1조(목적) 본 계약은 갑이 을에게 위탁하는 소프트웨어 개발 및 물품 공급에 관한 권리와 의무를 정함을 목적으로 한다.
+
+제2조(계약기간) 본 계약의 기간은 체결일로부터 1년으로 하며, 기간 만료 30일 전까지 어느 일방의 서면 통지가 없으면 동일 조건으로 1년간 자동으로 연장된다.
+
+제3조(대금 지급) ① 갑은 을이 납품한 물품의 검수 후 90일 이내에 대금을 지급한다. ② 선급금 없이 진행하며, 검수 기준은 갑이 정하는 바에 따른다. ③ 지급 지연 시 지연이자는 연 24%로 한다.
+
+제4조(지식재산권) 본 계약의 수행 과정에서 발생하거나 을이 보유한 일체의 지식재산권 및 저작권은 갑에게 귀속되며, 을은 저작인격권을 행사하지 않는다.
+
+제5조(손해배상) ① 을의 귀책으로 손해가 발생한 경우 을은 갑에게 발생한 모든 손해(간접손해 포함)를 배상한다. ② 을이 납품을 지체한 경우 지체상금으로 1일당 계약금액의 3%를 지급하며, 위약금은 계약금액의 30%로 한다.
+
+제6조(계약의 해지) 갑은 을에게 최고 없이 언제든지 즉시 본 계약을 일방적으로 해지할 수 있다.
+
+제7조(비밀유지) 을의 비밀유지 의무는 본 계약과 관련하여 알게 된 갑의 모든 정보에 한정하여 부담한다.
+
+제8조(경업금지) 을은 계약 종료 후 3년간 동종 또는 유사 사업에 종사하지 아니한다.
+
+제9조(계약 변경) 갑은 사업상 필요에 따라 임의로 계약의 범위와 단가를 변경할 수 있으며, 을에게 통지만으로 효력이 발생한다.
+
+제10조(하자담보) 을은 납품 후 5년간 무상으로 하자를 보수한다.
+
+제11조(상계) 갑은 을에 대한 채권을 대금에서 임의로 상계할 수 있다.
+
+제12조(권리양도) 갑은 을의 동의 없이 본 계약상 지위를 제3자에게 양도할 수 있다.
+
+제13조(면책) 을은 본 계약과 관련한 제3자의 모든 청구에 대하여 갑을 면책하고 배상하여야 한다.
+
+제14조(관할) 본 계약에 관한 분쟁의 관할 법원은 갑의 본점 소재지를 관할하는 법원으로 한다.`;
+
+/* 표준계약서 템플릿 */
+const TEMPLATES = {
+  service:{ name:"용역(개발)계약", fields:[
+    {k:"client",l:"발주자(갑)",ph:"예: ○○주식회사"},{k:"vendor",l:"수급인(을)",ph:"예: △△ 스튜디오"},
+    {k:"amount",l:"계약금액(원)",ph:"예: 30,000,000"},{k:"period",l:"수행기간",ph:"예: 2026-07-01 ~ 2026-09-30"}]},
+  supply:{ name:"물품공급계약", fields:[
+    {k:"client",l:"매수인(갑)",ph:"예: ○○마트"},{k:"vendor",l:"매도인(을)",ph:"예: □□식품"},
+    {k:"amount",l:"공급금액(원)",ph:"예: 12,000,000"},{k:"period",l:"공급기간",ph:"예: 2026-07 ~ 2026-12"}]},
+  lease:{ name:"상가임대차계약", fields:[
+    {k:"client",l:"임대인",ph:"예: 홍길동"},{k:"vendor",l:"임차인",ph:"예: ○○카페"},
+    {k:"amount",l:"보증금/월세(원)",ph:"예: 보증금 2,000만 / 월 120만"},{k:"period",l:"임대기간",ph:"예: 2026-07-01 ~ 2028-06-30"}]},
+};
+function buildTemplate(type, v){
+  const d=new Date().toISOString().slice(0,10);
+  const A=v.client||"(갑)", B=v.vendor||"(을)", amt=v.amount||"(금액)", per=v.period||"(기간)";
+  if(type==="lease"){
+    return `상가건물 임대차 표준계약서
+
+임대인 ${A}(이하 "임대인")와 임차인 ${B}(이하 "임차인")는 다음과 같이 임대차계약을 체결한다.
+
+제1조(목적물·기간) 임대 목적물의 임대기간은 ${per}로 한다.
+제2조(보증금·차임) 보증금 및 월 차임은 ${amt}으로 하며, 차임 증액은 약정·법령상 한도(연 5% 이내)를 초과하지 못한다.
+제3조(수선·유지) 임대인은 목적물의 주요 구조·설비를 유지·수선할 의무를 지며, 임차인은 통상의 관리의무를 진다.
+제4조(계약해지) 양 당사자는 상대방이 의무를 위반하고 30일의 시정 최고에도 불응한 경우에 한하여 계약을 해지할 수 있다.
+제5조(원상회복·보증금 반환) 임대차 종료 시 임차인은 목적물을 원상회복하고, 임대인은 연체차임 등을 공제한 보증금을 지체 없이 반환한다.
+제6조(분쟁해결) 본 계약 관련 분쟁은 상호 협의로 해결하되, 합의가 어려우면 민사소송법상 관할 법원 또는 상가건물임대차분쟁조정위원회의 조정에 따른다.
+
+작성일: ${d}
+임대인: ${A} (서명/날인)        임차인: ${B} (서명/날인)`;
+  }
+  const subject = type==="supply" ? "물품의 공급" : "용역(개발)의 수행";
+  return `${TEMPLATES[type].name} (표준)
+
+${A}(이하 "갑")와 ${B}(이하 "을")는 ${subject}에 관하여 신의성실의 원칙에 따라 다음과 같이 계약을 체결한다.
+
+제1조(목적·금액) 계약금액은 ${amt}원, 수행/공급기간은 ${per}로 한다.
+제2조(대금지급) 갑은 검수 완료 후 30일 이내에 대금을 지급하며, 지연 시 연 6%의 지연이자를 가산한다. 검수 기준은 사전 합의한 사양서에 따른다.
+제3조(지식재산권) 본 계약 목적물에 관한 지식재산권은 대금 완납 시 갑에게 귀속하되, 을이 종전부터 보유한 일반 노하우·재사용 모듈은 을에게 유보된다.
+제4조(손해배상) 당사자의 귀책으로 인한 손해배상 총액은 계약금액을 한도로 하며, 고의·중과실을 제외한 간접·결과적 손해는 면책한다. 위약금은 계약금액의 10% 이내로 한다.
+제5조(계약해지) 양 당사자는 상대방의 중대한 의무위반에 대해 30일의 서면 최고 후 시정되지 않을 경우 계약을 해지할 수 있다.
+제6조(비밀유지) 양 당사자는 상대방의 영업비밀을 상호 보호하며, 그 의무는 계약 종료 후 3년간 존속한다.
+제7조(계약변경) 본 계약의 변경은 양 당사자의 서면 합의에 의하여만 효력이 발생한다.
+제8조(관할·분쟁) 분쟁은 상호 협의로 해결하되, 합의가 어려우면 피고 주소지를 관할하는 법원에 제소하거나 대한상사중재원의 중재에 따른다.
+
+작성일: ${d}
+갑: ${A} (서명/날인)        을: ${B} (서명/날인)`;
+}
+
+/* 표준 조항 코퍼스 (diff 비교용 — 룰별 표준 문구 = RULES[].std) */
+function standardClauses(){ return RULES.map(r=>({ id:r.id, cat:r.cat, std:r.std })); }
+
+/* ---------- 상태 ---------- */
+const $ = (s,p=document)=>p.querySelector(s);
+const $$ = (s,p=document)=>[...p.querySelectorAll(s)];
+const LS_KEY = "legalcheck_cases_v2";
+let cases = [];           // 케이스 배열(보드/이력 공용)
+let current = null;       // 현재 열린 케이스
+let charts = {};
+let selTpl = "service";
+let role = "client";      // client | reviewer | admin
+let stageFilter = "all";
+
+const STAGE = { draft:"초안", review:"검토중", negot:"협상중", sign:"서명중", done:"완료" };
+const STAGE_CLS = { draft:"stage-draft", review:"stage-review", negot:"stage-negot", sign:"stage-sign", done:"stage-done" };
+
+/* ---------- 유틸 ---------- */
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),2200);}
+function gradeOf(score){ if(score>=60) return {g:"고위험",cls:"hi"}; if(score>=30) return {g:"중위험",cls:"mid"}; return {g:"저위험",cls:"lo"}; }
+function loadCases(){ try{return JSON.parse(localStorage.getItem(LS_KEY))||[];}catch(e){return [];} }
+function saveCases(){ localStorage.setItem(LS_KEY, JSON.stringify(cases)); }
+function uid(){ return "c"+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function fmtDate(ts){ return new Date(ts).toLocaleString("ko-KR",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}); }
+
+/* ---------- 토큰 유사도 (Jaccard + 정규화) — diff 핵심 알고리즘 ---------- */
+function normalize(t){
+  return String(t).toLowerCase()
+    .replace(/[^가-힣a-z0-9%원일년 ]/g," ")
+    .replace(/\s+/g," ").trim();
+}
+function tokens(t){ const n=normalize(t); const arr=[]; const w=n.split(" ").filter(Boolean);
+  arr.push(...w);
+  // 한글 bigram(어절 내부)로 의미 단위 보강
+  w.forEach(x=>{ for(let i=0;i<x.length-1;i++) arr.push(x.slice(i,i+2)); });
+  return new Set(arr); }
+function jaccard(a,b){ const A=tokens(a),B=tokens(b); let inter=0; A.forEach(x=>{if(B.has(x))inter++;}); const uni=A.size+B.size-inter; return uni?inter/uni:0; }
+
+/* 계약서에서 룰 id에 해당하는 조항 문장 추출(매칭 위치 기반) */
+function clauseTextFor(text, idx, matchedLen){
+  if(idx<0) return "";
+  const start=text.lastIndexOf("제", idx);
+  const nl=text.indexOf("\n", idx);
+  const end = nl<0 ? Math.min(text.length, idx+matchedLen+140) : nl;
+  const s = (start>=0 && idx-start<200) ? start : idx;
+  return text.slice(s, end).trim();
+}
+
+/* ---------- 핵심 분석 엔진 v2 (가중치 모델) ---------- */
+function analyze(title, text, type){
+  const findings=[];
+  RULES.forEach(rule=>{
+    let matchedText=null, idx=-1, hits=0;
+    for(const p of rule.patterns){
+      p.lastIndex=0; let m; const re=new RegExp(p.source,"g");
+      while((m=re.exec(text))!==null){ if(matchedText==null){matchedText=m[0];idx=m.index;} hits++; if(re.lastIndex===m.index) re.lastIndex++; }
+    }
+    if(matchedText==null) return;
+    let level=rule.level, qualBoost=0;
+    if(rule.quals&&rule.quals.length){
+      const around=text.slice(Math.max(0,idx-50), idx+matchedText.length+60);
+      if(rule.quals.some(q=>new RegExp(q.source).test(around))){ qualBoost=1.3; if(level==="mid")level="hi"; else if(level==="lo")level="mid"; }
+    }
+    const typeW = (TYPE_WEIGHT[type]&&TYPE_WEIGHT[type][rule.id]) || 1;
+    const freqFactor = 1 + Math.min(2, hits-1)*0.15;     // 출현 빈도(같은 위험이 여러 번이면 가중)
+    const qualFactor = qualBoost || 1;
+    // ruleWeight = severity × typeWeight × freqFactor × qualFactor × levelCoef
+    const levelCoef = level==="hi"?1.4:level==="mid"?1:0.6;
+    const weight = +(rule.severity * typeW * freqFactor * qualFactor * levelCoef).toFixed(2);
+    const clause = clauseTextFor(text, idx, matchedText.length);
+    const sim = jaccard(clause, rule.std);              // 내 조항 vs 표준 문구 유사도
+    findings.push({ id:rule.id, cat:rule.cat, level, severity:rule.severity, negotEffort:rule.negotEffort,
+      hits, typeW, weight, matchedText, idx, quote:clause.slice(0,180), std:rule.std, sim,
+      why:rule.why, fix:rule.fix, adopted:false });
+  });
+  findings.sort((a,b)=> b.weight-a.weight);
+  // 종합 점수: 가중치 합을 로지스틱-유사 정규화로 0~100
+  const rawSum = findings.reduce((s,f)=> s+f.weight, 0);
+  const score = Math.min(100, Math.round(rawSum * 0.62));
+  const counts = { hi:findings.filter(f=>f.level==="hi").length, mid:findings.filter(f=>f.level==="mid").length,
+                   lo:findings.filter(f=>f.level==="lo").length, total:findings.length };
+  const g=gradeOf(score);
+  // diff 산출
+  const diff = buildDiff(findings, text, type);
+  // 협상 우선순위(ROI = 임팩트 / 난이도)
+  findings.forEach(f=>{ f.impact=+(f.weight).toFixed(2); f.roi=+(f.impact/(f.negotEffort)).toFixed(2); });
+  const ranked=[...findings].sort((a,b)=> b.roi-a.roi);
+  ranked.forEach((f,i)=> f.priority=i+1);
+  return { id:current&&current.id?current.id:uid(), title:title||"제목 없는 계약서", type, text, findings, score,
+    grade:g.g, gradeCls:g.cls, counts, rawSum:+rawSum.toFixed(1), diff, ts:Date.now(),
+    stage:"review", comments:[], signers:null, sendLog:[], owner:"의뢰인" };
+}
+
+/* 표준 대비 diff: 룰별 std 조항 ↔ 내 계약 조항 비교 + 누락 탐지 */
+function buildDiff(findings, text, type){
+  const fmap={}; findings.forEach(f=>fmap[f.id]=f);
+  const rows=[];
+  standardClauses().forEach(sc=>{
+    const f=fmap[sc.id];
+    if(f){
+      // 매칭됨 → 유사도로 독소/정합 분기
+      const status = f.sim>=0.34 ? "ok" : "toxic";
+      rows.push({ id:sc.id, cat:sc.cat, status, sim:f.sim, mine:f.quote, std:sc.std });
+    } else {
+      // 표준엔 있는데 내 계약에 흔적 없음 → 누락 후보 (핵심 보호 조항만)
+      if(["liability","confid","forcemajeure"].includes(sc.id)){
+        const present = jaccard(text, sc.std)>0.12;
+        if(!present) rows.push({ id:sc.id, cat:sc.cat, status:"missing", sim:0, mine:"", std:sc.std });
+      }
+    }
+  });
+  const toxic=rows.filter(r=>r.status==="toxic").length;
+  const missing=rows.filter(r=>r.status==="missing").length;
+  const ok=rows.filter(r=>r.status==="ok").length;
+  const matched=rows.filter(r=>r.status!=="missing");
+  const align = matched.length? Math.round(matched.reduce((s,r)=>s+r.sim,0)/matched.length*100):0;
+  return { rows, toxic, missing, ok, align };
+}
+
+/* ---------- RBAC ---------- */
+function applyRole(){
+  $$(".role-opt").forEach(b=>b.classList.toggle("on", b.dataset.role===role));
+  $("#mobRoleTag").textContent = role==="client"?"의뢰인":role==="reviewer"?"검토자":"관리자";
+  $$(".roleOnly-admin").forEach(el=> el.classList.toggle("hideRole", role!=="admin"));
+  $$(".sheet-item.roleOnly-admin").forEach(el=> el.style.display = role==="admin"?"":"none");
+  // 보드 헤더 문구 분기
+  $("#boardTitle").textContent = role==="reviewer"?"검토자 작업 보드" : role==="admin"?"관리자 케이스 보드":"케이스 보드";
+  $("#boardSub").textContent = role==="reviewer"?"배정된 검토 요청 케이스를 처리합니다."
+    : role==="admin"?"전체 조직의 케이스 포트폴리오를 감독합니다." : "검토 중인 모든 계약 케이스를 한눈에 관리합니다.";
+  $("#reviewerQueueCard").style.display = role==="reviewer"?"":"none";
+  $("#collabAsWho").textContent = role==="client"?"(의뢰인으로 작성)":role==="reviewer"?"(검토자로 작성)":"(관리자로 작성)";
+  renderBoard();
+  if($("#view-collab").classList.contains("active")) renderCollab();
+}
+
+/* ---------- 케이스 보드 ---------- */
+function stageCounts(){ const c={draft:0,review:0,negot:0,sign:0,done:0}; cases.forEach(k=>c[k.stage]=(c[k.stage]||0)+1); return c; }
+function renderBoard(){
+  $("#navBoardBadge").textContent=cases.length;
+  const openC = cases.reduce((s,k)=>s+(k.comments||[]).filter(x=>!x.resolved).length,0);
+  $("#navCollabBadge").textContent=openC;
+  $("#bTotal").textContent=cases.length;
+  $("#bAvg").textContent= cases.length?Math.round(cases.reduce((s,k)=>s+k.score,0)/cases.length):0;
+  $("#bHi").textContent= cases.filter(k=>k.gradeCls==="hi").length;
+  $("#bOpen").textContent=openC;
+  const sc=stageCounts();
+  $("#bStageSub").textContent=`초안 ${sc.draft} · 검토 ${sc.review} · 협상 ${sc.negot} · 서명 ${sc.sign} · 완료 ${sc.done}`;
+  // 검토자 큐
+  if(role==="reviewer"){
+    const q=cases.filter(k=>k.stage==="review"||k.stage==="negot");
+    const wrap=$("#reviewerQueue"); wrap.innerHTML= q.length? "" : '<div class="muted">현재 검토 대기 중인 케이스가 없습니다.</div>';
+    q.forEach(k=>{
+      const d=document.createElement("div");
+      d.className="signer";
+      d.innerHTML=`<div class="av" style="background:${k.gradeCls==='hi'?'var(--danger)':'var(--warn)'}">${k.score}</div>
+        <div class="info"><div class="nm">${esc(k.title)}</div><div class="rl">${TEMPLATES[k.type]?.name||k.type} · 고위험 ${k.counts.hi} · 미해결 코멘트 ${(k.comments||[]).filter(c=>!c.resolved).length}</div></div>
+        <button class="btn ghost sm openCase" data-id="${k.id}">검토 →</button>`;
+      wrap.appendChild(d);
+    });
+    $$("#reviewerQueue .openCase").forEach(b=>b.onclick=()=>openCase(b.dataset.id));
+  }
+  // 케이스 카드
+  const grid=$("#caseGrid"); grid.innerHTML="";
+  const list = cases.filter(k=> stageFilter==="all"||k.stage===stageFilter);
+  $("#caseEmpty").style.display= list.length? "none":"";
+  list.forEach(k=>{
+    const open=(k.comments||[]).filter(c=>!c.resolved).length;
+    const card=document.createElement("div"); card.className="case-card"; card.dataset.id=k.id;
+    card.innerHTML=`
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <div style="flex:1;min-width:0">
+          <div class="ttl">${esc(k.title)}</div>
+          <div class="meta">${TEMPLATES[k.type]?.name||k.type} · ${fmtDate(k.ts)}</div>
+        </div>
+        <div class="scorebig" style="color:${k.gradeCls==='hi'?'var(--danger)':k.gradeCls==='mid'?'var(--warn)':'var(--safe)'}">${k.score}</div>
+      </div>
+      <div class="row">
+        <span class="stage-flag ${STAGE_CLS[k.stage]}">${STAGE[k.stage]}</span>
+        <span class="pill ${k.gradeCls}">${k.grade}</span>
+        <span class="pill neutral">고위험 ${k.counts.hi}</span>
+        ${open?`<span class="pill mid">💬 ${open}</span>`:""}
+      </div>`;
+    card.onclick=()=>openCase(k.id);
+    grid.appendChild(card);
+  });
+}
+function openCase(id){
+  const k=cases.find(x=>x.id===id); if(!k) return;
+  current=k;
+  renderAnalysis(); renderDiff(); renderNegotiate(); renderCollab(); renderSign();
+  go("analysis");
+  toast(`‘${k.title}’ 케이스를 열었어요`);
+}
+
+/* ---------- 렌더: 분석 뷰 ---------- */
+function renderDoc(){
+  const {text, findings} = current;
+  const marks = findings.filter(f=>f.idx>=0).map(f=>({s:f.idx,e:f.idx+f.matchedText.length,lvl:f.level,id:f.id})).sort((a,b)=>a.s-b.s);
+  let out="", pos=0;
+  marks.forEach(m=>{ if(m.s<pos) return; out+=esc(text.slice(pos,m.s)); out+=`<mark class="hl ${m.lvl}" data-fid="${m.id}">${esc(text.slice(m.s,m.e))}</mark>`; pos=m.e; });
+  out+=esc(text.slice(pos));
+  $("#docView").innerHTML=out;
+  $$("#docView mark").forEach(mk=> mk.onclick=()=>{ go("negotiate"); const el=$(`#f-${mk.dataset.fid}`); if(el){el.scrollIntoView({behavior:"smooth",block:"center"}); el.style.boxShadow="0 0 0 3px var(--brand-soft)"; setTimeout(()=>el.style.boxShadow="",1200);} });
+}
+function renderAnalysis(){
+  if(!current){ $("#analysisEmpty").style.display=""; $("#analysisBody").style.display="none"; return; }
+  $("#analysisEmpty").style.display="none"; $("#analysisBody").style.display="";
+  const c=current;
+  $("#kRisk").textContent=c.score; $("#kRisk").style.color=c.gradeCls==="hi"?"var(--danger)":c.gradeCls==="mid"?"var(--warn)":"var(--safe)";
+  $("#kHi").textContent=c.counts.hi; $("#kMid").textContent=c.counts.mid; $("#kTotal").textContent=c.counts.total;
+  $("#kCoverage").textContent=`/ ${RULES.length}룰 점검`;
+  const gb=$("#gradeBadge"); gb.textContent=c.grade; gb.className="pill "+c.gradeCls;
+  $("#gaugeNum").textContent=c.score;
+  $("#scoreFormula").innerHTML=`산출: Σ(심각도 × 유형가중 × 빈도 × 등급계수) = <b>${c.rawSum}</b> → 정규화 <b>${c.score}/100</b>`;
+  renderDoc();
+  if(charts.risk) charts.risk.destroy();
+  charts.risk=new Chart($("#riskChart"),{ type:"bar",
+    data:{ labels:["고위험","중위험","저위험"], datasets:[{ data:[c.counts.hi,c.counts.mid,c.counts.lo],
+      backgroundColor:["#d8443c","#c47b12","#1f9d6b"], borderRadius:8, barThickness:46 }]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{ y:{beginAtZero:true,ticks:{precision:0,stepSize:1}}, x:{grid:{display:false}} } } });
+  // 카테고리별 가중 (상위 6)
+  if(charts.cat) charts.cat.destroy();
+  const top=[...c.findings].sort((a,b)=>b.weight-a.weight).slice(0,6);
+  charts.cat=new Chart($("#catChart"),{ type:"bar",
+    data:{ labels:top.map(f=>f.cat), datasets:[{ data:top.map(f=>f.weight),
+      backgroundColor:top.map(f=>f.level==="hi"?"#d8443c":f.level==="mid"?"#c47b12":"#1f9d6b"), borderRadius:6, barThickness:18 }]},
+    options:{ indexAxis:"y", responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{ x:{beginAtZero:true}, y:{grid:{display:false},ticks:{font:{size:11}}} } } });
+  if(charts.gauge) charts.gauge.destroy();
+  const col=c.gradeCls==="hi"?"#d8443c":c.gradeCls==="mid"?"#c47b12":"#1f9d6b";
+  charts.gauge=new Chart($("#gaugeChart"),{ type:"doughnut",
+    data:{ datasets:[{ data:[c.score,100-c.score], backgroundColor:[col,"#eceefb"], borderWidth:0 }]},
+    options:{ cutout:"74%", responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{enabled:false}} } });
+  $("#gradeDesc").textContent= c.gradeCls==="hi"
+    ? "일방에게 불리하거나 분쟁 소지가 큰 조항이 다수 발견되었습니다. 서명 전 반드시 협상을 권장합니다."
+    : c.gradeCls==="mid" ? "일부 불균형 조항이 있습니다. 협상 우선순위를 검토해 카드로 활용하세요."
+    : "전반적으로 균형 잡힌 계약입니다. 표시된 항목만 확인하면 충분합니다.";
+}
+
+/* ---------- 렌더: diff 뷰 ---------- */
+function renderDiff(){
+  if(!current||!current.diff){ $("#diffEmpty").style.display=""; $("#diffBody").style.display="none"; return; }
+  $("#diffEmpty").style.display="none"; $("#diffBody").style.display="";
+  const d=current.diff;
+  $("#dAlign").textContent=d.align+"%"; $("#dToxic").textContent=d.toxic; $("#dMissing").textContent=d.missing; $("#dOk").textContent=d.ok;
+  const list=$("#diffList"); list.innerHTML="";
+  // 독소 → 누락 → 정합 순
+  const order={toxic:0,missing:1,ok:2};
+  [...d.rows].sort((a,b)=>order[a.status]-order[b.status]).forEach(r=>{
+    const wrap=document.createElement("div");
+    const pct=Math.round(r.sim*100);
+    const flag = r.status==="toxic"?'<span class="pill hi">독소</span>':r.status==="missing"?'<span class="pill mid">누락</span>':'<span class="pill lo">정합</span>';
+    wrap.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin:4px 0 7px">${flag}<b style="font-size:14px">${esc(r.cat)}</b>
+      <span class="muted" style="margin-left:auto">표준 유사도 ${pct}%</span></div>
+      <div class="simbar"><i style="width:${pct}%"></i></div>
+      <div class="diff-row" style="margin-top:9px">
+        <div class="diff-col ${r.status==='missing'?'missing':'left'}">
+          <div class="lbl">${r.status==='missing'?'내 계약 (해당 조항 부재)':'내 계약 (현재 조항)'}</div>
+          ${r.mine? "…"+esc(r.mine.slice(0,200))+"…" : "표준에 있는 보호 조항이 내 계약서에서 발견되지 않았습니다."}
+        </div>
+        <div class="diff-col right"><div class="lbl">균형 표준 조항</div>${esc(r.std)}</div>
+      </div>`;
+    list.appendChild(wrap);
+  });
+}
+
+/* ---------- 렌더: 협상 우선순위 ---------- */
+function renderNegotiate(){
+  if(!current){ $("#negEmpty").style.display=""; $("#negBody").style.display="none"; return; }
+  $("#negEmpty").style.display="none"; $("#negBody").style.display="";
+  const ranked=[...current.findings].sort((a,b)=>a.priority-b.priority);
+  $("#negSummary").textContent=`ROI 최상위: ${ranked[0]?.cat||"-"} (임팩트 ${ranked[0]?.impact||0} / 난이도 ${ranked[0]?.negotEffort||0})`;
+  const list=$("#findingList"); list.innerHTML="";
+  ranked.forEach(f=>{
+    const lvlLabel=f.level==="hi"?"고위험":f.level==="mid"?"중위험":"저위험";
+    const el=document.createElement("div"); el.className="finding "+f.level; el.id="f-"+f.id;
+    const effLabel=["","매우 쉬움","쉬움","보통","어려움","매우 어려움"][f.negotEffort]||"보통";
+    el.innerHTML=`
+      <div class="top">
+        <span class="pill neutral">#${f.priority}</span>
+        <span class="pill ${f.level}">${lvlLabel}</span>
+        <span class="ttl">${esc(f.cat)}</span>
+        <button class="btn ${f.adopted?"ghost":"line"} sm adoptBtn" style="margin-left:auto" data-id="${f.id}">${f.adopted?"✓ 채택됨":"수정안 채택"}</button>
+      </div>
+      <div class="quote">“…${esc(f.quote)}…”</div>
+      <div class="sugg"><b>왜 위험한가</b> · ${esc(f.why)}</div>
+      <div class="sugg" style="margin-top:6px"><b>이렇게 고치세요</b> · ${esc(f.fix)}</div>
+      <div class="metaline"><span>협상 ROI <b>${f.roi}</b></span><span>리스크 임팩트 <b>${f.impact}</b></span><span>교섭난이도 <b>${effLabel}</b></span><span>표준 유사도 <b>${Math.round(f.sim*100)}%</b></span></div>`;
+    list.appendChild(el);
+  });
+  $$(".adoptBtn").forEach(b=>b.onclick=()=>{ const f=current.findings.find(x=>x.id===b.dataset.id); f.adopted=!f.adopted; renderNegotiate(); updateAdopt(); persistCurrent(); });
+  // ROI 차트(임팩트 vs 난이도)
+  if(charts.neg) charts.neg.destroy();
+  charts.neg=new Chart($("#negChart"),{ type:"scatter",
+    data:{ datasets:[{ label:"조항", data:current.findings.map(f=>({x:f.negotEffort,y:f.impact})),
+      backgroundColor:current.findings.map(f=>f.level==="hi"?"#d8443c":f.level==="mid"?"#c47b12":"#1f9d6b"), pointRadius:7 }]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:(c)=>{const f=current.findings[c.dataIndex];return `${f.cat} (임팩트 ${f.impact}/난이도 ${f.negotEffort})`;}}}},
+      scales:{ x:{title:{display:true,text:"교섭난이도 →"},min:0.5,max:5.5,ticks:{stepSize:1}},
+               y:{title:{display:true,text:"리스크 임팩트 →"},beginAtZero:true} } } });
+  updateAdopt();
+}
+function updateAdopt(){ if(!current)return; const n=current.findings.filter(f=>f.adopted).length;
+  $("#adoptCount").textContent=n; $("#adoptTotal").textContent=current.findings.length;
+  if(n>0 && current.stage==="review"){ current.stage="negot"; persistCurrent(); } }
+
+/* ---------- 표준계약서 생성 ---------- */
+function renderTplChips(){ const wrap=$("#tplChips"); wrap.innerHTML="";
+  Object.entries(TEMPLATES).forEach(([k,t])=>{ const c=document.createElement("button"); c.className="chip"+(k===selTpl?" on":""); c.textContent=t.name;
+    c.onclick=()=>{ selTpl=k; renderTplChips(); renderTplFields(); }; wrap.appendChild(c); }); }
+function renderTplFields(){ const wrap=$("#tplFields"); wrap.innerHTML="";
+  TEMPLATES[selTpl].fields.forEach(f=>{ const d=document.createElement("div"); d.style.marginBottom="12px";
+    d.innerHTML=`<label class="field">${f.l}</label><input type="text" data-k="${f.k}" placeholder="${f.ph}">`; wrap.appendChild(d); }); }
+let lastGenerated=null;
+function generateDoc(){ const v={}; $$("#tplFields input").forEach(i=>v[i.dataset.k]=i.value.trim());
+  const doc=buildTemplate(selTpl,v); lastGenerated={ title:TEMPLATES[selTpl].name+" 초안", type:selTpl, text:doc };
+  $("#genPreview").textContent=doc; $("#genToInput").disabled=false; toast("표준계약서 초안을 생성했어요"); }
+
+/* ---------- 협업 코멘트 ---------- */
+function roleColor(r){ return r==="검토자"?"#2f6fd8":r==="관리자"?"#6b3fc4":"#3d4fd6"; }
+function renderCollab(){
+  if(!current){ $("#collabEmpty").style.display=""; $("#collabBody").style.display="none"; return; }
+  $("#collabEmpty").style.display="none"; $("#collabBody").style.display="";
+  current.comments=current.comments||[];
+  const sel=$("#commentClause"); sel.innerHTML='<option value="__general">전체(일반 의견)</option>';
+  current.findings.forEach(f=>{ const o=document.createElement("option"); o.value=f.id; o.textContent=f.cat; sel.appendChild(o); });
+  const cs=current.comments;
+  $("#cAll").textContent=cs.length;
+  $("#cOpen").textContent=cs.filter(c=>!c.resolved).length;
+  $("#cResolved").textContent=cs.filter(c=>c.resolved).length;
+  $("#cReviewer").textContent=cs.filter(c=>c.who==="검토자").length;
+  const list=$("#commentList"); list.innerHTML= cs.length? "" : '<div class="empty"><div class="big">💬</div>아직 코멘트가 없습니다. 위에서 첫 의견을 남겨보세요.</div>';
+  cs.slice().reverse().forEach(c=>{
+    const clause=c.clause==="__general"?"일반 의견":(current.findings.find(f=>f.id===c.clause)?.cat||c.clause);
+    const el=document.createElement("div"); el.className="comment"+(c.resolved?" resolved":"");
+    el.innerHTML=`<div class="ch">
+        <div class="av" style="background:${roleColor(c.who)}">${c.who[0]}</div>
+        <span class="who">${c.who}</span><span class="pill neutral">${esc(clause)}</span>
+        <span class="when">${fmtDate(c.ts)}</span></div>
+      <div class="body">${esc(c.text)}</div>
+      <div class="btn-row" style="margin-top:9px">
+        ${c.resolved?'<button class="btn line sm reopenC" data-id="'+c.id+'">미해결로</button>':'<button class="btn ghost sm resolveC" data-id="'+c.id+'">해결 처리</button>'}
+      </div>`;
+    list.appendChild(el);
+  });
+  $$(".resolveC").forEach(b=>b.onclick=()=>{ const c=current.comments.find(x=>x.id===b.dataset.id); c.resolved=true; persistCurrent(); renderCollab(); renderBoard(); toast("코멘트를 해결 처리했어요"); });
+  $$(".reopenC").forEach(b=>b.onclick=()=>{ const c=current.comments.find(x=>x.id===b.dataset.id); c.resolved=false; persistCurrent(); renderCollab(); renderBoard(); });
+}
+
+/* ---------- 전자서명 mock ---------- */
+function ensureSigners(){
+  if(!current.signers){
+    const t=TEMPLATES[current.type];
+    current.signers=[
+      { name:current.owner||"의뢰인", party: t?.fields[0].l||"갑", status:"대기", ts:null },
+      { name:"상대방 서명자", party: t?.fields[1].l||"을", status:"대기", ts:null },
+    ];
+  }
+}
+function renderSign(){
+  if(!current){ $("#signEmpty").style.display=""; $("#signBody").style.display="none"; return; }
+  $("#signEmpty").style.display="none"; $("#signBody").style.display="";
+  ensureSigners();
+  const wrap=$("#signerList"); wrap.innerHTML="";
+  current.signers.forEach((s,i)=>{
+    const cls=s.status==="완료"?"lo":s.status==="발송됨"?"info":"neutral";
+    const d=document.createElement("div"); d.className="signer";
+    d.innerHTML=`<div class="av" style="background:${i===0?'var(--brand)':'var(--info)'}">${esc(s.name[0])}</div>
+      <div class="info"><div class="nm">${esc(s.name)}</div><div class="rl">${esc(s.party)}${s.ts?" · "+fmtDate(s.ts):""}</div></div>
+      <span class="pill ${cls}">${s.status}</span>`;
+    wrap.appendChild(d);
+  });
+  // 타임라인
+  const tl=$("#signTimeline");
+  const sent=current.signers.some(s=>s.status!=="대기");
+  const allDone=current.signers.every(s=>s.status==="완료");
+  const steps=[
+    { t:"검토 완료", ts:current.ts, done:true },
+    { t:"서명 요청 발송", ts:current.signSentTs, done:sent },
+    { t:"서명자 서명 수집", ts:current.signers.find(s=>s.status==="완료")?.ts, done:current.signers.some(s=>s.status==="완료") },
+    { t:"전원 서명·체결 완료", ts:allDone?current.signDoneTs:null, done:allDone, cur:!allDone&&sent },
+  ];
+  tl.innerHTML="";
+  steps.forEach(st=>{ const d=document.createElement("div"); d.className="tl-item"+(st.done?" done":st.cur?" cur":"");
+    d.innerHTML=`<div class="dot"></div><div class="ti">${st.t}</div><div class="ts">${st.ts?fmtDate(st.ts):"대기 중"}</div>`; tl.appendChild(d); });
+  // 로그
+  const log=$("#sendLog");
+  log.innerHTML= (current.sendLog&&current.sendLog.length)? current.sendLog.map(l=>l).join("\n") : "// 발송 로그가 여기에 기록됩니다.";
+}
+function pushLog(line){ current.sendLog=current.sendLog||[]; current.sendLog.push(line); }
+function sendSignRequest(){
+  ensureSigners();
+  current.signSentTs=Date.now();
+  current.signers.forEach(s=>{ if(s.status==="대기") s.status="발송됨"; });
+  current.stage="sign";
+  const ts=new Date().toLocaleString("ko-KR");
+  current.signers.forEach(s=>{
+    pushLog(`<span class="t">[${ts}]</span> <span class="k">POST</span> /esign/v1/requests  signer="${s.name}" party="${s.party}" <span class="ok">→ 202 Accepted (reqId=${Math.random().toString(36).slice(2,10)})</span>`);
+    pushLog(`<span class="t">[${ts}]</span> <span class="k">KAKAO</span> alimtalk send tpl=ESIGN_REQ to="${s.name}" <span class="ok">→ delivered (mock)</span>`);
+  });
+  persistCurrent(); renderSign(); renderBoard(); toast("전자서명 요청을 발송했어요(mock)");
+}
+function signAllNow(){
+  ensureSigners();
+  if(!current.signSentTs) sendSignRequest();
+  const ts=new Date().toLocaleString("ko-KR");
+  current.signers.forEach(s=>{ s.status="완료"; s.ts=Date.now(); pushLog(`<span class="t">[${ts}]</span> <span class="k">WEBHOOK</span> esign.completed signer="${s.name}" <span class="ok">→ signed ✓</span>`); });
+  current.signDoneTs=Date.now(); current.stage="done";
+  pushLog(`<span class="t">[${ts}]</span> <span class="k">KAKAO</span> alimtalk send tpl=ESIGN_DONE <span class="ok">→ 체결 완료 통지 발송(mock)</span>`);
+  persistCurrent(); renderSign(); renderBoard(); toast("전원 서명 완료 — 케이스가 ‘완료’ 단계로 이동했어요");
+}
+
+/* ---------- 이력/보드 영속 ---------- */
+function persistCurrent(){
+  if(!current) return;
+  const i=cases.findIndex(k=>k.id===current.id);
+  if(i>=0) cases[i]=current; else cases.unshift(current);
+  saveCases(); renderHistory(); renderBoard();
+  if($("#view-admin").classList.contains("active")) renderAdmin();
+}
+function renderHistory(){
+  const tb=$("#historyBody"); tb.innerHTML="";
+  $("#hCount").textContent=cases.length;
+  $("#hAvg").textContent= cases.length? Math.round(cases.reduce((s,r)=>s+r.score,0)/cases.length):0;
+  $("#hHi").textContent= cases.filter(r=>r.gradeCls==="hi").length;
+  $("#hLast").textContent= cases.length? new Date(Math.max(...cases.map(c=>c.ts))).toLocaleDateString("ko-KR",{month:"2-digit",day:"2-digit"}):"—";
+  $("#historyEmpty").style.display= cases.length?"none":"";
+  cases.slice().sort((a,b)=>b.ts-a.ts).forEach(r=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${fmtDate(r.ts)}</td><td>${esc(r.title)}</td><td><b>${r.score}</b></td>
+      <td><span class="pill ${r.gradeCls}">${r.grade}</span></td>
+      <td><span class="stage-flag ${STAGE_CLS[r.stage]}">${STAGE[r.stage]}</span></td>
+      <td><div style="display:flex;gap:6px"><button class="btn line sm openRec" data-id="${r.id}">열기</button><button class="btn ghost sm pdfRec" data-id="${r.id}">PDF</button></div></td>`;
+    tb.appendChild(tr);
+  });
+  $$(".openRec").forEach(b=>b.onclick=()=>openCase(b.dataset.id));
+  $$(".pdfRec").forEach(b=>b.onclick=()=>{ const r=cases.find(x=>x.id===b.dataset.id); if(r) makePDF(r); });
+}
+
+/* ---------- 관리자 리포트 ---------- */
+function renderAdmin(){
+  $("#aTotal").textContent=cases.length;
+  $("#aDone").textContent= cases.length? Math.round(cases.filter(k=>k.stage==="done").length/cases.length*100)+"%":"0%";
+  $("#aAvg").textContent= cases.length? Math.round(cases.reduce((s,k)=>s+k.score,0)/cases.length):0;
+  $("#aComments").textContent= cases.reduce((s,k)=>s+(k.comments||[]).length,0);
+  const sc=stageCounts();
+  if(charts.adminStage) charts.adminStage.destroy();
+  charts.adminStage=new Chart($("#adminStageChart"),{ type:"doughnut",
+    data:{ labels:["초안","검토중","협상중","서명중","완료"], datasets:[{ data:[sc.draft,sc.review,sc.negot,sc.sign,sc.done],
+      backgroundColor:["#9aa0b5","#2f6fd8","#c47b12","#6b3fc4","#1f9d6b"], borderWidth:0 }]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"bottom",labels:{boxWidth:12,font:{size:11}}}} } });
+  // 카테고리 누적
+  const catAgg={};
+  cases.forEach(k=>k.findings.forEach(f=>{ catAgg[f.cat]=(catAgg[f.cat]||0)+f.weight; }));
+  const top=Object.entries(catAgg).sort((a,b)=>b[1]-a[1]).slice(0,7);
+  if(charts.adminCat) charts.adminCat.destroy();
+  charts.adminCat=new Chart($("#adminCatChart"),{ type:"bar",
+    data:{ labels:top.map(t=>t[0]), datasets:[{ data:top.map(t=>+t[1].toFixed(1)), backgroundColor:"#3d4fd6", borderRadius:6, barThickness:16 }]},
+    options:{ indexAxis:"y", responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{ x:{beginAtZero:true}, y:{grid:{display:false},ticks:{font:{size:11}}} } } });
+  // 테이블
+  const tb=$("#adminTable"); tb.innerHTML="";
+  cases.forEach(k=>{ const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${esc(k.title)}</td><td>${TEMPLATES[k.type]?.name||k.type}</td>
+      <td><b style="color:${k.gradeCls==='hi'?'var(--danger)':k.gradeCls==='mid'?'var(--warn)':'var(--safe)'}">${k.score}</b></td>
+      <td><span class="stage-flag ${STAGE_CLS[k.stage]}">${STAGE[k.stage]}</span></td>
+      <td>${(k.comments||[]).length}</td><td>${esc(k.owner||"의뢰인")}</td>`;
+    tb.appendChild(tr); });
+}
+
+/* ---------- CSV / JSON 입출력 (외부 통합) ---------- */
+function download(name, content, mime){
+  const blob=new Blob([content],{type:mime}); const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+}
+function exportCsv(){
+  const head=["id","제목","유형","위험점수","등급","단계","고위험","중위험","점검항목","표준정합도","코멘트","검토일"];
+  const rows=cases.map(k=>[k.id,k.title,TEMPLATES[k.type]?.name||k.type,k.score,k.grade,STAGE[k.stage],
+    k.counts.hi,k.counts.mid,k.counts.total,(k.diff?.align??"")+"%",(k.comments||[]).length,new Date(k.ts).toLocaleString("ko-KR")]);
+  const csv=[head,...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
+  download(`legalcheck_cases_${Date.now()}.csv`,"﻿"+csv,"text/csv;charset=utf-8");
+  toast(`CSV ${cases.length}건을 내보냈어요`);
+}
+function exportJson(){ download(`legalcheck_backup_${Date.now()}.json`, JSON.stringify(cases,null,2),"application/json"); toast("JSON 백업을 내보냈어요"); }
+function importJson(file){ const r=new FileReader(); r.onload=()=>{ try{ const data=JSON.parse(r.result);
+    if(!Array.isArray(data)) throw new Error("형식 오류");
+    const ids=new Set(cases.map(c=>c.id)); let added=0;
+    data.forEach(d=>{ if(d&&d.id&&!ids.has(d.id)){ cases.push(d); added++; } });
+    saveCases(); renderBoard(); renderHistory(); renderAdmin();
+    toast(`JSON 가져오기 완료 — 신규 ${added}건 병합`);
+  }catch(e){ toast("JSON을 읽을 수 없습니다: "+e.message); } }; r.readAsText(file,"utf-8"); }
+
+/* ---------- jsPDF 검토 리포트 (한글: canvas 렌더로 보존) ---------- */
+function makePDF(rec){
+  const { jsPDF } = window.jspdf;
+  const pdf=new jsPDF({ unit:"pt", format:"a4" });
+  const W=595.28, H=841.89, M=46, scale=2;
+  const cw=Math.round(W*scale), pad=M*scale;
+  const adopted=rec.findings.filter(f=>f.adopted);
+  const blocks=[];
+  blocks.push({t:"리걸체크 — 계약서 검토 리포트 (v2)", s:25*scale, b:true, c:"#1c2030", gap:10});
+  blocks.push({t:`케이스: ${rec.title}  ·  유형: ${TEMPLATES[rec.type]?.name||rec.type}`, s:13*scale, c:"#565d72"});
+  blocks.push({t:`검토일: ${new Date(rec.ts).toLocaleString("ko-KR")}  ·  단계: ${STAGE[rec.stage]}`, s:12*scale, c:"#8b91a6", gap:14});
+  blocks.push({t:`종합 위험점수  ${rec.score} / 100   ·   등급: ${rec.grade}`, s:17*scale, b:true,
+    c: rec.gradeCls==="hi"?"#d8443c":rec.gradeCls==="mid"?"#c47b12":"#1f9d6b", gap:5});
+  blocks.push({t:`고위험 ${rec.counts.hi} · 중위험 ${rec.counts.mid} · 점검 ${rec.counts.total}룰 · 채택 ${adopted.length}건 · 표준정합도 ${rec.diff?.align||0}%`, s:12*scale, c:"#565d72", gap:14});
+  blocks.push({t:"■ 협상 우선순위 (ROI 순)", s:15*scale, b:true, c:"#1c2030", gap:8});
+  [...rec.findings].sort((a,b)=>(a.priority||99)-(b.priority||99)).forEach((f,i)=>{
+    const lv=f.level==="hi"?"[고위험]":f.level==="mid"?"[중위험]":"[저위험]";
+    blocks.push({t:`${f.priority||i+1}. ${lv} ${f.cat}  (ROI ${f.roi||"-"})${f.adopted?"  ✓채택":""}`, s:12.5*scale, b:true, c:f.level==="hi"?"#9a2620":"#1c2030", gap:3, wrap:true});
+    blocks.push({t:`   원문: …${f.quote}…`, s:11*scale, c:"#565d72", gap:2, wrap:true});
+    blocks.push({t:`   제안: ${f.fix}`, s:11*scale, c:"#2f3eb3", gap:9, wrap:true});
+  });
+  blocks.push({t:"※ 본 리포트는 룰기반 결정론 엔진의 자동 점검 결과로, 변호사 법률 자문을 대체하지 않습니다.", s:10.5*scale, c:"#8b91a6", gap:0, wrap:true});
+  const meas=document.createElement("canvas").getContext("2d"); const maxW=cw-pad*2;
+  function wrapText(text,size){ meas.font=`${size}px -apple-system,'Apple SD Gothic Neo',sans-serif`;
+    const lines=[]; let line=""; for(const ch of text.split("")){ const test=line+ch; if(meas.measureText(test).width>maxW&&line){lines.push(line);line=ch;}else line=test; } if(line)lines.push(line); return lines; }
+  let total=pad; const layout=[];
+  blocks.forEach(bk=>{ const ls=bk.wrap?wrapText(bk.t,bk.s):[bk.t]; layout.push({...bk,lines:ls}); total+=ls.length*(bk.s*1.35)+(bk.gap?bk.gap*scale:6*scale); });
+  total+=pad;
+  const cv=document.createElement("canvas"); cv.width=cw; cv.height=Math.max(total,H*scale);
+  const ctx=cv.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.fillStyle="#3d4fd6"; ctx.fillRect(0,0,cv.width,8*scale);
+  let y=pad+18*scale;
+  layout.forEach(bk=>{ ctx.fillStyle=bk.c||"#1c2030"; ctx.font=`${bk.b?"700":"400"} ${bk.s}px -apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif`;
+    bk.lines.forEach(ln=>{ ctx.fillText(ln,pad,y); y+=bk.s*1.35; }); y+=(bk.gap!=null?bk.gap:6)*scale; });
+  const ratio=W/cv.width, pageHpx=H/ratio; let drawn=0;
+  while(drawn<cv.height){ const slice=document.createElement("canvas"); slice.width=cv.width; slice.height=Math.min(pageHpx,cv.height-drawn);
+    slice.getContext("2d").drawImage(cv,0,drawn,cv.width,slice.height,0,0,cv.width,slice.height);
+    if(drawn>0) pdf.addPage(); pdf.addImage(slice.toDataURL("image/png"),"PNG",0,0,W,slice.height*ratio); drawn+=slice.height; }
+  pdf.save(`리걸체크_검토리포트_${rec.title.replace(/[^\w가-힣]/g,"_").slice(0,20)}.pdf`);
+  toast("검토 리포트 PDF를 저장했어요");
+}
+
+/* ---------- 라우팅 ---------- */
+function go(view){
+  $$(".view").forEach(v=>v.classList.remove("active"));
+  $("#view-"+view).classList.add("active");
+  $$(".nav-btn").forEach(b=>b.classList.toggle("active", b.dataset.view===view));
+  $$(".bottomnav button").forEach(b=>b.classList.toggle("active", b.dataset.view===view));
+  closeDrawer(); closeSheet();
+  if(view==="board") renderBoard();
+  if(view==="admin") renderAdmin();
+  if(view==="history") renderHistory();
+  if(view==="collab") renderCollab();
+  if(view==="sign") renderSign();
+  window.scrollTo({top:0});
+}
+$$("[data-view]").forEach(b=> b.addEventListener("click",()=>go(b.dataset.view)));
+
+/* ---------- 드로어/시트 ---------- */
+function openDrawer(){ document.body.classList.add("drawer-open"); }
+function closeDrawer(){ document.body.classList.remove("drawer-open"); }
+function openSheet(){ $("#moreSheet").classList.add("show"); $("#sheetBackdrop").classList.add("show"); }
+function closeSheet(){ $("#moreSheet").classList.remove("show"); $("#sheetBackdrop").classList.remove("show"); }
+$("#hamBtn").onclick=openDrawer; $("#drawerBackdrop").onclick=closeDrawer;
+$("#moreTab").onclick=openSheet; $("#sheetBackdrop").onclick=closeSheet;
+$$(".sheet-item").forEach(it=> it.onclick=()=>{ go(it.dataset.view); });
+
+/* ---------- 역할 스위치 ---------- */
+$$(".role-opt").forEach(b=> b.onclick=()=>{ role=b.dataset.role; applyRole(); toast(`역할: ${role==="client"?"의뢰인":role==="reviewer"?"검토자":"관리자"}로 전환`); });
+
+/* ---------- 입력 이벤트 ---------- */
+$("#ctText").addEventListener("input", e=> $("#charCount").textContent=`${e.target.value.length}자 입력됨`);
+$("#loadSample").onclick=()=>{ $("#ctName").value="물품 공급 및 용역 계약서(예시)"; $("#ctType").value="service"; $("#ctText").value=SAMPLE; $("#charCount").textContent=`${SAMPLE.length}자 입력됨`; toast("예시 계약서를 불러왔어요"); };
+$("#fileInput").onchange=e=>{ const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>{ $("#ctText").value=r.result; $("#ctName").value=$("#ctName").value||f.name.replace(/\.txt$/,""); $("#charCount").textContent=`${String(r.result).length}자 입력됨`; toast(`'${f.name}' 불러왔어요`); }; r.readAsText(f,"utf-8"); };
+$("#analyzeBtn").onclick=()=>{
+  const text=$("#ctText").value.trim();
+  if(text.length<30){ toast("계약서 본문을 30자 이상 입력해 주세요"); return; }
+  current=null; // 새 케이스
+  current=analyze($("#ctName").value.trim(), text, $("#ctType").value);
+  current.id=uid();
+  persistCurrent();
+  renderAnalysis(); renderDiff(); renderNegotiate(); renderCollab(); renderSign();
+  go("analysis");
+  toast(`분석 완료 — 위험점수 ${current.score}점 (${current.counts.total}룰 적중)`);
+};
+$("#adoptAll").onclick=()=>{ current.findings.forEach(f=>f.adopted=true); renderNegotiate(); persistCurrent(); toast("모든 수정안을 채택했어요"); };
+$("#genDocBtn").onclick=generateDoc;
+$("#genToInput").onclick=()=>{ if(!lastGenerated)return; $("#ctName").value=lastGenerated.title; $("#ctType").value=lastGenerated.type; $("#ctText").value=lastGenerated.text; $("#charCount").textContent=`${lastGenerated.text.length}자 입력됨`; go("input"); toast("생성한 초안을 입력란으로 보냈어요"); };
+$("#pdfFromAnalysis").onclick=()=>{ if(current) makePDF(current); };
+$("#addComment").onclick=()=>{
+  const txt=$("#commentText").value.trim(); if(!txt){ toast("코멘트 내용을 입력하세요"); return; }
+  const who=role==="client"?"의뢰인":role==="reviewer"?"검토자":"관리자";
+  current.comments=current.comments||[];
+  current.comments.push({ id:uid(), who, clause:$("#commentClause").value, text:txt, ts:Date.now(), resolved:false });
+  $("#commentText").value="";
+  if(role==="reviewer" && current.stage==="review") current.stage="negot";
+  persistCurrent(); renderCollab(); renderBoard(); toast("코멘트를 등록했어요");
+};
+$("#sendSign").onclick=sendSignRequest;
+$("#signAll").onclick=signAllNow;
+$("#stageFilter").querySelectorAll("button").forEach(b=> b.onclick=()=>{ stageFilter=b.dataset.stage; $$("#stageFilter button").forEach(x=>x.classList.toggle("on",x===b)); renderBoard(); });
+$("#exportCsv").onclick=exportCsv; $("#exportJson").onclick=exportJson;
+$("#importJson").onchange=e=>{ const f=e.target.files[0]; if(f) importJson(f); e.target.value=""; };
+
+/* ---------- 데모 케이스 시드 ---------- */
+function seedDemo(){
+  const demos=[
+    { title:"○○물품 공급계약서", type:"supply" },
+    { title:"△△ 앱 개발 용역계약서", type:"service" },
+    { title:"□□ 상가 임대차계약서", type:"lease" },
+  ];
+  demos.forEach((d,i)=>{
+    const k=analyze(d.title, SAMPLE, d.type); k.id=uid(); k.ts=Date.now()-i*86400000;
+    if(i===0){ k.stage="negot"; k.findings.slice(0,3).forEach(f=>f.adopted=true);
+      k.comments=[{id:uid(),who:"검토자",clause:"liability",text:"손해배상 상한이 없습니다. 계약금액 한도로 캡을 거는 협상이 필요합니다.",ts:Date.now()-3600000,resolved:false},
+                  {id:uid(),who:"의뢰인",clause:"penalty",text:"위약금 30%는 받아들이기 어렵습니다. 10%로 역제안하겠습니다.",ts:Date.now()-1800000,resolved:false}];
+      k.owner="의뢰인"; }
+    if(i===1){ k.stage="review"; k.comments=[{id:uid(),who:"검토자",clause:"ipall",text:"IP 포괄귀속 조항은 반드시 carve-out 협상하세요.",ts:Date.now()-7200000,resolved:true}]; }
+    if(i===2){ k.stage="sign"; k.findings.forEach(f=>f.adopted=true); ensureSignersFor(k); k.signers[0].status="완료"; k.signers[0].ts=Date.now()-600000; k.signers[1].status="발송됨"; k.signSentTs=Date.now()-900000;
+      k.sendLog=[`<span class="t">[${new Date(k.signSentTs).toLocaleString("ko-KR")}]</span> <span class="k">POST</span> /esign/v1/requests <span class="ok">→ 202 Accepted</span>`]; }
+    cases.unshift(k);
+  });
+  saveCases(); renderBoard(); renderHistory();
+  toast("데모 케이스 3건을 추가했어요");
+}
+function ensureSignersFor(k){ const t=TEMPLATES[k.type];
+  k.signers=[{name:"의뢰인",party:t?.fields[0].l||"갑",status:"대기",ts:null},{name:"상대방 서명자",party:t?.fields[1].l||"을",status:"대기",ts:null}]; }
+$("#seedDemo").onclick=seedDemo;
+
+/* ---------- 초기화 ---------- */
+cases=loadCases();
+renderTplChips(); renderTplFields();
+applyRole(); renderBoard(); renderHistory();
+</script>
+</body>
+</html>

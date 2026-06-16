@@ -1,0 +1,1446 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>임대지기 v2 — 포트폴리오 임대관리 (다중 역할·연체 스코어링·수익률)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          brand: { 50:'#eef4fb',100:'#d7e6f6',500:'#1f6fd6',600:'#1a5fbb',700:'#154e9c' },
+          ink: { DEFAULT:'#1a2230', 2:'#525a68', 3:'#8a909c' },
+          surface: { DEFAULT:'#ffffff', sub:'#f5f7fa', line:'#e7ebf1' }
+        },
+        fontFamily: { sans:['Pretendard','-apple-system','BlinkMacSystemFont','Apple SD Gothic Neo','sans-serif'] }
+      }
+    }
+  }
+</script>
+<style>
+  *{ -webkit-tap-highlight-color:transparent; }
+  body{ font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif; color:#1a2230; background:
+    radial-gradient(1200px 600px at 100% -10%, rgba(31,111,214,.06), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(31,111,214,.05), transparent 60%), #f5f7fa; }
+  .press{ transition:transform .12s cubic-bezier(.2,.7,.3,1); }
+  .press:active{ transform:scale(.97); }
+  button:focus-visible,a:focus-visible{ outline:2px solid #1f6fd6; outline-offset:2px; }
+  .card{ background:#fff; border:1px solid #e7ebf1; border-radius:16px; }
+  .glass{ background:rgba(255,255,255,.80); backdrop-filter:saturate(185%) blur(20px); -webkit-backdrop-filter:saturate(185%) blur(20px); }
+  @supports not (backdrop-filter:blur(2px)){ .glass{ background:#fff; } }
+  ::-webkit-scrollbar{ width:10px;height:10px } ::-webkit-scrollbar-thumb{ background:#d7dde6;border-radius:8px }
+  /* 반응형 네비 분기: 768px */
+  #sidebar{ display:none } #bottomnav{ display:flex } #mobileAppbar{ display:flex }
+  @media(min-width:768px){ #sidebar{ display:flex } #bottomnav{ display:none } #mobileAppbar{ display:none } #main{ padding-bottom:0 } #drawerBackdrop{display:none!important} #drawer{display:none!important} }
+  .sheet-enter{ transform:translateY(100%); }
+  .badge{ font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px }
+  table th{ font-weight:600 }
+  .num{ font-variant-numeric:tabular-nums }
+  /* 모바일 오프캔버스 드로어 (더보기 메뉴) */
+  #drawer{ transform:translateX(100%); transition:transform .25s; }
+  #drawer.open{ transform:translateX(0); }
+</style>
+</head>
+<body class="text-ink">
+
+<!-- ===== 모바일 상단 앱바 ===== -->
+<header id="mobileAppbar" class="glass fixed top-0 inset-x-0 z-30 h-14 items-center justify-between px-4 border-b border-surface-line">
+  <div class="flex items-center gap-2 min-w-0">
+    <div class="w-8 h-8 rounded-xl bg-brand-600 text-white grid place-items-center font-extrabold shrink-0">집</div>
+    <div class="min-w-0">
+      <div class="font-extrabold text-[15px] leading-none truncate">임대지기</div>
+      <div id="mRoleLabel" class="text-[10px] text-ink-3 leading-none mt-0.5 truncate"></div>
+    </div>
+  </div>
+  <div class="flex items-center gap-1.5 shrink-0">
+    <button id="mRoleBtn" class="press h-9 px-2.5 rounded-xl bg-surface-sub text-[12px] font-bold flex items-center gap-1">역할 <span aria-hidden="true">▾</span></button>
+    <button id="mAdd" class="press w-9 h-9 rounded-xl bg-brand-600 text-white grid place-items-center text-lg font-bold" aria-label="빠른 등록">＋</button>
+  </div>
+</header>
+
+<div class="md:flex md:min-h-screen">
+  <!-- ===== 데스크톱 사이드바 ===== -->
+  <aside id="sidebar" class="w-64 shrink-0 flex-col bg-[#10213a] text-white sticky top-0 h-screen p-4">
+    <div class="flex items-center gap-2 px-2 pt-1 pb-4">
+      <div class="w-9 h-9 rounded-xl bg-white/15 grid place-items-center font-extrabold">집</div>
+      <div><div class="font-extrabold text-lg leading-none">임대지기 <span class="text-[10px] align-top text-brand-100">v2</span></div><div class="text-[11px] text-white/50 mt-1">포트폴리오 임대관리</div></div>
+    </div>
+    <!-- 역할 스위처 -->
+    <div class="mb-2 px-1">
+      <div class="text-[10px] text-white/40 font-semibold mb-1 pl-1">역할(권한)</div>
+      <div id="roleSwitch" class="grid grid-cols-3 gap-1"></div>
+    </div>
+    <!-- 건물 선택 -->
+    <div id="buildingPickWrap" class="mb-3 px-1">
+      <div class="text-[10px] text-white/40 font-semibold mb-1 pl-1">건물</div>
+      <select id="buildingPick" class="w-full h-9 rounded-xl bg-white/10 text-white text-[13px] px-2 border border-white/10"></select>
+    </div>
+    <nav class="flex-1 space-y-1 overflow-y-auto" id="navDesktop"></nav>
+    <div class="mt-3 p-3 rounded-xl bg-white/5 text-[11px] text-white/60 leading-relaxed">
+      <div class="text-white/80 font-semibold mb-1">데모 모드</div>
+      로그인 없이 3개 역할을 전환하며 쓸 수 있어요.
+    </div>
+  </aside>
+
+  <!-- ===== 본문 ===== -->
+  <main id="main" class="flex-1 min-w-0 pt-14 md:pt-0 pb-24 md:pb-10">
+    <div class="hidden md:flex items-center justify-between px-8 pt-7 pb-2 gap-4">
+      <div class="min-w-0">
+        <div class="flex items-center gap-2">
+          <h1 id="pageTitle" class="text-2xl font-extrabold">포트폴리오 대시보드</h1>
+          <span id="roleChip" class="badge"></span>
+        </div>
+        <p id="pageDesc" class="text-ink-2 mt-1 text-sm">전체 건물의 수익·연체·하자를 한눈에 봐요.</p>
+      </div>
+      <button id="dAdd" class="press bg-brand-600 hover:bg-brand-700 text-white rounded-xl px-4 h-11 font-semibold flex items-center gap-2 shrink-0">＋ 빠른 등록</button>
+    </div>
+    <div class="md:hidden px-4 pt-4 pb-1">
+      <div class="flex items-center gap-2">
+        <h1 id="pageTitleM" class="text-xl font-extrabold">포트폴리오</h1>
+        <span id="roleChipM" class="badge"></span>
+      </div>
+      <p id="pageDescM" class="text-ink-2 mt-0.5 text-[13px]">전체 건물 현황</p>
+      <div id="buildingPickWrapM" class="mt-2">
+        <select id="buildingPickM" class="w-full h-10 rounded-xl bg-white border border-surface-line text-[14px] px-3"></select>
+      </div>
+    </div>
+
+    <div id="views" class="px-4 md:px-8 pt-3 max-w-[1180px]"></div>
+  </main>
+</div>
+
+<!-- ===== 모바일 바텀 탭바 (4탭 + 더보기) ===== -->
+<nav id="bottomnav" class="glass fixed bottom-0 inset-x-0 z-30 border-t border-surface-line h-[64px] items-stretch justify-around px-1"></nav>
+
+<!-- ===== 모바일 오프캔버스 드로어(더보기 메뉴) ===== -->
+<div id="drawerBackdrop" class="fixed inset-0 z-40 bg-ink/40 hidden md:hidden" style="backdrop-filter:blur(2px)"></div>
+<aside id="drawer" class="fixed top-0 right-0 z-50 h-full w-[82vw] max-w-[300px] bg-[#10213a] text-white p-4 md:hidden flex flex-col">
+  <div class="flex items-center justify-between mb-4">
+    <div class="font-extrabold text-lg">전체 메뉴</div>
+    <button id="drawerClose" class="press w-9 h-9 rounded-xl bg-white/10 grid place-items-center" aria-label="닫기">✕</button>
+  </div>
+  <div class="mb-3">
+    <div class="text-[10px] text-white/40 font-semibold mb-1">역할(권한)</div>
+    <div id="roleSwitchM" class="grid grid-cols-3 gap-1"></div>
+  </div>
+  <nav class="flex-1 space-y-1 overflow-y-auto" id="navDrawer"></nav>
+</aside>
+
+<!-- ===== 바텀시트(빠른 등록) ===== -->
+<div id="sheetWrap" class="fixed inset-0 z-50 hidden">
+  <div id="sheetDim" class="absolute inset-0 bg-ink/20" style="backdrop-filter:blur(2px)"></div>
+  <div id="sheet" class="glass sheet-enter absolute bottom-0 inset-x-0 rounded-t-3xl p-5 pb-8 max-w-[560px] mx-auto transition-transform duration-300 shadow-2xl" style="border:1px solid #e7ebf1">
+    <div class="w-10 h-1.5 rounded-full bg-ink-3/40 mx-auto mb-4"></div>
+    <h3 class="text-lg font-extrabold mb-1">빠른 작업</h3>
+    <p class="text-ink-2 text-[13px] mb-4" id="sheetDesc">자주 쓰는 작업을 바로 시작해요.</p>
+    <div class="grid grid-cols-2 gap-3" id="sheetGrid"></div>
+    <button id="sheetClose" class="press w-full mt-5 h-12 rounded-xl bg-surface-sub font-semibold">닫기</button>
+  </div>
+</div>
+
+<!-- ===== 범용 모달 ===== -->
+<div id="modalWrap" class="fixed inset-0 z-50 hidden">
+  <div id="modalDim" class="absolute inset-0 bg-ink/25" style="backdrop-filter:blur(2px)"></div>
+  <div class="absolute inset-0 flex items-end md:items-center justify-center p-0 md:p-4">
+    <div id="modalCard" class="glass w-full md:max-w-[560px] rounded-t-3xl md:rounded-3xl p-5 md:p-6 max-h-[90vh] overflow-y-auto shadow-2xl" style="border:1px solid #e7ebf1"></div>
+  </div>
+</div>
+
+<!-- ===== 토스트 ===== -->
+<div id="toast" class="glass fixed bottom-[80px] md:bottom-6 left-1/2 -translate-x-1/2 z-[60] hidden px-4 py-3 rounded-2xl shadow-xl text-sm font-semibold" style="border:1px solid #e7ebf1"></div>
+
+<!-- PDF 렌더 영역(화면 밖) -->
+<div id="pdfStage" style="position:fixed;left:-9999px;top:0;width:760px;background:#fff;"></div>
+
+<script>
+/* =========================================================================
+   임대지기 v2 — 포트폴리오 임대관리 SaaS (단일 HTML, 오프라인 구동)
+   v1(뷰5) 위에 추가:
+   - 다중 역할(임대인/관리소장/임차인) + 권한 분기 + 역할 스위처
+   - 다중 건물(포트폴리오) + 건물 필터
+   - 실 알고리즘: 연체 위험 스코어링 / 수익률 분석(Cap rate·NOI·ROI) / 적정 임대료 추정(시세 회귀 보정)
+   - 외부 통합: 카카오 알림톡 mock 발송 로그 / CSV 입출력 / 전자계약 서명 흐름 mock
+   ========================================================================= */
+const KRW = n => (Math.round(n)||0).toLocaleString('ko-KR') + '원';
+const KRWk = n => { n=Math.round(n); return n>=100000000? (n/100000000).toFixed(n%100000000?1:0)+'억' : n>=10000? Math.round(n/10000).toLocaleString()+'만원' : (n||0).toLocaleString()+'원'; };
+const PCT = n => (Math.round(n*10)/10)+'%';
+const uid = () => Math.random().toString(36).slice(2,9);
+const todayISO = () => '2026-06-16';
+const TODAY = new Date('2026-06-16');
+const fmtDate = s => s? s.replaceAll('-','.').slice(2) : '-';
+const MONTH = '2026-06';
+const monthLabel = m => { const [y,mm]=m.split('-'); return `${y}년 ${+mm}월`; };
+const daysBetween = (a,b) => Math.round((new Date(a)-new Date(b))/86400000);
+
+/* ---------- 저장소 ---------- */
+const DB = {
+  key:'rental-jigi-v2',
+  load(){ try{ return JSON.parse(localStorage.getItem(this.key)) }catch(e){ return null } },
+  save(s){ localStorage.setItem(this.key, JSON.stringify(s)); },
+};
+
+/* ---------- 시드 데이터 (다중 건물·포트폴리오) ---------- */
+function seed(){
+  const buildings = [
+    { id:'b1', name:'행복빌라', addr:'대구 남구 대명동', purchase:480000000, loan:200000000, mgmtFee:1200000 }, // 매입가/대출/연 관리비
+    { id:'b2', name:'대명원룸', addr:'대구 남구 봉덕동', purchase:620000000, loan:300000000, mgmtFee:1800000 },
+  ];
+  const units = [
+    { id:'u1', b:'b1', name:'201호', type:'월세', deposit:10000000, rent:550000, mgmt:70000, area:18, market:560000 },
+    { id:'u2', b:'b1', name:'202호', type:'월세', deposit:5000000,  rent:480000, mgmt:60000, area:16, market:520000 },
+    { id:'u3', b:'b1', name:'301호', type:'월세', deposit:20000000, rent:650000, mgmt:80000, area:24, market:640000 },
+    { id:'u4', b:'b2', name:'B102',  type:'월세', deposit:3000000,  rent:420000, mgmt:50000, area:14, market:470000 },
+    { id:'u5', b:'b2', name:'B103',  type:'전세', deposit:90000000, rent:0,      mgmt:50000, area:15, market:0 },
+    { id:'u6', b:'b2', name:'B104',  type:'공실', deposit:0,        rent:430000, mgmt:50000, area:14, market:470000 },
+    { id:'u7', b:'b2', name:'B201',  type:'월세', deposit:5000000,  rent:450000, mgmt:50000, area:15, market:470000 },
+  ];
+  const tenants = [
+    { id:'t1', unit:'u1', name:'김민준', phone:'010-1234-5678', start:'2025-03-01', months:24, payday:5 },
+    { id:'t2', unit:'u2', name:'이서연', phone:'010-2222-3333', start:'2024-11-15', months:24, payday:15 },
+    { id:'t3', unit:'u3', name:'박도윤', phone:'010-4444-5555', start:'2025-07-10', months:12, payday:10 },
+    { id:'t4', unit:'u4', name:'최지우', phone:'010-6666-7777', start:'2025-01-20', months:24, payday:25 },
+    { id:'t5', unit:'u5', name:'정하준', phone:'010-8888-9999', start:'2024-09-01', months:24, payday:1 },
+    { id:'t7', unit:'u7', name:'한소율', phone:'010-3030-4040', start:'2025-10-01', months:24, payday:20 },
+  ];
+  // 6월 청구·수납
+  const charges = [
+    { id:'c1', unit:'u1', tenant:'t1', month:MONTH, rent:550000, mgmt:70000, due:'2026-06-05', paid:true,  paidAt:'2026-06-04' },
+    { id:'c2', unit:'u2', tenant:'t2', month:MONTH, rent:480000, mgmt:60000, due:'2026-06-15', paid:false, paidAt:null },
+    { id:'c3', unit:'u3', tenant:'t3', month:MONTH, rent:650000, mgmt:80000, due:'2026-06-10', paid:true,  paidAt:'2026-06-09' },
+    { id:'c4', unit:'u4', tenant:'t4', month:MONTH, rent:420000, mgmt:50000, due:'2026-06-25', paid:false, paidAt:null },
+    { id:'c5', unit:'u5', tenant:'t5', month:MONTH, rent:0,      mgmt:50000, due:'2026-06-01', paid:true,  paidAt:'2026-06-01' },
+    { id:'c7', unit:'u7', tenant:'t7', month:MONTH, rent:450000, mgmt:50000, due:'2026-06-20', paid:false, paidAt:null },
+  ];
+  // 임차인별 과거 6개월 납부 이력(연체 스코어링 입력) — delayDays>0 면 지연일수
+  const payHist = {
+    t1:[{m:'2026-05',delay:0},{m:'2026-04',delay:0},{m:'2026-03',delay:1},{m:'2026-02',delay:0},{m:'2026-01',delay:0},{m:'2025-12',delay:0}],
+    t2:[{m:'2026-05',delay:8},{m:'2026-04',delay:12},{m:'2026-03',delay:5},{m:'2026-02',delay:15},{m:'2026-01',delay:7},{m:'2025-12',delay:9}],
+    t3:[{m:'2026-05',delay:0},{m:'2026-04',delay:2},{m:'2026-03',delay:0},{m:'2026-02',delay:0},{m:'2026-01',delay:3},{m:'2025-12',delay:0}],
+    t4:[{m:'2026-05',delay:3},{m:'2026-04',delay:6},{m:'2026-03',delay:4},{m:'2026-02',delay:2},{m:'2026-01',delay:5},{m:'2025-12',delay:3}],
+    t5:[{m:'2026-05',delay:0},{m:'2026-04',delay:0},{m:'2026-03',delay:0},{m:'2026-02',delay:0},{m:'2026-01',delay:0},{m:'2025-12',delay:0}],
+    t7:[{m:'2026-05',delay:18},{m:'2026-04',delay:22},{m:'2026-03',delay:10},{m:'2026-02',delay:14},{m:'2026-01',delay:20},{m:'2025-12',delay:11}],
+  };
+  const history = [
+    { month:'2026-01', collected:2700000 },{ month:'2026-02', collected:2820000 },
+    { month:'2026-03', collected:2750000 },{ month:'2026-04', collected:2880000 },
+    { month:'2026-05', collected:2810000 },
+  ];
+  const repairs = [
+    { id:'r1', b:'b1', unit:'u1', tenant:'t1', title:'싱크대 배수구 누수', status:'접수', priority:'높음', created:'2026-06-12', photo:null, note:'주방 하부장 물고임', by:'tenant' },
+    { id:'r2', b:'b1', unit:'u3', tenant:'t3', title:'보일러 온수 미작동', status:'진행', priority:'긴급', created:'2026-06-10', photo:null, note:'기사 방문 예약 완료', by:'manager' },
+    { id:'r3', b:'b1', unit:'u2', tenant:'t2', title:'현관 도어락 건전지', status:'완료', priority:'낮음', created:'2026-06-03', photo:null, note:'교체 완료', by:'tenant' },
+    { id:'r4', b:'b2', unit:'u7', tenant:'t7', title:'창문 결로·곰팡이', status:'접수', priority:'높음', created:'2026-06-14', photo:null, note:'북향 창측 곰팡이', by:'tenant' },
+  ];
+  return { buildings, units, tenants, charges, payHist, history, repairs, contracts:[], notices:[] };
+}
+
+let S = DB.load() || seed();
+// 마이그레이션 가드: 구조 누락 시 시드로 복구
+if(!S.buildings || !S.payHist) { S = seed(); }
+const persist = () => DB.save(S);
+
+/* ---------- 역할/건물 상태 ---------- */
+const ROLES = {
+  owner:   { id:'owner',   label:'임대인',   icon:'👤', chip:'bg-brand-50 text-brand-700',   desc:'집주인 — 전체 권한' },
+  manager: { id:'manager', label:'관리소장', icon:'🧰', chip:'bg-amber-50 text-amber-700',    desc:'건물 운영·하자·수납' },
+  tenant:  { id:'tenant',  label:'임차인',   icon:'🧑', chip:'bg-emerald-50 text-emerald-600', desc:'세입자 — 내 방·청구·하자' },
+};
+let role = (S._role) || 'owner';
+let curBuilding = (S._building) || 'all';     // 'all' = 전체 포트폴리오 (owner)
+const DEMO_TENANT = 't2';                      // 임차인 역할 시 고정 데모 세입자
+
+/* 역할별 메뉴 정의 (권한 분기) */
+const MENUS = {
+  owner: [
+    { id:'portfolio', label:'포트폴리오', icon:'📊', title:'포트폴리오 대시보드', desc:'전체 건물의 수익·연체·하자를 한눈에 봐요.' },
+    { id:'units',     label:'건물·세대',   icon:'🏢', title:'건물·세대 관리', desc:'보유 건물과 세대·임차인을 관리해요.' },
+    { id:'rent',      label:'청구·수납',   icon:'💸', title:'청구·수납 추적', desc:'청구·수납·미납을 추적하고 독촉해요.' },
+    { id:'risk',      label:'연체 관리',   icon:'⚠️', title:'연체 위험 관리', desc:'임차인별 연체 위험을 점수로 진단해요.' },
+    { id:'contract',  label:'계약·서명',   icon:'📄', title:'계약·전자서명', desc:'계약·갱신·전자서명을 관리해요.' },
+    { id:'repair',    label:'하자보수',     icon:'🛠️', title:'하자보수', desc:'전 건물 수리 요청을 처리해요.' },
+    { id:'yield',     label:'수익률 분석', icon:'📈', title:'수익률 분석', desc:'Cap rate·NOI·ROI를 계산해요.' },
+    { id:'tax',       label:'세무·정산',   icon:'🧾', title:'세무·정산 리포트', desc:'임대소득을 집계·내보내요.' },
+    { id:'notices',   label:'알림 센터',   icon:'🔔', title:'알림 센터', desc:'알림톡 발송 이력을 봐요.' },
+  ],
+  manager: [
+    { id:'mdash',     label:'운영 현황',   icon:'📋', title:'관리소장 운영 현황', desc:'담당 건물의 수납·하자 작업을 처리해요.' },
+    { id:'units',     label:'세대',         icon:'🏢', title:'세대 관리', desc:'담당 건물의 세대·임차인을 봐요.' },
+    { id:'rent',      label:'수납',         icon:'💸', title:'수납 처리', desc:'입금 확인·독촉을 처리해요.' },
+    { id:'repair',    label:'하자보수',     icon:'🛠️', title:'하자보수', desc:'수리 요청을 접수·처리해요.' },
+    { id:'notices',   label:'알림',         icon:'🔔', title:'알림 발송 이력', desc:'독촉·안내 발송 이력을 봐요.' },
+  ],
+  tenant: [
+    { id:'thome',     label:'내 임대',     icon:'🏠', title:'내 임대 현황', desc:'내 방·계약·이번 달 청구를 확인해요.' },
+    { id:'tbill',     label:'청구·납부',   icon:'💳', title:'청구·납부', desc:'청구 내역과 납부 상태를 확인해요.' },
+    { id:'trepair',   label:'하자 신고',   icon:'🛠️', title:'하자 신고', desc:'수리가 필요하면 사진과 함께 신고해요.' },
+  ],
+};
+function menu(){ return MENUS[role]; }
+let curView = menu()[0].id;
+
+/* ---------- 헬퍼 조회 ---------- */
+const buildingById = id => S.buildings.find(b=>b.id===id);
+const unitById = id => S.units.find(u=>u.id===id);
+const tenantById = id => S.tenants.find(t=>t.id===id);
+const tenantOfUnit = uid => S.tenants.find(t=>t.unit===uid);
+const chargeTotal = c => (c.rent||0)+(c.mgmt||0);
+
+/* 역할·건물 권한 필터: owner=선택 건물(all 가능), manager=담당 건물, tenant=본인 세대만 */
+function visibleUnits(){
+  if(role==='tenant'){ const t=tenantById(DEMO_TENANT); return S.units.filter(u=>u.id===t.unit); }
+  if(role==='manager'){ return S.units.filter(u=>u.b===curBuilding); }
+  return curBuilding==='all'? S.units.slice() : S.units.filter(u=>u.b===curBuilding);
+}
+function visibleCharges(){
+  const us=new Set(visibleUnits().map(u=>u.id));
+  let cs=S.charges.filter(c=>us.has(c.unit));
+  if(role==='tenant') cs=cs.filter(c=>c.tenant===DEMO_TENANT);
+  return cs;
+}
+function visibleRepairs(){
+  const us=new Set(visibleUnits().map(u=>u.id));
+  let rs=S.repairs.filter(r=>us.has(r.unit));
+  if(role==='tenant') rs=rs.filter(r=>r.tenant===DEMO_TENANT);
+  return rs;
+}
+
+/* ---------- 토스트 ---------- */
+let toastT;
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.remove('hidden');
+  clearTimeout(toastT); toastT=setTimeout(()=>el.classList.add('hidden'),2400);
+}
+
+/* ============================================================
+   실 알고리즘 1 — 연체 위험 스코어링
+   입력: 과거 지연일수 이력 + 미납 횟수 + 잔여 계약개월
+   출력: 0~100 점수 + 등급(A안전/B주의/C경고/D고위험)
+   ============================================================ */
+function riskScore(tenant){
+  const hist = S.payHist[tenant.id] || [];
+  const n = hist.length || 1;
+  const avgDelay = hist.reduce((a,h)=>a+h.delay,0)/n;          // 평균 지연일
+  const lateCnt  = hist.filter(h=>h.delay>0).length;           // 지연 횟수
+  const lateRate = lateCnt/n;                                  // 지연 비율
+  const maxDelay = hist.reduce((a,h)=>Math.max(a,h.delay),0);  // 최대 지연
+  // 최근 가중(최근 3개월 가중 1.5)
+  const recent = hist.slice(0,3).reduce((a,h)=>a+h.delay,0)/Math.min(3,n);
+  const u=unitById(tenant.unit);
+  const end = addMonths(tenant.start, tenant.months);
+  const remainMonths = Math.max(0, Math.round(daysBetween(end,'2026-06-16')/30));
+  // 현재 미납 여부
+  const unpaid = S.charges.some(c=>c.tenant===tenant.id && c.month===MONTH && !c.paid && new Date(c.due)<TODAY);
+  // 가중합 (위험이 높을수록 ↑)
+  let risk = 0;
+  risk += Math.min(35, avgDelay*2.2);        // 평균 지연 (최대 35)
+  risk += lateRate*22;                       // 지연 빈도 (최대 22)
+  risk += Math.min(15, maxDelay*0.6);        // 최악 지연 (최대 15)
+  risk += Math.min(12, recent*1.0);          // 최근 가중 (최대 12)
+  risk += unpaid? 14:0;                       // 현재 미납 (14)
+  risk += remainMonths<3? 2:0;                // 계약 만료 임박 소폭 가중
+  risk = Math.min(100, Math.round(risk));
+  let grade,gc,advice;
+  if(risk<20){ grade='A'; gc='bg-emerald-50 text-emerald-600'; advice='안정 — 통상 관리로 충분해요.'; }
+  else if(risk<45){ grade='B'; gc='bg-brand-50 text-brand-700'; advice='주의 — 납기 D-3 사전 안내를 추천해요.'; }
+  else if(risk<70){ grade='C'; gc='bg-amber-50 text-amber-700'; advice='경고 — 납기 전 알림톡 + 입금 확인 필수.'; }
+  else { grade='D'; gc='bg-rose-50 text-rose-600'; advice='고위험 — 보증금 점검·분할납부 협의를 검토하세요.'; }
+  return { risk, grade, gc, advice, avgDelay:Math.round(avgDelay*10)/10, lateCnt, n, maxDelay, remainMonths, unpaid };
+}
+
+/* ============================================================
+   실 알고리즘 2 — 적정 임대료 추정 (시세 회귀 보정)
+   기준: 동일 건물 입주 세대의 (월세/면적) 중앙값 = 단가
+         + 면적 보정 + 시장가 가중(0.5) → 추정 임대료
+   출력: 추정 월세, 현재 대비 갭(%), 권고
+   ============================================================ */
+function rentEstimate(unit){
+  const peers = S.units.filter(u=>u.b===unit.b && u.type==='월세' && u.rent>0 && u.area>0);
+  if(!peers.length) return null;
+  const perArea = peers.map(u=>u.rent/u.area).sort((a,b)=>a-b);
+  const med = perArea[Math.floor(perArea.length/2)];     // 단가 중앙값(원/㎡)
+  const base = med * unit.area;                            // 면적 기반 추정
+  const market = unit.market||base;
+  const est = Math.round((base*0.5 + market*0.5)/1000)*1000; // 시장가 50% 가중, 천원 단위
+  const cur = unit.rent||0;
+  const gap = cur? (est-cur)/cur : 0;
+  let advice;
+  if(!cur) advice='공실 — 추정가를 출발선으로 책정하세요.';
+  else if(gap>0.05) advice=`현재가가 시세 대비 ${PCT(gap*100)} 낮아요. 갱신 시 인상 여지.`;
+  else if(gap<-0.05) advice=`현재가가 시세 대비 높아요. 공실 위험 점검.`;
+  else advice='현재가가 시세에 적정 범위예요.';
+  return { est, perArea:Math.round(med), base:Math.round(base), market, cur, gap, advice };
+}
+
+/* ============================================================
+   실 알고리즘 3 — 수익률 분석 (Cap rate·NOI·ROI)
+   GPI=연 임대료, EGI=GPI*(1-공실률), OpEx=연관리비+추정유지비,
+   NOI=EGI-OpEx, Cap rate=NOI/매입가, ROI=(NOI-이자)/자기자본
+   ============================================================ */
+function yieldAnalysis(building){
+  const us = S.units.filter(u=>u.b===building.id);
+  const annualRent = us.filter(u=>u.type==='월세').reduce((a,u)=>a+(u.rent||0),0)*12;
+  const vacancy = us.filter(u=>u.type==='공실').length / Math.max(1,us.length);
+  const gpi = annualRent / (1-vacancy || 1);   // 잠재총소득(공실 제외 전 환산)
+  const egi = annualRent;                       // 유효총소득(현 임대료 합)
+  const opex = (building.mgmtFee||0) + annualRent*0.08; // 관리비 + 유지보수 추정 8%
+  const noi = egi - opex;
+  const capRate = building.purchase? noi/building.purchase : 0;
+  const equity = building.purchase - (building.loan||0);
+  const interest = (building.loan||0)*0.045;   // 대출이자 4.5% 가정
+  const cashflow = noi - interest;
+  const roi = equity? cashflow/equity : 0;
+  return { annualRent, vacancy, gpi, egi, opex, noi, capRate, equity, interest, cashflow, roi, units:us.length, purchase:building.purchase, loan:building.loan };
+}
+
+/* ============================================================
+   외부 통합 1 — 카카오 알림톡 mock 발송
+   ============================================================ */
+function sendKakao(to, name, template, body){
+  S.notices.push({
+    id:uid(), at:new Date('2026-06-16T10:'+String(10+S.notices.length).padStart(2,'0')+':00').toLocaleString('ko-KR',{hour12:false}),
+    channel:'카카오 알림톡', to, name, template, msg:body, status:'발송완료'
+  });
+  persist();
+}
+
+/* ============================================================
+   외부 통합 2 — CSV 입출력
+   ============================================================ */
+function exportCSV(){
+  const rows=[['건물','세대','임차인','대상월','임대료','관리비','합계','상태','입금일']];
+  visibleCharges().forEach(c=>{
+    const u=unitById(c.unit), b=buildingById(u.b), t=tenantById(c.tenant);
+    rows.push([b?.name,u?.name,t?.name||'',c.month,c.rent,c.mgmt,chargeTotal(c),c.paid?'수납':'미납',c.paidAt||'']);
+  });
+  const csv='﻿'+rows.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`임대장부_${MONTH}.csv`; a.click(); URL.revokeObjectURL(a.href);
+  toast(`수납내역 ${rows.length-1}건을 CSV로 내보냈어요.`);
+}
+function importCSVText(text){
+  // 간이 CSV 파서: 헤더 [세대명, 임차인, 대상월, 임금액?] → 매칭되는 청구 수납 처리
+  const lines=text.replace(/^﻿/,'').split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length<2) return {matched:0,total:0};
+  const body=lines.slice(1);
+  let matched=0;
+  body.forEach(line=>{
+    const cells=line.split(',').map(s=>s.replace(/^"|"$/g,'').trim());
+    const [unitName, , month] = cells;
+    const u=S.units.find(x=>x.name===unitName);
+    if(!u) return;
+    const c=S.charges.find(x=>x.unit===u.id && x.month===(month||MONTH));
+    if(c && !c.paid){ c.paid=true; c.paidAt='2026-06-16'; matched++; }
+  });
+  persist();
+  return {matched, total:body.length};
+}
+
+/* ============================================================
+   네비게이션 렌더
+   ============================================================ */
+function renderRoleSwitch(){
+  const cells = Object.values(ROLES).map(r=>`
+    <button data-role="${r.id}" class="press py-1.5 rounded-lg text-[11px] font-bold ${role===r.id?'bg-brand-600 text-white':'bg-white/10 text-white/70'}">
+      <div class="text-base leading-none mb-0.5">${r.icon}</div>${r.label}
+    </button>`).join('');
+  ['roleSwitch','roleSwitchM'].forEach(id=>{ const el=document.getElementById(id); if(el) el.innerHTML=cells; });
+  document.querySelectorAll('[data-role]').forEach(b=>b.onclick=()=>setRole(b.dataset.role));
+}
+function renderBuildingPick(){
+  const opts = [ role==='owner'?`<option value="all">전체 포트폴리오</option>`:'' ,
+    ...S.buildings.map(b=>`<option value="${b.id}">${b.name}</option>`) ].join('');
+  ['buildingPick','buildingPickM'].forEach(id=>{ const el=document.getElementById(id); if(!el) return;
+    el.innerHTML=opts; el.value=curBuilding;
+    el.onchange=()=>{ curBuilding=el.value; S._building=curBuilding; persist(); syncBuildingPick(); render(); };
+  });
+  // 임차인은 건물 선택 숨김
+  const show = role!=='tenant';
+  document.getElementById('buildingPickWrap').style.display = show?'block':'none';
+  document.getElementById('buildingPickWrapM').style.display = show?'block':'none';
+}
+function syncBuildingPick(){ ['buildingPick','buildingPickM'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=curBuilding; }); }
+
+function renderNav(){
+  const items=menu();
+  // 데스크톱
+  document.getElementById('navDesktop').innerHTML = items.map(n=>`
+    <button data-view="${n.id}" class="${n.id===curView?'bg-white/12 text-white':'text-white/80 hover:bg-white/5'} w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 text-[14px]">
+      <span class="text-lg">${n.icon}</span><span class="font-medium">${n.label}</span></button>`).join('');
+  // 모바일 바텀바: 앞 4개 + 더보기(5개 초과 시)
+  const main = items.slice(0,4);
+  const overflow = items.length>4;
+  const tabs = main.map(n=>`<button data-view="${n.id}" class="flex-1 flex flex-col items-center justify-center gap-0.5 min-h-[44px] ${n.id===curView?'text-brand-600':'text-ink-3'}">
+      <span class="text-[19px] leading-none">${n.icon}</span><span class="text-[10px] font-semibold">${n.label}</span></button>`).join('');
+  const more = overflow? `<button id="moreTab" class="flex-1 flex flex-col items-center justify-center gap-0.5 min-h-[44px] ${items.slice(4).some(n=>n.id===curView)?'text-brand-600':'text-ink-3'}">
+      <span class="text-[19px] leading-none">⋯</span><span class="text-[10px] font-semibold">더보기</span></button>`:'';
+  document.getElementById('bottomnav').innerHTML = tabs+more;
+  // 드로어 전체 메뉴
+  document.getElementById('navDrawer').innerHTML = items.map(n=>`
+    <button data-view="${n.id}" class="${n.id===curView?'bg-white/12 text-white':'text-white/80'} w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 text-[14px]">
+      <span class="text-lg">${n.icon}</span><span class="font-medium">${n.label}</span></button>`).join('');
+  document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{ go(b.dataset.view); closeDrawer(); });
+  const mt=document.getElementById('moreTab'); if(mt) mt.onclick=openDrawer;
+}
+
+function setRole(r){
+  role=r; S._role=r;
+  // 역할 전환 시 기본 건물·뷰 보정
+  if(role==='manager' && curBuilding==='all') curBuilding='b1';
+  if(role==='tenant') curBuilding = unitById(tenantById(DEMO_TENANT).unit).b;
+  curView=menu()[0].id;
+  S._building=curBuilding; persist();
+  const rl=ROLES[r];
+  document.getElementById('mRoleLabel').textContent=rl.label+' 화면';
+  renderRoleSwitch(); renderBuildingPick(); syncBuildingPick(); go(curView);
+  if(typeof closeDrawer==='function') closeDrawer();
+  toast(`${rl.icon} ${rl.label} 화면으로 전환했어요.`);
+}
+
+function go(v){
+  curView=v;
+  const meta=menu().find(n=>n.id===v) || menu()[0];
+  curView=meta.id;
+  const rl=ROLES[role];
+  ['pageTitle','pageTitleM'].forEach(id=>document.getElementById(id).textContent=meta.title);
+  ['pageDesc','pageDescM'].forEach(id=>document.getElementById(id).textContent=meta.desc);
+  ['roleChip','roleChipM'].forEach(id=>{ const el=document.getElementById(id); el.className='badge '+rl.chip; el.textContent=rl.icon+' '+rl.label; });
+  document.getElementById('mRoleLabel').textContent=rl.label+' 화면';
+  renderNav();
+  render();
+  window.scrollTo(0,0);
+}
+
+/* ============================== 렌더 디스패치 ============================== */
+function render(){
+  const el=document.getElementById('views');
+  const V={
+    portfolio:viewPortfolio, units:viewUnits, rent:viewRent, risk:viewRisk, contract:viewContract,
+    repair:viewRepair, yield:viewYield, tax:viewTax, notices:viewNotices,
+    mdash:viewManagerDash, thome:viewTenantHome, tbill:viewTenantBill, trepair:viewTenantRepair,
+  };
+  el.innerHTML = (V[curView]||viewPortfolio)();
+  bindView();
+  if(curView==='portfolio') drawPortfolioCharts();
+  if(curView==='yield') drawYieldChart();
+  if(curView==='risk') drawRiskChart();
+}
+
+/* ---------- 집계 ---------- */
+function summary(){
+  const cs=visibleCharges().filter(c=>c.month===MONTH);
+  const billed=cs.reduce((a,c)=>a+chargeTotal(c),0);
+  const collected=cs.filter(c=>c.paid).reduce((a,c)=>a+chargeTotal(c),0);
+  const overdue=cs.filter(c=>!c.paid).reduce((a,c)=>a+chargeTotal(c),0);
+  const rate= billed? Math.round(collected/billed*100):0;
+  const us=visibleUnits();
+  const occupied=us.filter(u=>u.type!=='공실').length;
+  const occRate= us.length? Math.round(occupied/us.length*100):0;
+  const openRepairs=visibleRepairs().filter(r=>r.status!=='완료').length;
+  return { billed, collected, overdue, rate, occupied, occRate, openRepairs, total:us.length };
+}
+
+const kpiCard=(label,val,sub,accent)=>`<div class="card p-4 md:p-5">
+  <div class="text-[12px] text-ink-2">${label}</div>
+  <div class="text-[21px] md:text-[26px] font-extrabold mt-1 num ${accent||''}">${val}</div>
+  <div class="text-[12px] text-ink-3 mt-0.5">${sub}</div></div>`;
+
+/* ============================================================
+   뷰 — 1. 포트폴리오 대시보드 (owner)
+   ============================================================ */
+function viewPortfolio(){
+  const s=summary();
+  const overdueList=visibleCharges().filter(c=>c.month===MONTH&&!c.paid);
+  // 건물별 NOI 카드
+  const blds = (curBuilding==='all'? S.buildings : S.buildings.filter(b=>b.id===curBuilding));
+  const totalNOI = blds.reduce((a,b)=>a+yieldAnalysis(b).noi,0);
+  // 고위험 임차인 수
+  const highRisk = S.tenants.filter(t=>visibleUnits().some(u=>u.id===t.unit)).filter(t=>riskScore(t).risk>=45).length;
+  return `
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+    ${kpiCard('이번 달 수납', KRWk(s.collected), `${monthLabel(MONTH)} 입금`, 'text-brand-600')}
+    ${kpiCard('미납 금액', KRWk(s.overdue), `미납 ${overdueList.length}건`, s.overdue>0?'text-rose-600':'')}
+    ${kpiCard('연 NOI(순영업소득)', KRWk(totalNOI), `건물 ${blds.length}동`, '')}
+    ${kpiCard('연체 위험 임차인', highRisk+'명', `B등급 이상`, highRisk>0?'text-amber-700':'')}
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mt-4">
+    <div class="card p-4 md:p-5">
+      <div class="flex items-center justify-between mb-3"><h3 class="font-bold">건물별 월 수입</h3><span class="text-[12px] text-ink-3">${monthLabel(MONTH)}</span></div>
+      <div style="height:220px"><canvas id="chBld"></canvas></div>
+    </div>
+    <div class="card p-4 md:p-5">
+      <div class="flex items-center justify-between mb-3"><h3 class="font-bold">월별 수입 추세</h3><span class="text-[12px] text-ink-3">최근 6개월</span></div>
+      <div style="height:220px"><canvas id="chTrend"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mt-4">
+    <div class="card p-4 md:p-5">
+      <div class="flex items-center justify-between mb-3"><h3 class="font-bold">미납 알림</h3>
+        ${overdueList.length?`<span class="badge bg-rose-50 text-rose-600">${overdueList.length}건</span>`:`<span class="badge bg-emerald-50 text-emerald-600">완납</span>`}</div>
+      ${overdueList.length? overdueList.map(c=>{
+        const t=tenantById(c.tenant), u=unitById(c.unit), b=buildingById(u.b);
+        const od = Math.max(0, daysBetween('2026-06-16',c.due));
+        const rk=riskScore(t);
+        return `<div class="flex items-center justify-between py-2.5 border-b border-surface-line last:border-0">
+          <div class="min-w-0"><div class="font-semibold text-[14px] truncate">${b?.name} ${u?.name} · ${t?.name||'-'}</div>
+            <div class="text-[12px] text-ink-3">납기 ${fmtDate(c.due)} · ${od>0?`<span class="text-rose-600">${od}일 연체</span>`:'기한 임박'} · 위험 <b>${rk.grade}</b></div></div>
+          <div class="text-right shrink-0 ml-2"><div class="font-bold num text-rose-600">${KRWk(chargeTotal(c))}</div>
+            <button data-remind="${c.id}" class="press text-[12px] mt-1 px-2.5 py-1 rounded-lg bg-brand-50 text-brand-700 font-semibold">독촉</button></div>
+        </div>`;
+      }).join('') : `<div class="text-ink-2 text-sm py-6 text-center">미납 건이 없어요. 👏</div>`}
+    </div>
+    <div class="card p-4 md:p-5">
+      <div class="flex items-center justify-between mb-3"><h3 class="font-bold">처리할 하자보수</h3>
+        <span class="badge bg-amber-50 text-amber-700">${s.openRepairs}건</span></div>
+      ${visibleRepairs().filter(r=>r.status!=='완료').map(r=>{
+        const u=unitById(r.unit), b=buildingById(r.b);
+        const pc = r.priority==='긴급'?'bg-rose-50 text-rose-600':r.priority==='높음'?'bg-amber-50 text-amber-700':'bg-surface-sub text-ink-2';
+        return `<div class="flex items-center justify-between py-2.5 border-b border-surface-line last:border-0">
+          <div class="min-w-0"><div class="font-semibold text-[14px] truncate">${r.title}</div><div class="text-[12px] text-ink-3">${b?.name} ${u?.name||'-'} · ${fmtDate(r.created)}</div></div>
+          <span class="badge ${pc} shrink-0 ml-2">${r.priority}</span></div>`;
+      }).join('') || `<div class="text-ink-2 text-sm py-6 text-center">대기 중인 요청이 없어요.</div>`}
+      <button data-view="repair" class="press w-full mt-3 h-10 rounded-xl bg-surface-sub font-semibold text-sm">하자보수 전체 보기</button>
+    </div>
+  </div>`;
+}
+let trendChart, bldChart, yieldChart, riskChart;
+function drawPortfolioCharts(){
+  const blds=(curBuilding==='all'? S.buildings : S.buildings.filter(b=>b.id===curBuilding));
+  const c1=document.getElementById('chBld'); if(c1){ bldChart?.destroy?.();
+    bldChart=new Chart(c1,{ type:'bar', data:{ labels:blds.map(b=>b.name),
+      datasets:[{ data:blds.map(b=>{ const cs=S.charges.filter(c=>c.month===MONTH && unitById(c.unit).b===b.id && c.paid); return cs.reduce((a,c)=>a+chargeTotal(c),0); }),
+        backgroundColor:'#1f6fd6', borderRadius:8, maxBarThickness:54 }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>KRW(c.parsed.y)}}},
+        scales:{ y:{ ticks:{ callback:v=>KRWk(v), font:{size:11} }, grid:{color:'#eef1f5'} }, x:{ grid:{display:false}, ticks:{font:{size:12}} } } } });
+  }
+  const s=summary();
+  const hist=[...S.history,{month:MONTH,collected:s.collected}];
+  const c2=document.getElementById('chTrend'); if(c2){ trendChart?.destroy?.();
+    trendChart=new Chart(c2,{ type:'line', data:{ labels:hist.map(h=>(+h.month.split('-')[1])+'월'),
+      datasets:[{ data:hist.map(h=>h.collected), borderColor:'#1f6fd6', backgroundColor:'rgba(31,111,214,.12)', fill:true, tension:.35, pointRadius:3, pointBackgroundColor:'#1f6fd6', borderWidth:2 }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>KRW(c.parsed.y)}}},
+        scales:{ y:{ ticks:{callback:v=>KRWk(v),font:{size:11}}, grid:{color:'#eef1f5'} }, x:{ grid:{display:false}, ticks:{font:{size:11}} } } } });
+  }
+}
+
+/* ============================================================
+   뷰 — 관리소장 운영 현황
+   ============================================================ */
+function viewManagerDash(){
+  const s=summary();
+  const b=buildingById(curBuilding);
+  const tasks=[];
+  visibleCharges().filter(c=>c.month===MONTH && !c.paid).forEach(c=>{ const u=unitById(c.unit),t=tenantById(c.tenant);
+    tasks.push({type:'수납',label:`${u?.name} ${t?.name} 미납 ${KRWk(chargeTotal(c))}`,view:'rent',cls:'bg-rose-50 text-rose-600'}); });
+  visibleRepairs().filter(r=>r.status!=='완료').forEach(r=>{ const u=unitById(r.unit);
+    tasks.push({type:'하자',label:`${u?.name} ${r.title}`,view:'repair',cls:'bg-amber-50 text-amber-700'}); });
+  return `
+  <div class="card p-4 mb-4 flex items-center gap-3">
+    <div class="w-11 h-11 rounded-xl bg-amber-50 grid place-items-center text-xl">🧰</div>
+    <div class="min-w-0"><div class="font-bold">${b?.name||'담당 건물'} 운영</div>
+      <div class="text-[12px] text-ink-3">${b?.addr||''} · 세대 ${s.total}호 · 입주율 ${s.occRate}%</div></div>
+  </div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+    ${kpiCard('이번 달 수납', KRWk(s.collected), `수납률 ${s.rate}%`, 'text-brand-600')}
+    ${kpiCard('미납', KRWk(s.overdue), `${visibleCharges().filter(c=>c.month===MONTH&&!c.paid).length}건`, s.overdue>0?'text-rose-600':'')}
+    ${kpiCard('처리할 하자', s.openRepairs+'건', '접수·진행', s.openRepairs?'text-amber-700':'')}
+    ${kpiCard('오늘 할 일', tasks.length+'건', '수납·하자', '')}
+  </div>
+  <div class="card overflow-hidden">
+    <div class="px-4 py-2.5 text-[12px] text-ink-2 bg-surface-sub font-semibold">오늘 처리할 작업 (${tasks.length})</div>
+    ${tasks.length? tasks.map(t=>`<button data-view="${t.view}" class="w-full text-left flex items-center justify-between gap-2 p-4 border-b border-surface-line last:border-0 hover:bg-surface-sub">
+        <div class="min-w-0"><span class="badge ${t.cls} mr-2">${t.type}</span><span class="font-medium text-[14px]">${t.label}</span></div>
+        <span class="text-ink-3 shrink-0">›</span></button>`).join('')
+      : `<div class="text-ink-2 text-sm py-8 text-center">처리할 작업이 없어요. 👏</div>` }
+  </div>`;
+}
+
+/* ============================================================
+   뷰 — 2. 건물·세대 관리
+   ============================================================ */
+function viewUnits(){
+  const us=visibleUnits();
+  // 건물별 그룹
+  const blds=[...new Set(us.map(u=>u.b))].map(buildingById);
+  const groups=blds.map(b=>{
+    const rows=us.filter(u=>u.b===b.id).map(u=>{
+      const t=tenantOfUnit(u.id);
+      const tc= u.type==='공실'?'bg-surface-sub text-ink-3':u.type==='전세'?'bg-violet-50 text-violet-700':'bg-brand-50 text-brand-700';
+      const est=rentEstimate(u);
+      return `<tr class="border-b border-surface-line hover:bg-surface-sub cursor-pointer" data-unit="${u.id}">
+        <td class="py-3 pl-4"><div class="font-semibold">${u.name}</div><div class="text-[12px] text-ink-3">${u.area}㎡</div></td>
+        <td><span class="badge ${tc}">${u.type}</span></td>
+        <td class="num text-right">${u.type==='전세'?'-':KRWk(u.rent)}</td>
+        <td class="num text-right hidden sm:table-cell text-ink-2">${est&&u.type==='월세'?KRWk(est.est):'-'}</td>
+        <td class="pr-4">${ t? `<div class="text-[13px] font-medium">${t.name}</div>` : `<span class="text-ink-3 text-[13px]">공실</span>` }</td>
+      </tr>`;
+    }).join('');
+    return `<div class="mb-4">
+      <div class="flex items-center gap-2 mb-2"><span class="font-bold">${b.name}</span><span class="text-[12px] text-ink-3">${b.addr}</span></div>
+      <div class="card overflow-hidden"><div class="overflow-x-auto">
+        <table class="w-full text-sm min-w-[560px]">
+          <thead><tr class="text-ink-2 text-[12px] bg-surface-sub">
+            <th class="py-2.5 pl-4 text-left">세대</th><th class="text-left">유형</th>
+            <th class="text-right">현재 월세</th><th class="text-right hidden sm:table-cell">적정가(추정)</th><th class="text-left pl-4">임차인</th></tr></thead>
+          <tbody>${rows}</tbody></table></div></div></div>`;
+  }).join('');
+  const canEdit = role==='owner';
+  return `
+  ${canEdit?`<div class="flex flex-wrap gap-2 mb-3">
+    <button id="addUnit" class="press bg-brand-600 text-white rounded-xl px-4 h-10 font-semibold text-sm">＋ 세대 등록</button>
+    <button id="addTenant" class="press bg-white border border-surface-line rounded-xl px-4 h-10 font-semibold text-sm">＋ 임차인 배정</button>
+  </div>`:''}
+  ${groups}
+  <p class="text-[12px] text-ink-3 mt-1">세대를 누르면 상세·적정 임대료 추정을 볼 수 있어요.</p>`;
+}
+
+/* ============================================================
+   뷰 — 3. 청구·수납
+   ============================================================ */
+function viewRent(){
+  const cs=visibleCharges().filter(c=>c.month===MONTH).sort((a,b)=>a.due.localeCompare(b.due));
+  const s=summary();
+  const seg=(label,val,cls)=>`<div class="flex-1 text-center"><div class="text-[11px] text-ink-2">${label}</div><div class="font-extrabold num ${cls||''}">${val}</div></div>`;
+  const rows=cs.map(c=>{
+    const t=tenantById(c.tenant), u=unitById(c.unit), b=buildingById(u.b);
+    const od = !c.paid && TODAY>new Date(c.due);
+    return `<div class="flex items-center gap-3 p-3 md:p-4 border-b border-surface-line last:border-0">
+      <div class="w-10 h-10 rounded-xl grid place-items-center font-bold text-[13px] shrink-0 ${c.paid?'bg-emerald-50 text-emerald-600':od?'bg-rose-50 text-rose-600':'bg-amber-50 text-amber-700'}">${c.paid?'✓':od?'!':'…'}</div>
+      <div class="min-w-0 flex-1">
+        <div class="font-semibold truncate">${b?.name} ${u?.name||'-'} · ${t?.name||'-'}</div>
+        <div class="text-[12px] text-ink-3">납기 ${fmtDate(c.due)}${c.paid?` · 입금 ${fmtDate(c.paidAt)}`:od?' · <span class="text-rose-600">연체</span>':''}</div>
+      </div>
+      <div class="text-right shrink-0">
+        <div class="font-bold num">${KRWk(chargeTotal(c))}</div>
+        ${ c.paid
+          ? `<button data-receipt="${c.id}" class="press text-[12px] mt-1 px-2.5 py-1 rounded-lg bg-surface-sub font-semibold">영수증</button>`
+          : `<div class="flex gap-1.5 mt-1 justify-end">
+              <button data-remind="${c.id}" class="press text-[12px] px-2.5 py-1 rounded-lg bg-brand-50 text-brand-700 font-semibold">독촉</button>
+              <button data-pay="${c.id}" class="press text-[12px] px-2.5 py-1 rounded-lg bg-brand-600 text-white font-semibold">수납</button>
+            </div>` }
+      </div>
+    </div>`;
+  }).join('');
+  return `
+  <div class="card p-4 flex gap-2 mb-3">
+    ${seg('청구', KRWk(s.billed))}<div class="w-px bg-surface-line"></div>
+    ${seg('수납', KRWk(s.collected),'text-brand-600')}<div class="w-px bg-surface-line"></div>
+    ${seg('미납', KRWk(s.overdue), s.overdue>0?'text-rose-600':'')}<div class="w-px bg-surface-line"></div>
+    ${seg('수납률', s.rate+'%')}
+  </div>
+  <div class="flex flex-wrap gap-2 mb-3">
+    <button id="genCharges" class="press bg-brand-600 text-white rounded-xl px-4 h-10 font-semibold text-sm">＋ 다음 달 청구 생성</button>
+    <button id="remindAll" class="press bg-white border border-surface-line rounded-xl px-4 h-10 font-semibold text-sm">미납 일괄 독촉(알림톡)</button>
+    <button id="csvExport" class="press bg-white border border-surface-line rounded-xl px-4 h-10 font-semibold text-sm">⬇ CSV 내보내기</button>
+    <button id="csvImport" class="press bg-white border border-surface-line rounded-xl px-4 h-10 font-semibold text-sm">⬆ CSV 입금대사</button>
+  </div>
+  <div class="card overflow-hidden"><div class="px-4 py-2.5 text-[12px] text-ink-2 bg-surface-sub font-semibold">${monthLabel(MONTH)} 청구 ${cs.length}건</div>${rows||'<div class="text-ink-2 text-sm py-8 text-center">청구가 없어요.</div>'}</div>`;
+}
+
+/* ============================================================
+   뷰 — 4. 연체 위험 관리 (알고리즘 1)
+   ============================================================ */
+function viewRisk(){
+  const ts=S.tenants.filter(t=>visibleUnits().some(u=>u.id===t.unit))
+    .map(t=>({t, ...riskScore(t)})).sort((a,b)=>b.risk-a.risk);
+  const dist={A:0,B:0,C:0,D:0}; ts.forEach(x=>dist[x.grade]++);
+  const cards=ts.map(({t,risk,grade,gc,advice,avgDelay,lateCnt,n,maxDelay})=>{
+    const u=unitById(t.unit), b=buildingById(u.b);
+    const bar=`<div class="h-2 rounded-full bg-surface-line overflow-hidden mt-2"><div class="h-full ${risk<20?'bg-emerald-500':risk<45?'bg-brand-500':risk<70?'bg-amber-500':'bg-rose-500'}" style="width:${risk}%"></div></div>`;
+    return `<div class="card p-4">
+      <div class="flex items-start justify-between gap-2">
+        <div class="min-w-0"><div class="font-bold truncate">${b?.name} ${u?.name} · ${t.name}</div>
+          <div class="text-[12px] text-ink-3 mt-0.5">최근 ${n}개월 지연 ${lateCnt}회 · 평균 ${avgDelay}일 · 최대 ${maxDelay}일</div></div>
+        <div class="text-right shrink-0"><div class="text-2xl font-extrabold num leading-none">${risk}</div>
+          <span class="badge ${gc} mt-1 inline-block">${grade}등급</span></div>
+      </div>
+      ${bar}
+      <p class="text-[13px] text-ink-2 mt-2.5">${advice}</p>
+      <div class="flex gap-2 mt-3">
+        <button data-riskremind="${t.id}" class="press flex-1 h-9 rounded-lg bg-brand-600 text-white text-[13px] font-semibold">사전 안내 발송</button>
+        <button data-riskdetail="${t.id}" class="press h-9 px-3 rounded-lg bg-surface-sub text-[13px] font-semibold">근거</button>
+      </div>
+    </div>`;
+  }).join('');
+  return `
+  <div class="card p-4 mb-4">
+    <div class="flex items-center justify-between mb-3"><h3 class="font-bold">위험 등급 분포</h3><span class="text-[12px] text-ink-3">실 알고리즘: 지연이력·미납·빈도 가중</span></div>
+    <div class="grid grid-cols-4 gap-2 mb-3">
+      <div class="text-center"><div class="text-xl font-extrabold text-emerald-600">${dist.A}</div><div class="text-[11px] text-ink-3">A 안전</div></div>
+      <div class="text-center"><div class="text-xl font-extrabold text-brand-700">${dist.B}</div><div class="text-[11px] text-ink-3">B 주의</div></div>
+      <div class="text-center"><div class="text-xl font-extrabold text-amber-700">${dist.C}</div><div class="text-[11px] text-ink-3">C 경고</div></div>
+      <div class="text-center"><div class="text-xl font-extrabold text-rose-600">${dist.D}</div><div class="text-[11px] text-ink-3">D 고위험</div></div>
+    </div>
+    <div style="height:200px"><canvas id="chRisk"></canvas></div>
+  </div>
+  <div class="grid md:grid-cols-2 gap-3">${cards}</div>`;
+}
+function drawRiskChart(){
+  const ts=S.tenants.filter(t=>visibleUnits().some(u=>u.id===t.unit)).map(t=>({t, ...riskScore(t)})).sort((a,b)=>b.risk-a.risk);
+  const c=document.getElementById('chRisk'); if(!c) return; riskChart?.destroy?.();
+  riskChart=new Chart(c,{ type:'bar', data:{ labels:ts.map(x=>x.t.name),
+    datasets:[{ data:ts.map(x=>x.risk), backgroundColor:ts.map(x=>x.risk<20?'#3aa86b':x.risk<45?'#1f6fd6':x.risk<70?'#d99a16':'#f1556c'), borderRadius:6, maxBarThickness:40 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'위험점수 '+c.parsed.y}}},
+      scales:{ y:{ min:0,max:100, ticks:{font:{size:11}}, grid:{color:'#eef1f5'} }, x:{ grid:{display:false}, ticks:{font:{size:11}} } } } });
+}
+function riskDetail(id){
+  const t=tenantById(id), u=unitById(t.unit), b=buildingById(u.b);
+  const hist=S.payHist[id]||[]; const rk=riskScore(t);
+  const rows=hist.map(h=>`<tr class="border-b border-surface-line last:border-0"><td class="py-2">${monthLabel(h.m)}</td><td class="text-right ${h.delay>0?'text-rose-600 font-semibold':'text-emerald-600'}">${h.delay>0?h.delay+'일 지연':'정상 납부'}</td></tr>`).join('');
+  modal(`<h3 class="text-lg font-extrabold">${b?.name} ${u?.name} · ${t.name}</h3>
+    <p class="text-[13px] text-ink-2 mb-3">연체 위험 점수 산출 근거 (실 알고리즘)</p>
+    <div class="card p-4 mb-3 text-center"><div class="text-3xl font-extrabold num">${rk.risk}<span class="text-base text-ink-3"> / 100</span></div>
+      <span class="badge ${rk.gc} mt-1 inline-block">${rk.grade}등급</span></div>
+    <div class="text-[12px] text-ink-2 mb-1 font-semibold">가중 요소</div>
+    <ul class="text-[13px] text-ink-2 space-y-1 mb-3">
+      <li>· 평균 지연 ${rk.avgDelay}일 (가중 ↑)</li>
+      <li>· 지연 횟수 ${rk.lateCnt}/${rk.n}회 (빈도 가중)</li>
+      <li>· 최대 지연 ${rk.maxDelay}일</li>
+      <li>· 현재 미납: ${rk.unpaid?'있음(+14)':'없음'}</li>
+      <li>· 잔여 계약 ${rk.remainMonths}개월</li>
+    </ul>
+    <div class="text-[12px] text-ink-2 mb-1 font-semibold">월별 납부 이력</div>
+    <table class="w-full text-[13px] mb-4"><tbody>${rows}</tbody></table>
+    <button id="mdClose" class="press w-full h-11 rounded-xl bg-surface-sub font-semibold">닫기</button>`);
+  document.getElementById('mdClose').onclick=closeModal;
+}
+
+/* ============================================================
+   뷰 — 5. 계약·전자서명 (외부 통합 3: 전자서명 흐름 mock)
+   ============================================================ */
+function viewContract(){
+  const ts=S.tenants.filter(t=>visibleUnits().some(u=>u.id===t.unit));
+  const rows=ts.map(t=>{
+    const u=unitById(t.unit), b=buildingById(u.b);
+    const end=addMonths(t.start,t.months);
+    const dleft=daysBetween(end,'2026-06-16');
+    const renew=dleft<=60;
+    const c=S.contracts.find(x=>x.tenant===t.id);
+    const signed = c && c.signed;
+    return `<div class="card p-4 mb-3">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0"><div class="font-bold truncate">${b?.name} ${u?.name||'-'}</div>
+          <div class="text-[13px] text-ink-2 mt-0.5">${t.name} · ${u?.type||''} ${u?.type==='전세'?'':'/ 월세 '+KRWk(u?.rent||0)}</div>
+          <div class="text-[12px] text-ink-3 mt-1">계약 ${fmtDate(t.start)} ~ ${fmtDate(end)} (${t.months}개월)</div></div>
+        <div class="flex flex-col items-end gap-1 shrink-0">
+          ${ renew? `<span class="badge bg-amber-50 text-amber-700">갱신 ${dleft<=0?'만료':dleft+'일 전'}</span>` : `<span class="badge bg-emerald-50 text-emerald-600">유효</span>` }
+          ${ signed? `<span class="badge bg-brand-50 text-brand-700">전자서명 완료</span>`:'' }
+        </div>
+      </div>
+      <div class="flex gap-2 mt-3">
+        <button data-contract="${t.id}" class="press flex-1 h-10 rounded-xl bg-brand-600 text-white font-semibold text-sm">📄 계약서 PDF</button>
+        <button data-sign="${t.id}" class="press flex-1 h-10 rounded-xl bg-white border border-surface-line font-semibold text-sm">${signed?'✓ 서명됨':'✍ 전자서명'}</button>
+        ${ renew? `<button data-renew="${t.id}" class="press h-10 px-3 rounded-xl bg-surface-sub font-semibold text-sm">갱신</button>`:'' }
+      </div>
+    </div>`;
+  }).join('');
+  return `<p class="text-[13px] text-ink-2 mb-3">계약 만료 60일 전이면 갱신 알림이 떠요. 전자서명은 임차인 동의 → 서명 캡처 흐름으로 진행돼요(mock).</p>${rows}`;
+}
+function addMonths(iso,m){ const d=new Date(iso); d.setMonth(d.getMonth()+m); return d.toISOString().slice(0,10); }
+
+/* 전자서명 흐름 mock: 동의 → 캔버스 서명 → 완료 */
+function openSign(tid){
+  const t=tenantById(tid), u=unitById(t.unit), b=buildingById(u.b);
+  modal(`<h3 class="text-lg font-extrabold mb-1">전자서명</h3>
+    <p class="text-[13px] text-ink-2 mb-3">${b?.name} ${u?.name} · ${t.name} 임대차계약</p>
+    <div class="card p-3 mb-3 text-[12px] text-ink-2 leading-relaxed bg-surface-sub">
+      ① 임차인에게 계약서 링크 발송(알림톡) → ② 임차인 동의 체크 → ③ 서명 입력 → ④ 양측 서명본 보관.<br>본 데모는 ②~③ 단계를 시연해요.</p>
+    <label class="flex items-center gap-2 mb-3 text-[13px]"><input type="checkbox" id="signAgree" class="w-4 h-4"> 계약 조항을 확인했고 전자서명에 동의합니다.</label>
+    <div class="text-[12px] text-ink-2 mb-1">서명란 (마우스/터치로 그리기)</div>
+    <canvas id="signPad" width="480" height="150" class="w-full rounded-xl border border-surface-line bg-white touch-none" style="height:150px"></canvas>
+    <div class="flex gap-2 mt-3">
+      <button id="signClear" class="press h-11 px-3 rounded-xl bg-surface-sub font-semibold">지우기</button>
+      <button id="signDo" class="press flex-1 h-11 rounded-xl bg-brand-600 text-white font-semibold">서명 완료</button>
+    </div>`);
+  const cv=document.getElementById('signPad'), ctx=cv.getContext('2d');
+  ctx.lineWidth=2.5; ctx.lineCap='round'; ctx.strokeStyle='#10213a';
+  let drawing=false, has=false;
+  const pos=e=>{ const r=cv.getBoundingClientRect(); const cx=(e.touches?e.touches[0].clientX:e.clientX)-r.left; const cy=(e.touches?e.touches[0].clientY:e.clientY)-r.top; return [cx*cv.width/r.width, cy*cv.height/r.height]; };
+  const down=e=>{ drawing=true; has=true; const[x,y]=pos(e); ctx.beginPath(); ctx.moveTo(x,y); e.preventDefault(); };
+  const move=e=>{ if(!drawing)return; const[x,y]=pos(e); ctx.lineTo(x,y); ctx.stroke(); e.preventDefault(); };
+  const up=()=>drawing=false;
+  cv.onmousedown=down; cv.onmousemove=move; window.addEventListener('mouseup',up);
+  cv.ontouchstart=down; cv.ontouchmove=move; cv.ontouchend=up;
+  document.getElementById('signClear').onclick=()=>{ ctx.clearRect(0,0,cv.width,cv.height); has=false; };
+  document.getElementById('signDo').onclick=()=>{
+    if(!document.getElementById('signAgree').checked){ toast('전자서명 동의에 체크해 주세요.'); return; }
+    if(!has){ toast('서명을 입력해 주세요.'); return; }
+    const data=cv.toDataURL('image/png');
+    const ex=S.contracts.find(x=>x.tenant===tid);
+    if(ex){ ex.signed=true; ex.sign=data; ex.signedAt=todayISO(); }
+    else S.contracts.push({ id:uid(), tenant:tid, signed:true, sign:data, signedAt:todayISO() });
+    sendKakao(t.phone, t.name, '계약체결안내', `[임대지기] ${u.name} 임대차계약 전자서명이 완료되었습니다.`);
+    persist(); closeModal(); toast('전자서명을 완료했어요. 계약서에 반영돼요.'); render();
+  };
+}
+
+/* ============================================================
+   뷰 — 6. 하자보수
+   ============================================================ */
+function viewRepair(){
+  const rs=visibleRepairs().slice().sort((a,b)=>b.created.localeCompare(a.created));
+  const cards=rs.map(r=>{
+    const u=unitById(r.unit), t=tenantById(r.tenant), b=buildingById(r.b);
+    const sc=r.status==='완료'?'bg-emerald-50 text-emerald-600':r.status==='진행'?'bg-brand-50 text-brand-700':'bg-amber-50 text-amber-700';
+    const pc=r.priority==='긴급'?'bg-rose-50 text-rose-600':r.priority==='높음'?'bg-amber-50 text-amber-700':'bg-surface-sub text-ink-2';
+    const canAdvance = role==='owner'||role==='manager';
+    return `<div class="card p-4">
+      <div class="flex items-start justify-between gap-2">
+        <div class="min-w-0"><div class="font-bold truncate">${r.title}</div>
+          <div class="text-[12px] text-ink-3 mt-0.5">${b?.name} ${u?.name||'-'} · ${t?.name||'-'} · ${fmtDate(r.created)}</div></div>
+        <div class="flex flex-col items-end gap-1 shrink-0"><span class="badge ${sc}">${r.status}</span><span class="badge ${pc}">${r.priority}</span></div>
+      </div>
+      ${r.note?`<p class="text-[13px] text-ink-2 mt-2">${r.note}</p>`:''}
+      ${r.photo?`<img src="${r.photo}" class="mt-2 rounded-xl w-full max-h-44 object-cover border border-surface-line">`:''}
+      <div class="flex gap-2 mt-3">
+        ${ canAdvance && r.status!=='완료'? `<button data-advance="${r.id}" class="press flex-1 h-9 rounded-lg bg-brand-600 text-white text-[13px] font-semibold">${r.status==='접수'?'진행 시작':'완료 처리'}</button>`:'' }
+        <button data-repairview="${r.id}" class="press ${(canAdvance&&r.status!=='완료')?'':'flex-1'} h-9 px-3 rounded-lg bg-surface-sub text-[13px] font-semibold">상세</button>
+      </div>
+    </div>`;
+  }).join('');
+  return `
+  <div class="flex justify-between items-center mb-3">
+    <div class="flex gap-2 text-[12px] text-ink-2 flex-wrap">
+      <span class="badge bg-amber-50 text-amber-700">접수 ${visibleRepairs().filter(r=>r.status==='접수').length}</span>
+      <span class="badge bg-brand-50 text-brand-700">진행 ${visibleRepairs().filter(r=>r.status==='진행').length}</span>
+      <span class="badge bg-emerald-50 text-emerald-600">완료 ${visibleRepairs().filter(r=>r.status==='완료').length}</span>
+    </div>
+    <button id="addRepair" class="press bg-brand-600 text-white rounded-xl px-4 h-10 font-semibold text-sm shrink-0">＋ 하자 접수</button>
+  </div>
+  <div class="grid sm:grid-cols-2 gap-3">${cards||'<div class="text-ink-2 text-sm py-8 text-center">요청이 없어요.</div>'}</div>`;
+}
+
+/* ============================================================
+   뷰 — 7. 수익률 분석 (알고리즘 3)
+   ============================================================ */
+function viewYield(){
+  const blds=(curBuilding==='all'? S.buildings : S.buildings.filter(b=>b.id===curBuilding));
+  const cards=blds.map(b=>{
+    const y=yieldAnalysis(b);
+    const row=(l,v,cls)=>`<div class="flex justify-between py-1.5 border-b border-surface-line last:border-0"><span class="text-[13px] text-ink-2">${l}</span><span class="num font-semibold ${cls||''}">${v}</span></div>`;
+    return `<div class="card p-5">
+      <div class="flex items-center justify-between mb-3">
+        <div><div class="font-bold text-lg">${b.name}</div><div class="text-[12px] text-ink-3">${y.units}세대 · 매입 ${KRWk(b.purchase)}</div></div>
+        <div class="text-right"><div class="text-[11px] text-ink-3">Cap rate</div><div class="text-2xl font-extrabold num text-brand-600">${PCT(y.capRate*100)}</div></div>
+      </div>
+      ${row('연 임대수입(EGI)', KRW(y.egi))}
+      ${row('운영비(OpEx)', '-'+KRW(y.opex), 'text-rose-600')}
+      ${row('순영업소득(NOI)', KRW(y.noi), 'text-brand-700')}
+      ${row('공실률', PCT(y.vacancy*100))}
+      ${row('자기자본', KRW(y.equity))}
+      ${row('대출이자(연 4.5%)', '-'+KRW(y.interest), 'text-rose-600')}
+      ${row('세전 현금흐름', KRW(y.cashflow), y.cashflow>=0?'text-emerald-600':'text-rose-600')}
+      ${row('자기자본수익률(ROI)', PCT(y.roi*100), 'text-brand-700')}
+    </div>`;
+  }).join('');
+  // 비교 차트(Cap rate / ROI)
+  return `
+  <div class="card p-4 mb-4">
+    <div class="flex items-center justify-between mb-3"><h3 class="font-bold">건물별 수익률 비교</h3><span class="text-[12px] text-ink-3">실 계산: NOI·Cap rate·ROI</span></div>
+    <div style="height:220px"><canvas id="chYield"></canvas></div>
+  </div>
+  <div class="grid md:grid-cols-2 gap-4">${cards}</div>
+  <p class="text-[12px] text-ink-3 mt-3">운영비는 관리비 + 임대수입 8% 유지보수 추정, 대출이자 연 4.5% 가정입니다(가정값).</p>`;
+}
+function drawYieldChart(){
+  const blds=(curBuilding==='all'? S.buildings : S.buildings.filter(b=>b.id===curBuilding)).map(b=>({b,y:yieldAnalysis(b)}));
+  const c=document.getElementById('chYield'); if(!c) return; yieldChart?.destroy?.();
+  yieldChart=new Chart(c,{ type:'bar', data:{ labels:blds.map(x=>x.b.name),
+    datasets:[
+      { label:'Cap rate(%)', data:blds.map(x=>+(x.y.capRate*100).toFixed(2)), backgroundColor:'#1f6fd6', borderRadius:6, maxBarThickness:40 },
+      { label:'ROI(%)', data:blds.map(x=>+(x.y.roi*100).toFixed(2)), backgroundColor:'#3aa86b', borderRadius:6, maxBarThickness:40 },
+    ] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{font:{size:12},usePointStyle:true,padding:14}},tooltip:{callbacks:{label:c=>c.dataset.label+' '+c.parsed.y+'%'}}},
+      scales:{ y:{ ticks:{callback:v=>v+'%',font:{size:11}}, grid:{color:'#eef1f5'} }, x:{ grid:{display:false}, ticks:{font:{size:12}} } } } });
+}
+
+/* ============================================================
+   뷰 — 8. 세무·정산 리포트 (+ CSV 내보내기)
+   ============================================================ */
+function viewTax(){
+  const blds=(curBuilding==='all'? S.buildings : S.buildings.filter(b=>b.id===curBuilding));
+  const us=visibleUnits();
+  // 연 임대소득 추정 (월세 합 ×12), 분리과세 기준(연 2천만원) 안내
+  const annualRent=us.filter(u=>u.type==='월세').reduce((a,u)=>a+(u.rent||0),0)*12;
+  const annualMgmt=us.reduce((a,u)=>a+(u.mgmt||0),0)*12;
+  const taxBase=annualRent; // 임대료 기준
+  const sep = taxBase<=20000000; // 분리과세 대상
+  // 월별 실 수납 집계(history + 현재월)
+  const months=[...S.history.map(h=>h.month), MONTH];
+  const monthRows=months.map(m=>{
+    const got = m===MONTH? visibleCharges().filter(c=>c.month===m&&c.paid).reduce((a,c)=>a+chargeTotal(c),0)
+      : (S.history.find(h=>h.month===m)?.collected||0);
+    return `<tr class="border-b border-surface-line last:border-0"><td class="py-2">${monthLabel(m)}</td><td class="text-right num font-semibold">${KRW(got)}</td></tr>`;
+  }).join('');
+  return `
+  <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+    ${kpiCard('연 임대료(추정)', KRWk(annualRent), '월세 합 ×12', 'text-brand-600')}
+    ${kpiCard('연 관리비 수입', KRWk(annualMgmt), '월 관리비 ×12', '')}
+    ${kpiCard('분리과세 대상', sep?'해당':'비해당', '연 2천만원 기준', sep?'text-emerald-600':'text-amber-700')}
+  </div>
+  <div class="card p-4 mb-4">
+    <div class="flex items-center justify-between mb-2"><h3 class="font-bold">월별 실 수납 내역</h3>
+      <button id="taxCsv" class="press text-[12px] px-3 h-9 rounded-lg bg-brand-50 text-brand-700 font-semibold">⬇ CSV 내보내기</button></div>
+    <table class="w-full text-sm"><tbody>${monthRows}</tbody></table>
+  </div>
+  <div class="card p-4 text-[13px] text-ink-2 leading-relaxed">
+    <b class="text-ink">세무 안내</b><br>
+    주택임대소득은 연 2천만원 이하도 분리과세 신고 대상입니다(국세청 2019 귀속분부터). 본 리포트는 임대료 집계 보조용이며 실제 신고 금액·필요경비는 세무 전문가 확인이 필요합니다.
+  </div>`;
+}
+
+/* ============================================================
+   뷰 — 9. 알림 센터 (외부 통합 1: 카카오 알림톡 로그)
+   ============================================================ */
+function viewNotices(){
+  const ns=S.notices.slice().reverse();
+  return `
+  <div class="card p-4 mb-3 flex items-center justify-between">
+    <div><div class="font-bold">카카오 알림톡 발송 이력</div><div class="text-[12px] text-ink-3">독촉·안내·계약 알림 (mock 통합)</div></div>
+    <span class="badge bg-amber-50 text-amber-700">총 ${S.notices.length}건</span>
+  </div>
+  ${ns.length? ns.map(n=>`<div class="card p-4 mb-2">
+      <div class="flex items-center justify-between gap-2 mb-1">
+        <div class="flex items-center gap-2 min-w-0"><span class="w-7 h-7 rounded-lg bg-[#fee500] grid place-items-center text-[13px] shrink-0">💬</span>
+          <span class="font-semibold truncate">${n.name||n.to}</span><span class="badge bg-surface-sub text-ink-2">${n.template||'안내'}</span></div>
+        <span class="badge bg-emerald-50 text-emerald-600 shrink-0">${n.status||'발송완료'}</span>
+      </div>
+      <p class="text-[13px] text-ink-2 pl-9">${n.msg}</p>
+      <div class="text-[11px] text-ink-3 pl-9 mt-1">${n.channel||'카카오 알림톡'} · ${n.to} · ${n.at}</div>
+    </div>`).join('')
+    : `<div class="card p-8 text-center text-ink-2 text-sm">발송 이력이 없어요. 미납 독촉이나 계약 알림을 보내면 여기에 쌓여요.</div>` }`;
+}
+
+/* ============================================================
+   뷰 — 임차인 역할 화면 3종
+   ============================================================ */
+function viewTenantHome(){
+  const t=tenantById(DEMO_TENANT), u=unitById(t.unit), b=buildingById(u.b);
+  const c=S.charges.find(x=>x.tenant===t.id && x.month===MONTH);
+  const end=addMonths(t.start,t.months); const dleft=daysBetween(end,'2026-06-16');
+  const myRepairs=visibleRepairs();
+  return `
+  <div class="card p-5 mb-4">
+    <div class="flex items-center gap-3 mb-3">
+      <div class="w-12 h-12 rounded-2xl bg-brand-50 grid place-items-center text-2xl">🏠</div>
+      <div><div class="font-extrabold text-lg">${b?.name} ${u?.name}</div><div class="text-[12px] text-ink-3">${b?.addr} · ${u?.area}㎡ · ${u?.type}</div></div>
+    </div>
+    <div class="grid grid-cols-3 gap-2">
+      <div class="card p-3 text-center"><div class="text-[11px] text-ink-2">월세</div><div class="font-bold num text-sm mt-0.5">${u?.type==='전세'?'-':KRWk(u?.rent)}</div></div>
+      <div class="card p-3 text-center"><div class="text-[11px] text-ink-2">관리비</div><div class="font-bold num text-sm mt-0.5">${KRWk(u?.mgmt)}</div></div>
+      <div class="card p-3 text-center"><div class="text-[11px] text-ink-2">납부일</div><div class="font-bold num text-sm mt-0.5">매월 ${t.payday}일</div></div>
+    </div>
+  </div>
+  <div class="card p-4 mb-4">
+    <div class="flex items-center justify-between mb-1"><h3 class="font-bold">이번 달 청구</h3>
+      ${c? (c.paid?`<span class="badge bg-emerald-50 text-emerald-600">납부완료</span>`:`<span class="badge bg-rose-50 text-rose-600">미납</span>`):''}</div>
+    ${c? `<div class="flex items-center justify-between mt-2">
+        <div class="text-[13px] text-ink-2">${monthLabel(MONTH)} · 납기 ${fmtDate(c.due)}</div>
+        <div class="font-extrabold num text-lg">${KRW(chargeTotal(c))}</div></div>
+      ${c.paid?`<div class="text-[12px] text-emerald-600 mt-1">${fmtDate(c.paidAt)} 입금 확인됨</div>`:`<button data-view="tbill" class="press w-full mt-3 h-11 rounded-xl bg-brand-600 text-white font-semibold">청구 상세 보기</button>`}`
+      :`<p class="text-ink-3 text-sm py-3">이번 달 청구가 없어요.</p>`}
+  </div>
+  <div class="card p-4">
+    <div class="flex items-center justify-between mb-1"><h3 class="font-bold">계약 정보</h3>
+      ${dleft<=60?`<span class="badge bg-amber-50 text-amber-700">갱신 ${dleft}일 전</span>`:`<span class="badge bg-emerald-50 text-emerald-600">유효</span>`}</div>
+    <div class="text-[13px] text-ink-2 mt-2">계약기간 ${fmtDate(t.start)} ~ ${fmtDate(end)} (${t.months}개월)</div>
+    <button data-view="trepair" class="press w-full mt-3 h-11 rounded-xl bg-surface-sub font-semibold">🛠️ 하자 신고하기 (${myRepairs.length}건)</button>
+  </div>`;
+}
+function viewTenantBill(){
+  const cs=visibleCharges().sort((a,b)=>b.month.localeCompare(a.month));
+  const rows=cs.map(c=>{
+    const od=!c.paid && TODAY>new Date(c.due);
+    return `<div class="flex items-center justify-between p-4 border-b border-surface-line last:border-0">
+      <div><div class="font-semibold">${monthLabel(c.month)}</div><div class="text-[12px] text-ink-3">납기 ${fmtDate(c.due)} · 월세 ${KRWk(c.rent)} + 관리비 ${KRWk(c.mgmt)}</div></div>
+      <div class="text-right"><div class="font-bold num">${KRW(chargeTotal(c))}</div>
+        ${c.paid?`<span class="badge bg-emerald-50 text-emerald-600 mt-1 inline-block">완료</span>`:od?`<span class="badge bg-rose-50 text-rose-600 mt-1 inline-block">미납</span>`:`<span class="badge bg-amber-50 text-amber-700 mt-1 inline-block">예정</span>`}</div>
+    </div>`;
+  }).join('');
+  return `<div class="card overflow-hidden"><div class="px-4 py-2.5 text-[12px] text-ink-2 bg-surface-sub font-semibold">내 청구 내역</div>${rows||'<div class="text-ink-2 text-sm py-8 text-center">청구 내역이 없어요.</div>'}</div>
+  <p class="text-[12px] text-ink-3 mt-3">납부는 임대인 안내 계좌로 입금하시면, 임대인이 입금 확인 후 영수증을 발행해요.</p>`;
+}
+function viewTenantRepair(){
+  const rs=visibleRepairs().slice().sort((a,b)=>b.created.localeCompare(a.created));
+  const cards=rs.map(r=>{
+    const sc=r.status==='완료'?'bg-emerald-50 text-emerald-600':r.status==='진행'?'bg-brand-50 text-brand-700':'bg-amber-50 text-amber-700';
+    return `<div class="card p-4">
+      <div class="flex items-start justify-between gap-2"><div class="min-w-0"><div class="font-bold truncate">${r.title}</div>
+        <div class="text-[12px] text-ink-3 mt-0.5">${fmtDate(r.created)}</div></div><span class="badge ${sc} shrink-0">${r.status}</span></div>
+      ${r.note?`<p class="text-[13px] text-ink-2 mt-2">${r.note}</p>`:''}
+      ${r.photo?`<img src="${r.photo}" class="mt-2 rounded-xl w-full max-h-44 object-cover border border-surface-line">`:''}
+    </div>`;
+  }).join('');
+  return `
+  <button id="addRepair" class="press w-full mb-3 h-12 rounded-xl bg-brand-600 text-white font-semibold">＋ 새 하자 신고 (사진 첨부)</button>
+  <div class="grid sm:grid-cols-2 gap-3">${cards||'<div class="text-ink-2 text-sm py-8 text-center">신고 내역이 없어요. 수리가 필요하면 신고해 주세요.</div>'}</div>`;
+}
+
+/* ============================== 인터랙션 ============================== */
+function bindView(){
+  document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>go(b.dataset.view));
+  document.querySelectorAll('[data-remind]').forEach(b=>b.onclick=()=>sendRemind(b.dataset.remind));
+  document.querySelectorAll('[data-pay]').forEach(b=>b.onclick=()=>markPaid(b.dataset.pay));
+  document.querySelectorAll('[data-receipt]').forEach(b=>b.onclick=()=>makeReceiptPDF(b.dataset.receipt));
+  document.querySelectorAll('[data-unit]').forEach(b=>b.onclick=()=>unitDetail(b.dataset.unit));
+  document.querySelectorAll('[data-contract]').forEach(b=>b.onclick=()=>makeContractPDF(b.dataset.contract));
+  document.querySelectorAll('[data-sign]').forEach(b=>b.onclick=()=>openSign(b.dataset.sign));
+  document.querySelectorAll('[data-renew]').forEach(b=>b.onclick=()=>renewContract(b.dataset.renew));
+  document.querySelectorAll('[data-advance]').forEach(b=>b.onclick=()=>advanceRepair(b.dataset.advance));
+  document.querySelectorAll('[data-repairview]').forEach(b=>b.onclick=()=>repairDetail(b.dataset.repairview));
+  document.querySelectorAll('[data-riskremind]').forEach(b=>b.onclick=()=>riskRemind(b.dataset.riskremind));
+  document.querySelectorAll('[data-riskdetail]').forEach(b=>b.onclick=()=>riskDetail(b.dataset.riskdetail));
+  const get=id=>document.getElementById(id);
+  if(get('genCharges')) get('genCharges').onclick=genNextMonth;
+  if(get('remindAll')) get('remindAll').onclick=remindAll;
+  if(get('csvExport')) get('csvExport').onclick=exportCSV;
+  if(get('csvImport')) get('csvImport').onclick=openCSVImport;
+  if(get('taxCsv')) get('taxCsv').onclick=exportCSV;
+  if(get('addUnit')) get('addUnit').onclick=()=>openUnitForm();
+  if(get('addTenant')) get('addTenant').onclick=()=>openTenantForm();
+  if(get('addRepair')) get('addRepair').onclick=()=>openRepairForm();
+}
+
+/* ---- 수납 워크플로 ---- */
+function markPaid(id){
+  const c=S.charges.find(x=>x.id===id); if(!c) return;
+  c.paid=true; c.paidAt=todayISO(); persist();
+  toast('수납 처리했어요. 영수증을 만들 수 있어요.'); render();
+}
+function sendRemind(id){
+  const c=S.charges.find(x=>x.id===id); if(!c) return;
+  const t=tenantById(c.tenant), u=unitById(c.unit);
+  sendKakao(t.phone, t.name, '월세납부독촉', `[임대지기] ${u?.name} ${monthLabel(c.month)} 임대료 ${KRW(chargeTotal(c))} 미납 안내드립니다.`);
+  toast(`${t?.name} 님께 알림톡 독촉을 발송했어요.`);
+  if(['rent','portfolio'].includes(curView)) render();
+}
+function remindAll(){
+  const un=visibleCharges().filter(c=>c.month===MONTH&&!c.paid);
+  if(!un.length){ toast('미납 건이 없어요.'); return; }
+  un.forEach(c=>{ const t=tenantById(c.tenant),u=unitById(c.unit);
+    sendKakao(t.phone,t.name,'월세납부독촉',`[임대지기] ${u?.name} ${monthLabel(c.month)} 임대료 ${KRW(chargeTotal(c))} 미납 안내드립니다.`); });
+  toast(`미납 ${un.length}건에 알림톡을 일괄 발송했어요.`); render();
+}
+function riskRemind(id){
+  const t=tenantById(id), u=unitById(t.unit);
+  sendKakao(t.phone, t.name, '납기사전안내', `[임대지기] ${u?.name} ${monthLabel(MONTH)} 임대료 납기 사전 안내드립니다. 기한 내 납부 부탁드려요.`);
+  toast(`${t.name} 님께 사전 안내 알림톡을 보냈어요.`);
+}
+function genNextMonth(){
+  const next=addMonths(MONTH+'-01',1).slice(0,7);
+  if(S.charges.some(c=>c.month===next)){ toast(`${monthLabel(next)} 청구는 이미 생성됐어요.`); return; }
+  S.tenants.forEach(t=>{ const u=unitById(t.unit); if(!u||u.type==='공실') return;
+    S.charges.push({ id:uid(), unit:u.id, tenant:t.id, month:next, rent:u.rent, mgmt:u.mgmt,
+      due:`${next}-${String(t.payday).padStart(2,'0')}`, paid:false, paidAt:null }); });
+  persist(); toast(`${monthLabel(next)} 청구서를 자동 생성했어요.`);
+}
+
+/* ---- CSV 입금대사 모달 ---- */
+function openCSVImport(){
+  const sample='세대,임차인,대상월\n202호,이서연,2026-06\nB201,한소율,2026-06';
+  modal(`<h3 class="text-lg font-extrabold mb-1">CSV 입금대사</h3>
+    <p class="text-[13px] text-ink-2 mb-3">은행 입금내역 CSV를 붙여넣으면 세대명·대상월로 매칭해 자동 수납 처리해요.</p>
+    <div class="text-[12px] text-ink-2 mb-1">형식: 세대,임차인,대상월</div>
+    <textarea id="csvText" class="w-full h-32 rounded-xl border border-surface-line px-3 py-2 text-[13px] font-mono" placeholder="${sample}"></textarea>
+    <button id="csvSample" class="press text-[12px] mt-2 px-3 h-8 rounded-lg bg-surface-sub font-semibold">예시 채우기</button>
+    <div class="flex gap-2 mt-4">
+      <button id="mdCancel" class="press flex-1 h-12 rounded-xl bg-surface-sub font-semibold">취소</button>
+      <button id="csvDo" class="press flex-1 h-12 rounded-xl bg-brand-600 text-white font-semibold">대사 실행</button>
+    </div>`);
+  document.getElementById('mdCancel').onclick=closeModal;
+  document.getElementById('csvSample').onclick=()=>document.getElementById('csvText').value=sample;
+  document.getElementById('csvDo').onclick=()=>{
+    const txt=document.getElementById('csvText').value.trim();
+    if(!txt){ toast('CSV 내용을 입력해 주세요.'); return; }
+    const {matched,total}=importCSVText(txt);
+    closeModal(); render();
+    toast(matched? `${total}행 중 ${matched}건을 자동 수납 처리했어요.` : '매칭되는 미납 청구를 찾지 못했어요.');
+  };
+}
+
+/* ---- 호실/임차인 폼 ---- */
+function openUnitForm(){
+  const bopts=S.buildings.map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
+  modal(`<h3 class="text-lg font-extrabold mb-4">세대 등록</h3>
+    <div class="space-y-3">
+      <label class="block"><span class="text-[12px] text-ink-2">건물</span>
+        <select id="uB" class="mt-1 w-full h-11 rounded-xl border border-surface-line px-3">${bopts}</select></label>
+      ${field('uName','세대 이름','예: 302호')}
+      <div class="grid grid-cols-2 gap-3">
+        <label class="block"><span class="text-[12px] text-ink-2">유형</span>
+          <select id="uType" class="mt-1 w-full h-11 rounded-xl border border-surface-line px-3"><option>월세</option><option>전세</option><option>공실</option></select></label>
+        ${field('uArea','면적(㎡)','18','number')}
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        ${field('uRent','월세(원)','550000','number')}
+        ${field('uMgmt','관리비(원)','70000','number')}
+      </div>
+      ${field('uDeposit','보증금(원)','10000000','number')}
+    </div>
+    ${modalActions('세대 등록')}`,()=>{
+    const name=val('uName'); if(!name){ toast('세대 이름을 입력해 주세요.'); return false; }
+    S.units.push({ id:uid(), b:val('uB'), name, type:val('uType'), area:+val('uArea')||15,
+      rent:+val('uRent')||0, deposit:+val('uDeposit')||0, mgmt:+val('uMgmt')||0, market:+val('uRent')||0 });
+    persist(); toast('세대를 등록했어요.'); go('units'); return true;
+  });
+}
+function openTenantForm(prefUnit){
+  const opts=visibleUnits().map(u=>{ const b=buildingById(u.b); return `<option value="${u.id}" ${u.id===prefUnit?'selected':''}>${b?.name} ${u.name}</option>`; }).join('');
+  modal(`<h3 class="text-lg font-extrabold mb-4">임차인 배정</h3>
+    <div class="space-y-3">
+      <label class="block"><span class="text-[12px] text-ink-2">세대</span>
+        <select id="tUnit" class="mt-1 w-full h-11 rounded-xl border border-surface-line px-3">${opts}</select></label>
+      ${field('tName','임차인 이름','예: 홍길동')}
+      ${field('tPhone','연락처','010-0000-0000')}
+      <div class="grid grid-cols-2 gap-3">
+        ${field('tStart','계약 시작일',todayISO(),'date')}
+        ${field('tMonths','계약기간(개월)','24','number')}
+      </div>
+      ${field('tPayday','납부일(매월 N일)','5','number')}
+    </div>
+    ${modalActions('배정하기')}`,()=>{
+    const name=val('tName'); if(!name){ toast('이름을 입력해 주세요.'); return false; }
+    const unit=val('tUnit');
+    S.tenants.push({ id:uid(), unit, name, phone:val('tPhone')||'-', start:val('tStart')||todayISO(), months:+val('tMonths')||24, payday:+val('tPayday')||5 });
+    const u=unitById(unit); if(u&&u.type==='공실') u.type='월세';
+    persist(); toast(`${name} 님을 배정했어요.`); go('units'); return true;
+  });
+}
+function unitDetail(id){
+  const u=unitById(id), t=tenantOfUnit(id), b=buildingById(u.b);
+  const est=rentEstimate(u);
+  modal(`<h3 class="text-lg font-extrabold">${b?.name} ${u.name}</h3>
+    <p class="text-[13px] text-ink-2 mb-4">${b?.addr} · ${u.area}㎡ · ${u.type}</p>
+    <div class="grid grid-cols-3 gap-2 mb-4">
+      <div class="card p-3 text-center"><div class="text-[11px] text-ink-2">월세</div><div class="font-bold num text-sm mt-0.5">${u.type==='전세'?'-':KRWk(u.rent)}</div></div>
+      <div class="card p-3 text-center"><div class="text-[11px] text-ink-2">보증금</div><div class="font-bold num text-sm mt-0.5">${KRWk(u.deposit)}</div></div>
+      <div class="card p-3 text-center"><div class="text-[11px] text-ink-2">관리비</div><div class="font-bold num text-sm mt-0.5">${KRWk(u.mgmt)}</div></div>
+    </div>
+    ${est&&u.type!=='전세'?`<div class="card p-4 mb-3 bg-brand-50/40">
+      <div class="flex items-center justify-between mb-1"><span class="text-[12px] font-semibold text-brand-700">적정 임대료 추정 (실 알고리즘)</span></div>
+      <div class="flex items-end gap-3"><div><div class="text-[11px] text-ink-2">추정 적정가</div><div class="text-xl font-extrabold num text-brand-700">${KRW(est.est)}</div></div>
+        <div class="text-[12px] text-ink-3 pb-1">단가 ${KRW(est.perArea)}/㎡ · 시세 ${KRWk(est.market)}</div></div>
+      <p class="text-[12px] text-ink-2 mt-2">${est.advice}</p></div>`:''}
+    <div class="card p-3 mb-3"><div class="text-[12px] text-ink-2 mb-1">임차인</div>
+      ${t?`<div class="font-semibold">${t.name}</div><div class="text-[12px] text-ink-3">${t.phone} · 납부일 매월 ${t.payday}일</div>`:`<div class="text-ink-3 text-sm">공실 — 임차인을 배정해 주세요.</div>`}</div>
+    <div class="flex gap-2 mt-4">
+      ${(!t && role==='owner')?`<button id="mdAssign" class="press flex-1 h-11 rounded-xl bg-brand-600 text-white font-semibold">임차인 배정</button>`:''}
+      <button id="mdClose2" class="press flex-1 h-11 rounded-xl bg-surface-sub font-semibold">닫기</button>
+    </div>`);
+  const as=document.getElementById('mdAssign'); if(as) as.onclick=()=>{ closeModal(); openTenantForm(id); };
+  document.getElementById('mdClose2').onclick=closeModal;
+}
+
+/* ---- 하자 폼(사진 업로드 실 동작) ---- */
+function openRepairForm(){
+  const us=visibleUnits().filter(u=> role==='tenant'? true : tenantOfUnit(u.id));
+  const opts=us.map(u=>{ const b=buildingById(u.b); return `<option value="${u.id}">${b?.name} ${u.name}</option>`; }).join('');
+  modal(`<h3 class="text-lg font-extrabold mb-4">하자보수 ${role==='tenant'?'신고':'접수'}</h3>
+    <div class="space-y-3">
+      <label class="block"><span class="text-[12px] text-ink-2">세대</span>
+        <select id="rUnit" class="mt-1 w-full h-11 rounded-xl border border-surface-line px-3">${opts}</select></label>
+      ${field('rTitle','증상','예: 화장실 천장 누수')}
+      <label class="block"><span class="text-[12px] text-ink-2">우선순위</span>
+        <select id="rPriority" class="mt-1 w-full h-11 rounded-xl border border-surface-line px-3"><option>낮음</option><option selected>높음</option><option>긴급</option></select></label>
+      <label class="block"><span class="text-[12px] text-ink-2">메모</span>
+        <textarea id="rNote" class="mt-1 w-full rounded-xl border border-surface-line px-3 py-2 h-20" placeholder="상세 상황"></textarea></label>
+      <div><span class="text-[12px] text-ink-2">증빙 사진</span>
+        <label class="mt-1 flex items-center justify-center h-28 rounded-xl border-2 border-dashed border-surface-line cursor-pointer bg-surface-sub press" id="rPhotoLabel">
+          <input type="file" id="rPhoto" accept="image/*" class="hidden"><span class="text-ink-3 text-sm">📷 사진 선택(업로드)</span></label>
+        <img id="rPreview" class="hidden mt-2 rounded-xl w-full max-h-40 object-cover border border-surface-line">
+      </div>
+    </div>
+    ${modalActions(role==='tenant'?'신고하기':'접수하기')}`,()=>{
+    const title=val('rTitle'); if(!title){ toast('증상을 입력해 주세요.'); return false; }
+    const u=unitById(val('rUnit')); const t=tenantOfUnit(u.id);
+    S.repairs.push({ id:uid(), b:u.b, unit:u.id, tenant:t?.id, title, status:'접수', priority:val('rPriority'),
+      created:todayISO(), photo:window._repairPhoto||null, note:val('rNote')||'', by:role });
+    if(role==='tenant'){ const ow=S.tenants.find(x=>x.id===t?.id);
+      sendKakao('010-0000-0000','임대인','하자신고알림',`[임대지기] ${u.name} 하자 신고: ${title}`); }
+    window._repairPhoto=null; persist(); toast(role==='tenant'?'하자를 신고했어요. 임대인에게 전달돼요.':'하자보수를 접수했어요.');
+    go(role==='tenant'?'trepair':'repair'); return true;
+  });
+  window._repairPhoto=null;
+  document.getElementById('rPhoto').onchange=e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const fr=new FileReader();
+    fr.onload=ev=>{ window._repairPhoto=ev.target.result;
+      const img=document.getElementById('rPreview'); img.src=ev.target.result; img.classList.remove('hidden');
+      document.getElementById('rPhotoLabel').querySelector('span').textContent='✓ 사진 업로드됨 (다시 선택 가능)'; };
+    fr.readAsDataURL(f);
+  };
+}
+function advanceRepair(id){
+  const r=S.repairs.find(x=>x.id===id); if(!r) return;
+  r.status = r.status==='접수'?'진행':'완료'; persist();
+  toast(`상태를 '${r.status}'(으)로 변경했어요.`); render();
+}
+function repairDetail(id){
+  const r=S.repairs.find(x=>x.id===id); const u=unitById(r.unit), t=tenantById(r.tenant), b=buildingById(r.b);
+  modal(`<h3 class="text-lg font-extrabold">${r.title}</h3>
+    <p class="text-[13px] text-ink-2 mb-3">${b?.name} ${u?.name} · ${t?.name||'-'} · 접수 ${fmtDate(r.created)} · 신고 ${r.by==='tenant'?'임차인':r.by==='manager'?'관리소장':'임대인'}</p>
+    <div class="flex gap-2 mb-3"><span class="badge bg-brand-50 text-brand-700">${r.status}</span><span class="badge bg-amber-50 text-amber-700">${r.priority}</span></div>
+    ${r.note?`<p class="text-[14px] mb-3">${r.note}</p>`:''}
+    ${r.photo?`<img src="${r.photo}" class="rounded-xl w-full mb-3 border border-surface-line">`:`<div class="text-ink-3 text-[13px] mb-3">첨부 사진 없음</div>`}
+    <button id="mdClose3" class="press w-full h-11 rounded-xl bg-surface-sub font-semibold">닫기</button>`);
+  document.getElementById('mdClose3').onclick=closeModal;
+}
+function renewContract(id){
+  const t=tenantById(id); if(!t) return;
+  t.start=todayISO(); t.months=24; persist();
+  toast(`${t.name} 님 계약을 24개월 갱신했어요.`); render();
+}
+
+/* ============================== PDF 생성(실 동작) ============================== */
+async function renderPDF(html, filename){
+  const stage=document.getElementById('pdfStage');
+  stage.innerHTML=`<div style="padding:40px 44px;font-family:Pretendard,'Malgun Gothic',sans-serif;color:#1a2230;width:760px;box-sizing:border-box">${html}</div>`;
+  await new Promise(r=>setTimeout(r,60));
+  const canvas=await html2canvas(stage.firstElementChild,{ scale:2, backgroundColor:'#ffffff', width:760 });
+  const { jsPDF }=window.jspdf;
+  const pdf=new jsPDF('p','mm','a4');
+  const w=210, h=canvas.height*w/canvas.width;
+  pdf.addImage(canvas.toDataURL('image/png'),'PNG',0,0,w,h);
+  pdf.save(filename);
+  stage.innerHTML='';
+}
+async function makeReceiptPDF(id){
+  const c=S.charges.find(x=>x.id===id); const t=tenantById(c.tenant), u=unitById(c.unit), b=buildingById(u.b);
+  toast('영수증 PDF를 생성하고 있어요…');
+  const html=`
+    <div style="border-bottom:3px solid #1f6fd6;padding-bottom:16px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-end">
+      <div><div style="font-size:13px;color:#1f6fd6;font-weight:700">RENTAL JIGI</div>
+        <div style="font-size:28px;font-weight:800">임대료 영수증</div></div>
+      <div style="text-align:right;font-size:12px;color:#525a68">No. ${id.toUpperCase()}<br>발행일 ${todayISO()}</div></div>
+    <table style="width:100%;font-size:14px;border-collapse:collapse">
+      <tr><td style="padding:8px 0;color:#525a68;width:120px">건물·세대</td><td style="font-weight:600">${b?.name} ${u?.name}</td></tr>
+      <tr><td style="padding:8px 0;color:#525a68">임차인</td><td style="font-weight:600">${t?.name}</td></tr>
+      <tr><td style="padding:8px 0;color:#525a68">대상 월</td><td>${monthLabel(c.month)}</td></tr>
+      <tr><td style="padding:8px 0;color:#525a68">입금일</td><td>${c.paidAt||'-'}</td></tr>
+    </table>
+    <table style="width:100%;font-size:14px;border-collapse:collapse;margin-top:24px;border-top:1px solid #e7ebf1">
+      <tr><td style="padding:10px 0;color:#525a68">월 임대료</td><td style="text-align:right;font-weight:600">${KRW(c.rent)}</td></tr>
+      <tr><td style="padding:10px 0;color:#525a68;border-bottom:1px solid #e7ebf1">관리비</td><td style="text-align:right;font-weight:600;border-bottom:1px solid #e7ebf1">${KRW(c.mgmt)}</td></tr>
+      <tr><td style="padding:14px 0;font-weight:700;font-size:16px">합계 (수납완료)</td><td style="text-align:right;font-weight:800;font-size:18px;color:#1f6fd6">${KRW(chargeTotal(c))}</td></tr>
+    </table>
+    <div style="margin-top:40px;font-size:12px;color:#8a909c">위 금액을 정히 영수합니다. 본 영수증은 임대지기에서 자동 발행되었습니다.</div>
+    <div style="margin-top:32px;text-align:right;font-size:14px">임대인 <span style="font-weight:700">＿＿＿＿＿＿＿＿</span> (인)</div>`;
+  await renderPDF(html, `영수증_${u?.name}_${c.month}.pdf`);
+  toast('영수증 PDF를 내려받았어요.');
+}
+async function makeContractPDF(tid){
+  const t=tenantById(tid), u=unitById(t.unit), b=buildingById(u.b); const end=addMonths(t.start,t.months);
+  const c=S.contracts.find(x=>x.tenant===tid);
+  toast('계약서 PDF를 생성하고 있어요…');
+  const html=`
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="font-size:13px;color:#1f6fd6;font-weight:700;letter-spacing:2px">${u?.type==='전세'?'전세':'월세'} 임대차계약서</div>
+      <div style="font-size:24px;font-weight:800;margin-top:6px">부동산 임대차 표준계약서</div></div>
+    <div style="font-size:13px;line-height:1.9;color:#1a2230">
+      <p><b>제1조 (목적물)</b> 임대인과 임차인은 아래 부동산에 관하여 다음과 같이 임대차계약을 체결한다.</p>
+      <table style="width:100%;font-size:13px;border-collapse:collapse;margin:10px 0 18px">
+        <tr><td style="padding:7px 0;color:#525a68;width:110px">소재지</td><td style="font-weight:600">${b?.addr}</td></tr>
+        <tr><td style="padding:7px 0;color:#525a68">목적물</td><td style="font-weight:600">${b?.name} ${u?.name}</td></tr>
+        <tr><td style="padding:7px 0;color:#525a68">전용면적</td><td>${u?.area}㎡</td></tr>
+      </table>
+      <p><b>제2조 (보증금 및 차임)</b></p>
+      <table style="width:100%;font-size:13px;border-collapse:collapse;margin:10px 0 18px">
+        <tr><td style="padding:7px 0;color:#525a68;width:110px">보증금</td><td style="font-weight:600">${KRW(u?.deposit)}</td></tr>
+        <tr><td style="padding:7px 0;color:#525a68">월 차임</td><td style="font-weight:600">${u?.type==='전세'?'없음':KRW(u?.rent)}</td></tr>
+        <tr><td style="padding:7px 0;color:#525a68">관리비</td><td>${KRW(u?.mgmt)}</td></tr>
+        <tr><td style="padding:7px 0;color:#525a68">납부일</td><td>매월 ${t.payday}일</td></tr>
+      </table>
+      <p><b>제3조 (계약기간)</b> ${fmtDate(t.start)} 부터 ${fmtDate(end)} 까지 (${t.months}개월)로 한다.</p>
+      <p style="margin-top:8px"><b>제4조 (수선·관리)</b> 임대인은 목적물의 주요 설비 하자에 대해 수선 의무를 부담하며, 임차인은 통상의 관리 의무를 진다.</p>
+      <p style="margin-top:8px"><b>제5조 (특약사항)</b> ＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿</p>
+    </div>
+    <table style="width:100%;font-size:13px;margin-top:36px;border-top:1px solid #e7ebf1;padding-top:16px">
+      <tr><td style="padding:10px 0;width:50%">임대인 성명 ＿＿＿＿＿＿ (인)</td>
+        <td style="padding:10px 0">임차인 성명 ${t.name} ${c&&c.signed?`<img src="${c.sign}" style="height:30px;vertical-align:middle;margin-left:6px">`:'(인)'}</td></tr>
+      <tr><td style="padding:6px 0">연락처 ＿＿＿＿＿＿＿＿</td><td style="padding:6px 0">연락처 ${t.phone}${c&&c.signed?` · 전자서명 ${c.signedAt}`:''}</td></tr>
+    </table>
+    <div style="text-align:center;margin-top:24px;font-size:13px;color:#525a68">${todayISO()}</div>`;
+  await renderPDF(html, `임대차계약서_${u?.name}_${t.name}.pdf`);
+  toast('계약서 PDF를 내려받았어요.');
+}
+
+/* ============================== 모달/시트 ============================== */
+function field(id,label,ph,type='text'){
+  return `<label class="block"><span class="text-[12px] text-ink-2">${label}</span>
+    <input id="${id}" type="${type}" placeholder="${ph}" class="mt-1 w-full h-11 rounded-xl border border-surface-line px-3"></label>`;
+}
+function modalActions(submitLabel){
+  return `<div class="flex gap-2 mt-5">
+    <button id="mdCancel" class="press flex-1 h-12 rounded-xl bg-surface-sub font-semibold">취소</button>
+    <button id="mdSubmit" class="press flex-1 h-12 rounded-xl bg-brand-600 text-white font-semibold">${submitLabel}</button></div>`;
+}
+const val=id=>{ const e=document.getElementById(id); return e? (e.value||'').trim():''; };
+function modal(html, onSubmit){
+  document.getElementById('modalCard').innerHTML=html;
+  document.getElementById('modalWrap').classList.remove('hidden');
+  const c=document.getElementById('mdCancel'); if(c) c.onclick=closeModal;
+  const s=document.getElementById('mdSubmit'); if(s&&onSubmit) s.onclick=()=>{ const ok=onSubmit(); if(ok!==false) closeModal(); };
+}
+function closeModal(){ document.getElementById('modalWrap').classList.add('hidden'); }
+document.getElementById('modalDim').onclick=closeModal;
+
+/* 바텀시트(빠른 작업) — 역할별 액션 */
+function renderSheet(){
+  const acts = {
+    owner:[ {k:'unit',i:'🏢',t:'세대 등록',d:'새 임대 물건'},{k:'tenant',i:'🧑',t:'임차인 배정',d:'계약·입주'},
+            {k:'charge',i:'💸',t:'다음 달 청구',d:'청구 생성'},{k:'repair',i:'🛠️',t:'하자 접수',d:'사진 첨부'} ],
+    manager:[ {k:'charge',i:'💸',t:'다음 달 청구',d:'청구 생성'},{k:'repair',i:'🛠️',t:'하자 접수',d:'사진 첨부'},
+              {k:'rent',i:'✅',t:'수납 처리',d:'입금 확인'},{k:'notice',i:'🔔',t:'독촉 발송',d:'일괄 알림톡'} ],
+    tenant:[ {k:'repair',i:'🛠️',t:'하자 신고',d:'사진 첨부'},{k:'bill',i:'💳',t:'청구 보기',d:'납부 상태'} ],
+  };
+  const a=acts[role]||acts.owner;
+  document.getElementById('sheetDesc').textContent = ROLES[role].label+' 자주 쓰는 작업';
+  document.getElementById('sheetGrid').innerHTML = a.map(x=>`<button data-quick="${x.k}" class="press card p-4 text-left"><div class="text-2xl mb-1">${x.i}</div><div class="font-bold">${x.t}</div><div class="text-[12px] text-ink-2">${x.d}</div></button>`).join('');
+  document.querySelectorAll('[data-quick]').forEach(b=>b.onclick=()=>{
+    closeSheet();
+    setTimeout(()=>{ const k=b.dataset.quick;
+      if(k==='unit') openUnitForm(); else if(k==='tenant') openTenantForm();
+      else if(k==='charge'){ go('rent'); genNextMonth(); } else if(k==='repair') openRepairForm();
+      else if(k==='rent') go('rent'); else if(k==='notice') remindAll(); else if(k==='bill') go('tbill');
+    },300);
+  });
+}
+function openSheet(){ renderSheet(); const w=document.getElementById('sheetWrap'), s=document.getElementById('sheet');
+  w.classList.remove('hidden'); requestAnimationFrame(()=>s.classList.remove('sheet-enter')); }
+function closeSheet(){ const w=document.getElementById('sheetWrap'), s=document.getElementById('sheet');
+  s.classList.add('sheet-enter'); setTimeout(()=>w.classList.add('hidden'),280); }
+document.getElementById('sheetClose').onclick=closeSheet;
+document.getElementById('sheetDim').onclick=closeSheet;
+document.getElementById('mAdd').onclick=openSheet;
+document.getElementById('dAdd').onclick=openSheet;
+
+/* 드로어(모바일 더보기) */
+function openDrawer(){ document.getElementById('drawer').classList.add('open'); document.getElementById('drawerBackdrop').classList.remove('hidden'); }
+function closeDrawer(){ document.getElementById('drawer').classList.remove('open'); document.getElementById('drawerBackdrop').classList.add('hidden'); }
+document.getElementById('drawerClose').onclick=closeDrawer;
+document.getElementById('drawerBackdrop').onclick=closeDrawer;
+
+/* 모바일 역할 버튼 → 드로어 역할 영역으로 */
+document.getElementById('mRoleBtn').onclick=()=>{ openDrawer(); };
+
+/* ============================== 부팅 ============================== */
+renderRoleSwitch();
+renderBuildingPick();
+document.getElementById('mRoleLabel').textContent=ROLES[role].label+' 화면';
+go(curView);
+
+/* 데모 리셋(쿼리 ?reset) */
+if(location.search.includes('reset')){ S=seed(); role='owner'; curBuilding='all'; persist(); renderRoleSwitch(); renderBuildingPick(); go('portfolio'); }
+window.__rentalReset=()=>{ S=seed(); role='owner'; curBuilding='all'; persist(); renderRoleSwitch(); renderBuildingPick(); go('portfolio'); };
+</script>
+</body>
+</html>

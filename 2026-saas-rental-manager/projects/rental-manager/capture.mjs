@@ -1,29 +1,75 @@
-// 임대지기 v1 PoC 실 구동 캡처 스크립트
-// file:// 로 v1.html 로드 → PC(1280x800) + 모바일(390x844) 각 핵심 화면 캡처
+// 임대지기 v2 PoC 실 구동 캡처 스크립트
+// file:// 로 v2.html 로드 → PC(1280x800) + 모바일(390x844) 각 핵심 화면 캡처
+// v1.html 도 계속 열 수 있음(이 스크립트는 v2 전용). 캡처 폴더: captures/v2, captures/mobile/v2
 import { chromium } from "playwright";
 import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const APP = "file://" + resolve(__dirname, "v1.html");
-const PC = resolve(__dirname, "../../biz/captures/v1");
-const MO = resolve(__dirname, "../../biz/captures/mobile/v1");
+const TARGET = process.env.TARGET || "v2.html";
+const VER = TARGET.replace(".html", "");
+const APP = "file://" + resolve(__dirname, TARGET);
+const PC = resolve(__dirname, `../../biz/captures/${VER}`);
+const MO = resolve(__dirname, `../../biz/captures/mobile/${VER}`);
 
-const wait = (p, ms = 450) => p.waitForTimeout(ms);
+const wait = (p, ms = 500) => p.waitForTimeout(ms);
 
-async function seedRepairPhoto(page) {
-  // 하자 사진 미리보기를 만들기 위해 1x1 데이터 URL을 직접 시드
+async function seedPhotos(page) {
+  // 하자 사진 미리보기를 위해 예시 dataURL 시드 (v2 repairs 구조)
   await page.evaluate(() => {
-    const s = JSON.parse(localStorage.getItem("rental-jigi-v1"));
-    if (s && s.repairs[0]) {
-      s.repairs[0].photo =
+    const s = JSON.parse(localStorage.getItem("rental-jigi-v2"));
+    if (s && s.repairs) {
+      const svg = (txt) =>
         "data:image/svg+xml;base64," +
         btoa(
-          '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300"><rect width="600" height="300" fill="#dbe6f5"/><text x="300" y="150" font-size="26" fill="#1f6fd6" text-anchor="middle" font-family="sans-serif">하자 증빙 사진 (예시)</text></svg>'
+          `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300"><rect width="600" height="300" fill="#dbe6f5"/><text x="300" y="150" font-size="24" fill="#1f6fd6" text-anchor="middle" font-family="sans-serif">${txt}</text></svg>`
         );
+      s.repairs.forEach((r, i) => { if (i < 2) r.photo = svg("하자 증빙 사진 (예시)"); });
+      localStorage.setItem("rental-jigi-v2", JSON.stringify(s));
     }
-    localStorage.setItem("rental-jigi-v1", JSON.stringify(s));
   });
+}
+
+async function ensureDrawerClosed(page) {
+  await page.evaluate(() => {
+    const d = document.getElementById("drawer"); const b = document.getElementById("drawerBackdrop");
+    if (d) d.classList.remove("open");
+    if (b) b.classList.add("hidden");
+  });
+}
+
+// 역할 전환 (데스크톱 사이드바 / 모바일 드로어). 전환 시 setRole 이 드로어를 닫는다.
+async function setRole(page, roleId, isMobile) {
+  if (isMobile) {
+    await ensureDrawerClosed(page);
+    await page.click("#mRoleBtn"); // 드로어 열기
+    await wait(page, 350);
+    await page.click(`#roleSwitchM [data-role="${roleId}"]`);
+  } else {
+    await page.click(`#roleSwitch [data-role="${roleId}"]`);
+  }
+  await wait(page, 550);
+  await ensureDrawerClosed(page);
+}
+
+async function navTo(page, v, isMobile) {
+  await ensureDrawerClosed(page);
+  await wait(page, 150);
+  // 모바일: 바텀바에 없으면 더보기 드로어로
+  if (isMobile) {
+    const inBar = await page.$(`#bottomnav [data-view="${v}"]`);
+    if (inBar) { await inBar.click(); }
+    else {
+      await page.click("#moreTab");
+      await wait(page, 350);
+      await page.click(`#navDrawer [data-view="${v}"]`);
+      await wait(page, 200);
+      await ensureDrawerClosed(page);
+    }
+  } else {
+    await page.click(`#navDesktop [data-view="${v}"]`);
+  }
+  await wait(page, 550);
 }
 
 async function flow(page, OUT, tag, isMobile = false) {
@@ -31,86 +77,159 @@ async function flow(page, OUT, tag, isMobile = false) {
     await page.screenshot({ path: `${OUT}/${name}.png`, fullPage: false });
     console.log("saved", tag, name);
   };
-  // 모바일은 바텀탭(#bottomnav), PC는 사이드바(#navDesktop)의 visible 버튼만 클릭
-  const navScope = isMobile ? "#bottomnav" : "#navDesktop";
-  const navTo = async (v) => page.click(`${navScope} [data-view="${v}"]`);
 
   await page.goto(APP);
   await page.evaluate(() => localStorage.clear());
   await page.goto(APP);
   await wait(page, 700);
-  await seedRepairPhoto(page);
+  await seedPhotos(page);
   await page.goto(APP);
   await wait(page, 900);
 
-  // 1. 대시보드 (차트 렌더)
+  // ===== 임대인(owner) =====
+  await setRole(page, "owner", isMobile);
+
+  // 01 포트폴리오 대시보드 (다중건물 차트)
   await wait(page, 700);
-  await shot("01-dashboard");
+  await shot("01-owner-portfolio");
 
-  // 2. 호실·임차인
-  await navTo("units");
+  // 02 건물·세대 (적정가 추정 열)
+  await navTo(page, "units", isMobile);
+  await shot("02-owner-units");
+
+  // 03 청구·수납 (CSV 버튼 노출)
+  await navTo(page, "rent", isMobile);
+  await shot("03-owner-rent");
+
+  // 04 수납 처리 워크플로 (미납→수납)
+  const pay = await page.$("[data-pay]");
+  if (pay) await pay.click();
   await wait(page);
-  await shot("02-units");
+  await shot("04-owner-rent-paid");
 
-  // 3. 월세 수납
-  await navTo("rent");
-  await wait(page);
-  await shot("03-rent");
+  // 05 연체 위험 관리 (알고리즘 1: 스코어링 + 차트)
+  await navTo(page, "risk", isMobile);
+  await wait(page, 700);
+  await shot("05-owner-risk");
 
-  // 4. 수납 처리 액션 (워크플로: 미납 → 수납)
-  const payBtn = await page.$("[data-pay]");
-  if (payBtn) await payBtn.click();
-  await wait(page);
-  await shot("04-rent-paid");
+  // 06 연체 근거 모달 (산출 근거)
+  const rd = await page.$("[data-riskdetail]");
+  if (rd) {
+    await rd.click();
+    await wait(page, 500);
+    await shot("06-owner-risk-detail");
+    const cl = await page.$("#mdClose");
+    if (cl) await cl.click();
+    await wait(page, 300);
+  }
 
-  // 5. 일괄 독촉 → 로그 노출
+  // 07 수익률 분석 (알고리즘 3: Cap rate/NOI/ROI + 차트)
+  await navTo(page, "yield", isMobile);
+  await wait(page, 700);
+  await shot("07-owner-yield");
+
+  // 08 계약·전자서명
+  await navTo(page, "contract", isMobile);
+  await shot("08-owner-contract");
+
+  // 09 전자서명 모달 (캔버스 서명 흐름 mock)
+  const sg = await page.$("[data-sign]");
+  if (sg) {
+    await sg.click();
+    await wait(page, 500);
+    // 동의 체크 + 서명 그리기
+    await page.check("#signAgree").catch(() => {});
+    const box = await page.$("#signPad");
+    if (box) {
+      const b = await box.boundingBox();
+      await page.mouse.move(b.x + 40, b.y + 70);
+      await page.mouse.down();
+      await page.mouse.move(b.x + 90, b.y + 40);
+      await page.mouse.move(b.x + 140, b.y + 100);
+      await page.mouse.move(b.x + 200, b.y + 50);
+      await page.mouse.up();
+    }
+    await wait(page, 300);
+    await shot("09-owner-esign");
+    const done = await page.$("#signDo");
+    if (done) await done.click();
+    await wait(page, 500);
+  }
+
+  // 10 세대 상세 (적정 임대료 추정 알고리즘 2)
+  await navTo(page, "units", isMobile);
+  await wait(page, 400);
+  const unitRow = await page.$("[data-unit]");
+  if (unitRow) {
+    await unitRow.click();
+    await wait(page, 500);
+    await shot("10-owner-unit-rent-estimate");
+    const cl = await page.$("#mdClose2");
+    if (cl) await cl.click();
+    await wait(page, 300);
+  }
+
+  // 11 알림 센터 (외부통합1: 카카오 알림톡 로그) — 먼저 일괄 독촉
+  await navTo(page, "rent", isMobile);
+  await wait(page, 400);
   const remindAll = await page.$("#remindAll");
   if (remindAll) await remindAll.click();
-  await wait(page);
-  await shot("05-remind-log");
+  await wait(page, 500);
+  await navTo(page, "notices", isMobile);
+  await wait(page, 400);
+  await shot("11-owner-notices-kakao");
 
-  // 6. 계약 관리
-  await navTo("contract");
-  await wait(page);
-  await shot("06-contract");
-
-  // 7. 하자보수
-  await navTo("repair");
-  await wait(page);
-  await shot("07-repair");
-
-  // 8. 하자 접수 폼(사진 업로드 영역)
-  const addRepair = await page.$("#addRepair");
-  if (addRepair) {
-    await addRepair.click();
-    await wait(page);
-    await shot("08-repair-form");
-    const cancel = await page.$("#mdCancel");
-    if (cancel) await cancel.click();
-    await wait(page, 250);
-  }
-
-  // 9. 빠른 등록 시트 / 호실 등록 모달 (보이는 버튼만)
-  const addSel = isMobile ? "#mAdd" : "#dAdd";
-  const dAdd = await page.$(addSel);
-  if (dAdd) {
-    await dAdd.click();
+  // 12 CSV 입금대사 모달 (외부통합2)
+  await navTo(page, "rent", isMobile);
+  await wait(page, 400);
+  const csvImport = await page.$("#csvImport");
+  if (csvImport) {
+    await csvImport.click();
     await wait(page, 400);
-    await shot("09-quick-sheet");
-    const q = await page.$('[data-quick="unit"]');
-    if (q) {
-      await q.click();
-      await wait(page, 500);
-      await shot("10-unit-form");
-      const cancel = await page.$("#mdCancel");
-      if (cancel) await cancel.click();
-    }
+    const sample = await page.$("#csvSample");
+    if (sample) await sample.click();
+    await wait(page, 300);
+    await shot("12-owner-csv-import");
+    const cl = await page.$("#mdCancel");
+    if (cl) await cl.click();
+    await wait(page, 300);
   }
 
-  // 10. 지속성: 새로고침 후 대시보드(수납 처리 반영 유지)
+  // 13 세무·정산 리포트
+  await navTo(page, "tax", isMobile);
+  await wait(page, 400);
+  await shot("13-owner-tax");
+
+  // ===== 관리소장(manager) =====
+  await setRole(page, "manager", isMobile);
+  await wait(page, 600);
+  await shot("14-manager-dashboard");
+
+  // 15 관리소장 하자보수 (권한 내 작업)
+  await navTo(page, "repair", isMobile);
+  await wait(page, 500);
+  await shot("15-manager-repair");
+
+  // ===== 임차인(tenant) =====
+  await setRole(page, "tenant", isMobile);
+  await wait(page, 600);
+  await shot("16-tenant-home");
+
+  // 17 임차인 청구·납부
+  await navTo(page, "tbill", isMobile);
+  await wait(page, 500);
+  await shot("17-tenant-bill");
+
+  // 18 임차인 하자 신고
+  await navTo(page, "trepair", isMobile);
+  await wait(page, 500);
+  await shot("18-tenant-repair");
+
+  // 19 지속성: 새로고침 후 (임대인으로 복귀, 수납/서명/독촉 반영 유지)
+  await page.evaluate(() => { const s = JSON.parse(localStorage.getItem("rental-jigi-v2")); s._role = "owner"; s._building = "all"; localStorage.setItem("rental-jigi-v2", JSON.stringify(s)); });
   await page.goto(APP);
   await wait(page, 1000);
-  await shot("11-persistence");
+  await shot("19-persistence");
 }
 
 const run = async () => {
@@ -129,13 +248,13 @@ const run = async () => {
     deviceScaleFactor: 2,
   });
   await flow(mo, MO, "MO", true);
-  // 모바일 전용: 스크롤된 본문 + 바텀탭 확인용 추가컷
+  // 모바일 전용: 드로어 열린 화면 + 스크롤된 본문 추가컷
   await mo.goto(APP);
   await mo.waitForTimeout(900);
-  await mo.evaluate(() => window.scrollTo(0, 9999));
+  await mo.click("#mRoleBtn"); // 드로어(역할+전체메뉴) 열기
   await mo.waitForTimeout(400);
-  await mo.screenshot({ path: `${MO}/12-dash-scroll.png`, fullPage: false });
-  console.log("saved MO 12-dash-scroll");
+  await mo.screenshot({ path: `${MO}/20-drawer.png`, fullPage: false });
+  console.log("saved MO 20-drawer");
   await mo.close();
 
   await browser.close();
