@@ -16,3 +16,6 @@ build/
 # secrets
 .env
 .env.*
+
+# 별도 git 레포 (자체 원격 iamywl/k-startup-template 로 관리)
+k-startup-template/
