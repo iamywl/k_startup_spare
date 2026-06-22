@@ -68,6 +68,9 @@ k_startup_spare/
 - **언어**: 한국어 (전문 용어는 원문 병기 허용)
 - **포맷**: Markdown (`.md`)만. hwpx/PDF 변환은 최종 제출 단계에서만.
 - **다이어그램**: Mermaid
+- **그림자료 = 논문형 순수 흑백 (사용자 지시, 2026-06-18).** `biz/` 문서에 들어가는 **모든 그림자료**(Mermaid 다이어그램·도표·차트)는 학술 논문 figure 처럼 **검정·흰색 2색만**(흰 배경 + 검은 선·글자·테두리, 채움 없음). **회색 채움·음영·컬러 금지**, serif 글꼴, figure 번호·캡션(`**그림 N.**`/`**표 N.**`).
+  - 전 타입(flowchart·erDiagram·sequence·gantt·timeline·quadrantChart·pie)을 흰/검으로 강제하는 **정준 Mermaid init**, 차트 타입별 주의, **mindmap→flowchart 변환**, 일괄 변환 + `mmdc … -b white` **렌더 눈검수** 절차는 별도 단일 출처 [`그림자료_규약.md`](./그림자료_규약.md) 참조. `theme:neutral`(회색)·기본테마(보라)·컬러 `classDef/style` 금지.
+  - ⚠️ **문서(`biz/`) 그림자료에만** 적용. **데모 앱(`projects/`) UI 는 예외** — `design-guide/`(컬러)를 따른다.
 - **링크**: 상대 경로
 - **이모지**: 섹션 식별·상태 마커 외 남용 금지
 - **표 정렬**: 헤더에 `:---` / `:---:` / `---:` 명시
@@ -496,6 +499,7 @@ k_startup_spare/
 - ❌ 예시 PDF의 도메인 어휘를 본문에 그대로 차용
 - ❌ 캡처 없이 "구현 완료" 보고
 - ❌ 목업·합성 이미지를 실 캡처로 위장
+- ❌ 문서(`biz/`) 그림자료에 컬러·회색 채움 사용 (Mermaid `theme:neutral`/기본테마/컬러 `classDef·style`) — 논문형 순수 흑백만 ([그림자료_규약.md](./그림자료_규약.md))
 - ❌ API 키 하드코딩
 - ❌ 검증 안 된 라이브러리 무분별 추가
 - ❌ 행정 양식의 이름·서명·도장 자동 채우기
@@ -574,6 +578,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ---
 
+*template v9 · last_updated: 2026-06-18* — §2.0 그림자료 논문형 순수 흑백 규칙 + [그림자료_규약.md](./그림자료_규약.md) 연결 (§7 금지 연동)
 *template v8 · last_updated: 2026-06-16* — §8 행동 지침(흔한 LLM 코딩 실수 줄이기) 추가
 *template v7 · last_updated: 2026-06-16* — §3.5 버전별 Git 브랜치 배포 정책 신설 + §2.1 차별화 기술의 구매동인 논증 요건 추가
 *template v6 · last_updated: 2026-06-10*
