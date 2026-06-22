@@ -28,6 +28,10 @@ last_updated: 2026-06-08 14:10
 | 14 | Global Growth Insights 「LXP Market」 | 2024 | 2024년 21.0억 USD → 2033년 289.1억 USD, CAGR 33.8% | 검증 |
 | 15 | 교육부 「에듀테크 진흥방안」 | 2023.09 | 공교육+에듀테크 산업 육성·K-에듀테크 수출·교사 활용 활성화 | 검증 |
 | 16 | THE VC / 전자신문 「에듀테크 기업 실적」 | 2022~23 | 매스프레소(콴다) 누적투자 1,200억, 아이스크림에듀 상장사 등 | 검증 |
+| 17 | OECD TALIS 2024(백승아 의원실 인용)·다수 언론 「교사 업무시간」 | 2025 | 한국 교사 주당 근무 52시간(OECD 43h), 행정 6h(중등)·채점 3.7h·상담 3.8h·수업준비 6.8h; 스트레스 1위 '학부모 민원' 56.9%(OECD 41.6%) | 검증(언론 인용·원자료 OECD) |
+| 18 | 클래스팅 「경기에듀테크 소프트랩 2023 실증 보고서」 인용 블로그 | 2024 | 클래스팅 AI 진단평가·맞춤학습이 학업성취·교사 채점/과제관리 부담 경감에 기여(2년차 학교 수학 사례) | 검증(벤더 자료·실증보고서 인용) |
+| 19 | S2B(학교장터)·에듀파인 학교회계 안내 | 2024 | 전국 초·중·고 전자조달=S2B(에듀파인 연계); 추정가격 2,000만 원 이하 소액 수의계약 가능 | 검증 |
+| 20 | 나라장터/디지털서비스 이용지원시스템 「SaaS 공공조달 요건」 | 2024 | 공공 SaaS 조달은 CSAP(클라우드 보안인증)·품질성능 확인 필요 | 검증 |
 
 > "보강 필요": 1차 공신력 출처(보도자료 원문·정부 통계 PDF)로 추가 교차검증 권장. 본 README에는 [추정]/[재확인 필요] 표기로 사용.
 
@@ -104,6 +108,10 @@ last_updated: 2026-06-08 14:10
 [^14]: **Global Growth Insights 「LXP Market」** (2024). 2024년 21.0억→2033년 289.1억 USD, CAGR 33.8%. https://www.globalgrowthinsights.com/market-reports/learning-experience-platform-lxp-market-102110
 [^15]: **교육부 「에듀테크 진흥방안」** (2023.09). 공교육+에듀테크 산업 육성, 교사 활용 활성화, K-에듀테크 수출. https://www.moe.go.kr/boardCnts/viewRenew.do?boardID=294&lev=0&statusYN=W&s=moe&m=020402&opType=N&boardSeq=96398
 [^16]: **THE VC / 전자신문 「국내 에듀테크 기업 실적·투자」** (2022~2023). 매스프레소(콴다) 누적투자 1,200억, 아이스크림에듀 상장. https://thevc.kr/i-screamedu
+[^17]: **OECD TALIS 2024(백승아 의원실 분석 인용)·한국경제 등 다수 언론 「교사 업무시간」** (2025.10). 한국 교사 주당 근무 52시간(OECD 43h), 중등 행정업무 6h(OECD 1위)·채점 3.7h·학생상담 3.8h·수업준비 6.8h; 교사 스트레스 1위 '학부모 민원 대응' 56.9%(OECD 41.6%). https://www.hankyung.com/article/202510101535i · https://www.edpl.co.kr/news/articleView.html?idxno=18357
+[^18]: **클래스팅 「경기에듀테크 소프트랩 2023 실증 결과 보고서」 인용·교사 활용 사례** (2024~2025). AI 진단평가·맞춤학습이 학생 개념이해·학업성취 향상과 교사 채점·과제관리 부담 경감에 기여(도입 2년차 학교 수학 사례). https://blog.classting.com/classtingai-empiricalresearch-gyeonggiedtechsoftlab/ · https://blog.classting.com/2025-newsemester-classting-ai-cases/
+[^19]: **S2B(학교장터)·에듀파인 학교회계 조달체계** (2024). 전국 초·중·고 전자조달은 S2B(에듀파인 학교회계 연계), 추정가격 2,000만 원 이하 소액 물품·용역은 수의계약(소액 입찰) 가능. https://www.factand.co.kr/15be825b-5eaa-80f8-a98e-cef663ab732e
+[^20]: **나라장터/디지털서비스 이용지원시스템 「공공 SaaS 조달 요건」** (2024). 공공부문 SaaS 조달은 CSAP(클라우드 보안인증) 망 동작·품질성능 확인서 등이 전제. https://spri.kr/download/21807
 
 ---
 

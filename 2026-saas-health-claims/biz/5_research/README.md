@@ -1,6 +1,6 @@
 # 5_research — 클레임브릿지 리서치 자료
 
-last_updated: 2026-06-08 14:10
+last_updated: 2026-06-22 00:00
 
 > 프로젝트: 디지털치료제·비대면진료 보험청구·환자 온보딩 자동화 SaaS (가칭 「클레임브릿지」)
 > 컨셉: DTx 허가는 났으나 보험청구·코딩·환자 onboarding SW가 공백인 지점을 메우는 B2B 헬스 인프라 SaaS.
@@ -27,6 +27,9 @@ last_updated: 2026-06-08 14:10
 | 12 | 보험연구원(KIRI) | 국내 디지털 치료제 현황 및 시사점 (2023) | 국내 DTx 수가·급여 모델 부재, 제도 정비 필요성 제기 | 검증 |
 | 13 | 한국보건산업진흥원(코리아바이오) | 디지털 헬스케어 산업 현황 및 전망 브리프 197호 (2025) | 국내외 디지털 헬스케어 시장 성장세, 국내 시장 초기 단계 | 보강 권장 |
 | 14 | 한국전파진흥협회(KCA) 외 | 글로벌 디지털 헬스케어 시장 전망 (2020 기준) | 글로벌 2020년 **1,520억 달러** → 2027년 **5,090억 달러**, CAGR **18.8%** | 검증 |
+| 15 | 심평원·복지부 | 건강보험통계연보(요양기관 종별 현황) (매년) | 전국 의원급 약 **3.6만 개소**·약국 약 **2.5만 개소** `[재확인]` | 보강 권장 |
+| 16 | RapidClaims / HFMA MAP Keys 외 | Claim scrubbing software · clean claim rate benchmark (2024~2025, 美) | clean claim rate 목표 **95%+**, 도입 시 반려율 **5~15%→1~3%**(상대 65~85%↓), denial write-off **40~60%↓** | 검증(해외·방향 방증) |
+| 17 | MGMA | DataDive / Benchmarking on denials (2023~2024, 美) | 거부청구 1건 재작업비 약 **$25.20**(클린청구 ≈$6.50), 단일과 진료과 평균 denial **약 8%**, 2024 다수기관 10%+ | 검증(해외·방향 방증) |
 
 > 검증 상태 기준: **검증** = 1차 출처(정부·공공기관) 또는 신뢰 매체로 수치·시점 확인 / **보강 권장** = 출처 확인되나 본문 인용 시 원문 수치 재확인 필요.
 
@@ -130,3 +133,9 @@ last_updated: 2026-06-08 14:10
 [^13]: **한국보건산업진흥원(코리아바이오) 「디지털 헬스케어 산업 현황 및 전망」 브리프 197호** (2025). 국내외 디지털 헬스케어 성장세, 국내 시장 초기 단계. https://www.koreabio.org/board/download.php?board=Y&bo_table=brief&file_name=b_file_1742771980tg9i7cdmmf.pdf
 
 [^14]: **한국전파진흥협회(KCA) 외 「글로벌 디지털 헬스케어 시장 전망」** (2020 기준). 글로벌 2020년 1,520억 달러 → 2027년 5,090억 달러, CAGR 18.8%. https://www.kca.kr/hot_clips/vol83/sub01.html
+
+[^15]: **건강보험심사평가원·보건복지부 「건강보험통계연보(요양기관 종별 현황)」** (매년, `[재확인]`). 전국 의원급 약 3.6만 개소·약국 약 2.5만 개소. https://www.hira.or.kr
+
+[^16]: **RapidClaims·HFMA MAP Keys 등 「Claim scrubbing software / clean claim rate benchmark」** (해외 2024~2025, 방향 방증). clean claim rate 목표 95%+, 도입 시 반려율 5~15%→1~3%·denial write-off 40~60%↓. 미국 RCM 기준(국내 직접 등치 아님). https://www.rapidclaims.ai/blogs/how-medical-claim-scrubbing-software-improves-clean-claim-rates
+
+[^17]: **MGMA 「DataDive / Benchmarking on denials」** (2023~2024, 방향 방증). 거부청구 1건 재작업비 약 $25.20(클린청구 ≈$6.50), 단일과 평균 denial 약 8%. 미국 시장 값. https://www.mgma.com/mgma-stat/strategic-improvements-in-your-rcm-to-reduce-your-practices-claim-denials
