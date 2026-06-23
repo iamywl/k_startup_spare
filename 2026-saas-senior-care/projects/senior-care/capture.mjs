@@ -1,6 +1,6 @@
 // 돌봄노트 PoC 실 구동 캡처 스크립트
-// file:// 로 v1.html 로드 → PC(1280x800) + 모바일(390x844) 각 핵심 화면 캡처
-// TARGET 환경변수로 다른 버전도 캡처 가능 (예: TARGET=v2.html node capture.mjs)
+// file:// 로 vN.html 로드 → PC(1280x800) + 모바일(390x844) 각 핵심 화면 캡처
+// 기본 타깃 v3.html. 다른 버전: TARGET=v2.html node capture.mjs
 // 캡처 폴더: ../../biz/captures/<ver>, ../../biz/captures/mobile/<ver>
 import { chromium } from "playwright";
 import { fileURLToPath } from "url";
@@ -8,7 +8,7 @@ import { dirname, resolve } from "path";
 import { mkdirSync } from "fs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const TARGET = process.env.TARGET || "v1.html";
+const TARGET = process.env.TARGET || "v3.html";
 const VER = TARGET.replace(".html", "");
 const APP = "file://" + resolve(__dirname, TARGET);
 const PC = resolve(__dirname, `../../biz/captures/${VER}`);
@@ -23,11 +23,12 @@ const wait = (p, ms = 450) => p.waitForTimeout(ms);
 async function seedPhotos(page) {
   await page.evaluate((key) => {
     const s = JSON.parse(localStorage.getItem(key));
-    if (s && s.visits) {
+    const td = s && s._tenants && s._tenants[s._activeTenant];
+    if (td && td.visits) {
       const svg = (txt) =>
         "data:image/svg+xml;utf8," +
         encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="400" height="400" fill="#cfeae5"/><text x="200" y="200" font-size="20" fill="#0a6d60" text-anchor="middle" font-family="sans-serif">${txt}</text></svg>`);
-      s.visits.forEach((v, i) => { if (i < 3) v.photos = [svg("방문 현장 사진"), svg("서비스 기록")]; });
+      td.visits.forEach((v, i) => { if (i < 3) v.photos = [svg("방문 현장 사진"), svg("서비스 기록")]; });
       localStorage.setItem(key, JSON.stringify(s));
     }
   }, STORE);
@@ -71,92 +72,113 @@ async function flow(page, OUT, tag, isMobile = false) {
   await page.goto(APP);
   await wait(page, 800);
 
-  // ===== 관리자(admin) =====
+  // ===== 관리자(admin) — v1/v2 계승 핵심 =====
   await setRole(page, "admin", isMobile);
   await shot("01-admin-dashboard");
 
   await navTo(page, "recipients", isMobile);
   await shot("02-recipients");
-  const card = await page.$("[data-recip]");
-  if (card) { await card.click(); await wait(page, 500); await shot("03-recipient-detail"); await closeModals(page); }
 
   await navTo(page, "careplan", isMobile);
-  await shot("04-careplan-step1");
-  // 워크플로 진행
-  for (let i = 0; i < 2; i++) { const n = await page.$("#cpNext"); if (n) await n.click(); await wait(page, 400); }
-  await shot("05-careplan-services");
-
-  await navTo(page, "schedule", isMobile);
-  await shot("06-schedule");
+  for (let i = 0; i < 2; i++) { const n = await page.$("#cpNext"); if (n) await n.click(); await wait(page, 350); }
+  await shot("03-careplan-services");
 
   await navTo(page, "visits", isMobile);
-  await shot("07-visits");
   const vn = await page.$("#visNew");
   if (vn) {
-    await vn.click(); await wait(page, 450); await shot("08-visit-wizard-step1");
-    await page.click("#vwNext"); await wait(page, 400);
-    // 체크리스트 토글 (각 토글마다 모달이 재렌더되므로 재조회)
-    for (let i = 0; i < 4; i++) { const c = await page.$(`[data-chk="${i}"]`); if (c) await c.click(); await wait(page, 160); }
-    await shot("09-visit-checklist");
-    await page.click("#vwNext"); await wait(page, 400); await shot("10-visit-photo-note");
-    await page.click("#vwNext"); await wait(page, 400); await shot("11-visit-confirm");
-    await page.click("#vwNext"); await wait(page, 500);
+    await vn.click(); await wait(page, 400);
+    await page.click("#vwNext"); await wait(page, 350);
+    for (let i = 0; i < 4; i++) { const c = await page.$(`[data-chk="${i}"]`); if (c) await c.click(); await wait(page, 130); }
+    await shot("04-visit-checklist");
+    await page.click("#vwNext"); await wait(page, 350);
+    await page.click("#vwNext"); await wait(page, 350);
+    await page.click("#vwNext"); await wait(page, 450);
     await closeModals(page);
   }
-
-  await navTo(page, "attendance", isMobile);
-  await shot("12-attendance");
-  const ckin = await page.$("[data-in]"); if (ckin) { await ckin.click(); await wait(page, 450); await shot("13-attendance-checkin"); }
 
   await navTo(page, "billing", isMobile);
-  await shot("14-billing");
-  const bd = await page.$("[data-bill]"); if (bd) { await bd.click(); await wait(page, 450); await shot("15-bill-detail"); await closeModals(page); }
-  const fc = await page.$("#fileClaim");
-  if (fc) {
-    await fc.click(); await wait(page, 450); await shot("16-claim-wizard");
-    for (let i = 0; i < 3; i++) { const n = await page.$("#clNext"); if (n) await n.click(); await wait(page, 350); }
-    await shot("17-claim-settle");
-    const done = await page.$("#clNext"); if (done) await done.click(); await wait(page, 450);
-    await closeModals(page);
-  }
+  await shot("05-billing");
 
-  await navTo(page, "guardian", isMobile);
-  await shot("18-guardian-comm");
-  const gs = await page.$("#gSend");
-  if (gs) { await gs.click(); await wait(page, 450); await shot("19-guardian-send"); await page.click("#gsDo").catch(()=>{}); await wait(page, 450); await closeModals(page); }
+  // ===== v2 계승: 법인 콘솔 / 위험예측 / 인력최적화 / 수가시뮬 / EDI / 감사 =====
+  await navTo(page, "corp", isMobile);
+  await shot("06-corp-console");
 
-  await navTo(page, "reports", isMobile);
-  await shot("20-reports");
+  await navTo(page, "risklab", isMobile);
+  await shot("07-risklab");
+  const rk = await page.$("[data-risk]"); if (rk) { await rk.click(); await wait(page, 450); await shot("08-risklab-detail"); await closeModals(page); }
 
-  await navTo(page, "integrations", isMobile);
-  await shot("21-integrations");
-  const wt = await page.$("#webhookTest"); if (wt) { await wt.click(); await wait(page, 600); await shot("22-integration-log"); }
+  await navTo(page, "optimize", isMobile);
+  await shot("09-optimize");
 
-  await navTo(page, "notices", isMobile);
-  await shot("23-notices");
+  await navTo(page, "edi", isMobile);
+  const ob = await page.$("#oauthBtn"); if (ob) { await ob.click(); await wait(page, 500); }
+  await shot("10-edi-oauth");
+  const sb = await page.$("#ediSend"); if (sb) { await sb.click(); await wait(page, 600); await shot("11-edi-sent"); }
 
-  await navTo(page, "settings", isMobile);
-  await shot("24-settings");
+  // ===== v3 신규: 수요예측 =====
+  await navTo(page, "forecast", isMobile);
+  await shot("12-forecast");
+  const h9 = await page.$('[data-h="9"]'); if (h9) { await h9.click(); await wait(page, 450); await shot("13-forecast-9mo"); }
 
-  // i18n 영어 전환 — 대시보드
+  // ===== v3 신규: 케어 질 벤치마킹 =====
+  await navTo(page, "benchmark", isMobile);
+  await shot("14-benchmark");
+
+  // ===== v3 신규: 수가 시뮬레이션 (v2 계승, 슬라이더) =====
+  await navTo(page, "revenue", isMobile);
+  await shot("15-revenue-sim");
+
+  // ===== v3 신규: 약물 안전 =====
+  await navTo(page, "meds", isMobile);
+  await shot("16-meds");
+  const md = await page.$("[data-meds]"); if (md) { await md.click(); await wait(page, 450); await shot("17-meds-detail"); await closeModals(page); }
+
+  // ===== v3 신규: 재원·이탈 예측 =====
+  await navTo(page, "churn", isMobile);
+  await shot("18-churn");
+  const ch = await page.$("[data-churn]"); if (ch) { await ch.click(); await wait(page, 450); await shot("19-churn-detail"); await closeModals(page); }
+
+  // ===== v3 신규: 전자처방·EMR =====
+  await navTo(page, "emr", isMobile);
+  const ep = await page.$("#emrPull"); if (ep) { await ep.click(); await wait(page, 500); }
+  await shot("20-emr");
+
+  // ===== v3 신규: IoT·웨어러블 =====
+  await navTo(page, "iot", isMobile);
+  const ist = await page.$("#iotStart"); if (ist) { await ist.click(); await wait(page, 2600); }
+  await shot("21-iot");
+  const isp = await page.$("#iotStop"); if (isp) { await isp.click(); await wait(page, 200); }
+
+  // ===== v3 신규: 보험사 정산 =====
+  await navTo(page, "settlement", isMobile);
+  const ss = await page.$("#stSubmit"); if (ss) { await ss.click(); await wait(page, 500); }
+  await shot("22-settlement");
+  const sh = await page.$("#stHook"); if (sh) { await sh.click(); await wait(page, 500); await shot("23-settlement-webhook"); }
+
+  // ===== 감사 로그 (위 활동이 적립됨) =====
+  await navTo(page, "audit", isMobile);
+  await shot("24-audit-log");
+
+  // ===== i18n 영어 전환 — 대시보드 =====
   await navTo(page, "dashboard", isMobile);
   const lang = isMobile ? "#mLangBtn" : "#langBtn";
   await page.click(lang); await wait(page, 600); await shot("25-dashboard-en");
+  // 영어 상태에서 v3 신규 뷰 하나 더
+  await navTo(page, "forecast", isMobile); await shot("26-forecast-en");
+  await navTo(page, "benchmark", isMobile); await shot("27-benchmark-en");
   await page.click(lang); await wait(page, 400);
 
-  // ===== 요양보호사(care) =====
+  // ===== 요양보호사(care) — 약물·IoT 접근 =====
   await setRole(page, "care", isMobile);
-  await shot("26-care-dashboard");
-  await navTo(page, "myvisits", isMobile); await shot("27-care-myvisits");
+  await shot("28-care-dashboard");
 
   // ===== 보호자(guardian) =====
   await setRole(page, "guardian", isMobile);
-  await shot("28-guardian-dash");
-  await navTo(page, "gjournal", isMobile); await shot("29-guardian-journal");
-  await navTo(page, "gbilling", isMobile); await shot("30-guardian-billing");
+  await shot("29-guardian-dash");
+  await navTo(page, "gjournal", isMobile); await shot("30-guardian-journal");
 
-  // 지속성: 새로고침 후 관리자 복귀
-  await page.evaluate((key) => { const s = JSON.parse(localStorage.getItem(key)); s._role = "admin"; s._view = "dashboard"; localStorage.setItem(key, JSON.stringify(s)); }, STORE);
+  // 지속성: 새로고침 후 관리자/수요예측 복귀
+  await page.evaluate((key) => { const s = JSON.parse(localStorage.getItem(key)); s._role = "admin"; s._view = "forecast"; localStorage.setItem(key, JSON.stringify(s)); }, STORE);
   await page.goto(APP);
   await wait(page, 900);
   await shot("31-persistence");
@@ -171,7 +193,7 @@ const run = async () => {
 
   const mo = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
   await flow(mo, MO, "MO", true);
-  // 모바일 전용: 드로어 열린 화면
+  // 모바일 전용: 드로어 열린 화면 (신규 7뷰 포함 메뉴)
   await mo.goto(APP); await mo.waitForTimeout(800);
   await mo.click("#mMenuBtn"); await mo.waitForTimeout(400);
   await mo.screenshot({ path: `${MO}/32-drawer.png`, fullPage: false });
