@@ -1,0 +1,981 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>세이프온 — 건설현장 안전관리 SaaS (v2 · 본사·다현장)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --brand:#e2601a; --brand-strong:#b94c10; --brand-soft:#fdeee2;
+    --ink:#1b2027; --ink-2:#4d5662; --ink-3:#828b97;
+    --bg:#f4f6f8; --surface:#ffffff; --surface-2:#eef1f4; --line:#e2e7ec;
+    --ok:#157a4a; --ok-soft:#e1f3e9;
+    --warn:#9a6400; --warn-soft:#fbf0d9;
+    --danger:#bd2d33; --danger-soft:#fbe3e4;
+    --info:#1f5fa6; --info-soft:#e4eefb;
+    --radius:14px; --shadow-float:0 12px 32px rgba(27,32,39,.16); --sidebar-w:252px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;max-width:100%;overflow-x:hidden}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Segoe UI",Roboto,sans-serif;
+    background:radial-gradient(1100px 480px at 10% -10%, rgba(226,96,26,.06), transparent 60%), var(--bg);
+    color:var(--ink); -webkit-font-smoothing:antialiased; line-height:1.45;}
+  button{font-family:inherit;cursor:pointer} input,select,textarea{font-family:inherit}
+  .app{display:flex;min-height:100vh}
+
+  .sidebar{width:var(--sidebar-w);flex:0 0 var(--sidebar-w);background:#1b2330;color:#e9edf2;display:flex;flex-direction:column;gap:2px;
+    padding:18px 12px;position:sticky;top:0;height:100vh;overflow-y:auto;}
+  .brand{display:flex;align-items:center;gap:10px;padding:4px 8px 12px}
+  .brand .logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#f2843f,#e2601a);display:grid;place-items:center;font-weight:800;color:#fff;font-size:18px}
+  .brand b{font-size:17px;letter-spacing:-.2px}
+  .brand small{display:block;color:#97a2b4;font-size:11px;font-weight:600}
+  .tenant{background:#26303f;border:1px solid #34404f;border-radius:11px;padding:9px 10px;margin-bottom:6px}
+  .tenant label{color:#8a94a6;font-size:10px;font-weight:800;letter-spacing:.4px;display:block;margin:0 0 5px}
+  .tenant select{width:100%;background:#1b2330;color:#e9edf2;border:1px solid #3a4658;border-radius:8px;padding:8px;font-size:12.5px;font-weight:700}
+  .nav-sec{color:#69748a;font-size:10px;font-weight:800;letter-spacing:.5px;padding:12px 12px 5px;text-transform:uppercase}
+  .nav-btn{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:0;background:transparent;color:#c2cad8;
+    padding:10px 12px;border-radius:10px;font-size:13.5px;font-weight:600;transition:background .15s,color .15s}
+  .nav-btn .ic{width:20px;text-align:center;font-size:15px}
+  .nav-btn:hover{background:rgba(255,255,255,.06);color:#fff}
+  .nav-btn.active{background:var(--brand);color:#fff}
+  .nav-btn.lock{opacity:.34;cursor:not-allowed}
+  .nav-btn .badge{margin-left:auto;background:var(--danger);color:#fff;font-size:10px;font-weight:800;border-radius:9px;padding:1px 6px}
+  .role-box{margin-top:auto;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)}
+  .role-box label{color:#8a94a6;font-size:11px;font-weight:700;display:block;margin:0 4px 6px}
+  .role-box select{width:100%;background:#26303f;color:#e9edf2;border:1px solid #34404f;border-radius:9px;padding:9px;font-size:13px;font-weight:600}
+  .role-box .rdesc{color:#8a94a6;font-size:10.5px;margin:6px 4px 0;line-height:1.4}
+
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .topbar{display:flex;align-items:center;gap:12px;padding:13px 22px;background:rgba(255,255,255,.82);backdrop-filter:saturate(180%) blur(10px);
+    border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30}
+  .topbar h1{font-size:16px;margin:0;font-weight:800;letter-spacing:-.3px}
+  .topbar .site-pill{margin-left:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:12px;font-weight:700;color:var(--ink-2)}
+  .topbar .role-pill{background:var(--info-soft);border:1px solid #cfe0f5;color:var(--info);border-radius:999px;padding:5px 11px;font-size:11.5px;font-weight:800}
+  .topbar .spacer{flex:1}
+  .hamb{display:none;background:var(--surface);border:1px solid var(--line);border-radius:10px;width:40px;height:40px;font-size:18px}
+  .bell{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:10px;width:40px;height:40px;font-size:17px}
+  .bell .dot{position:absolute;top:-5px;right:-5px;background:var(--danger);color:#fff;font-size:10px;font-weight:800;border-radius:9px;padding:1px 5px}
+  .content{padding:22px;max-width:1180px;width:100%}
+
+  .view{display:none}.view.active{display:block;animation:fade .2s}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .page-h{margin:0 0 4px;font-size:22px;font-weight:800;letter-spacing:-.4px}
+  .page-sub{color:var(--ink-2);font-size:13.5px;margin:0 0 18px}
+
+  .grid{display:grid;gap:14px}
+  .kpis{grid-template-columns:repeat(4,1fr)}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+  .kpi .lbl{color:var(--ink-3);font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px}
+  .kpi .val{font-size:26px;font-weight:800;letter-spacing:-.5px;margin-top:6px}
+  .kpi .val small{font-size:13px;font-weight:700;color:var(--ink-3)}
+  .kpi.alert .val{color:var(--danger)} .kpi.good .val{color:var(--ok)} .kpi.info .val{color:var(--info)}
+  .kpi .sub{font-size:11px;color:var(--ink-3);font-weight:600;margin-top:3px}
+  .two-col{grid-template-columns:1.4fr 1fr}
+  .three-col{grid-template-columns:repeat(3,1fr)}
+  .sec-h{font-size:15px;font-weight:800;margin:0 0 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .sec-h .more{margin-left:auto;font-size:12px;font-weight:700;color:var(--brand);background:none;border:0}
+
+  .row{display:flex;align-items:center;gap:11px;padding:11px 4px;border-bottom:1px solid var(--line)}
+  .row:last-child{border-bottom:0}
+  .row .av{width:34px;height:34px;border-radius:9px;background:var(--surface-2);display:grid;place-items:center;font-weight:800;font-size:13px;color:var(--ink-2);flex:0 0 34px}
+  .row .nm{font-weight:700;font-size:13.5px} .row .meta{color:var(--ink-3);font-size:11.5px}
+  .row .rt{margin-left:auto;text-align:right}
+  .chip{display:inline-block;font-size:11px;font-weight:800;border-radius:999px;padding:3px 9px}
+  .chip.ok{background:var(--ok-soft);color:var(--ok)} .chip.warn{background:var(--warn-soft);color:var(--warn)}
+  .chip.danger{background:var(--danger-soft);color:var(--danger)} .chip.muted{background:var(--surface-2);color:var(--ink-2)}
+  .chip.brand{background:var(--brand-soft);color:var(--brand-strong)} .chip.info{background:var(--info-soft);color:var(--info)}
+
+  .btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:11px;padding:10px 15px;font-size:13.5px;font-weight:700;transition:.12s}
+  .btn:hover{background:var(--surface-2)}
+  .btn.pri{background:var(--brand);border-color:var(--brand);color:#fff} .btn.pri:hover{background:var(--brand-strong)}
+  .btn.sm{padding:7px 11px;font-size:12.5px;border-radius:9px}
+  .btn.ghost{background:none;border:0;color:var(--brand);font-weight:800}
+  .btn[disabled]{opacity:.45;cursor:not-allowed}
+  .btn-row{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
+
+  .field{margin-bottom:13px}
+  .field label{display:block;font-size:12.5px;font-weight:700;color:var(--ink-2);margin-bottom:6px}
+  .field input,.field select,.field textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:14px;background:var(--surface)}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--brand);outline-offset:0;border-color:var(--brand)}
+  .field textarea{min-height:78px;resize:vertical}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+  .steps{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap}
+  .step{flex:1;min-width:64px;text-align:center;font-size:11.5px;font-weight:700;color:var(--ink-3);padding-bottom:9px;border-bottom:3px solid var(--line)}
+  .step.on{color:var(--brand);border-color:var(--brand)} .step.done{color:var(--ok);border-color:var(--ok)}
+  .step b{display:block;font-size:14px}
+
+  table.tbl{width:100%;border-collapse:collapse;font-size:13px}
+  table.tbl th,table.tbl td{border:1px solid var(--line);padding:9px 10px;text-align:left}
+  table.tbl th{background:var(--surface-2);font-weight:800;font-size:12px;color:var(--ink-2)}
+  table.tbl td.c{text-align:center}
+  .risk-cell{font-weight:800;border-radius:7px;padding:2px 8px;font-size:12px;display:inline-block;min-width:30px;text-align:center}
+  .tbl-wrap{overflow-x:auto}
+
+  .check-item{display:flex;align-items:center;gap:11px;padding:12px;border:1px solid var(--line);border-radius:11px;margin-bottom:9px}
+  .check-item input{width:20px;height:20px;accent-color:var(--brand);flex:0 0 20px}
+  .check-item .t{font-weight:700;font-size:13.5px} .check-item .d{color:var(--ink-3);font-size:11.5px}
+  .check-item.checked{border-color:var(--ok);background:var(--ok-soft)}
+
+  .sign-wrap{border:2px dashed var(--line);border-radius:12px;background:#fff;padding:8px;text-align:center}
+  canvas#signpad{width:100%;height:150px;touch-action:none;border-radius:8px;background:#fcfcfd}
+  .sign-thumb{display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px}
+  .sign-thumb img{height:40px;border:1px solid var(--line);border-radius:6px;background:#fff}
+
+  .photo-drop{border:2px dashed var(--line);border-radius:12px;padding:22px;text-align:center;color:var(--ink-3);font-weight:700;font-size:13px}
+  .photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;margin-top:12px}
+  .photo-grid img{width:100%;height:96px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}
+
+  .overlay{position:fixed;inset:0;background:rgba(20,24,30,.5);z-index:60;display:none;align-items:center;justify-content:center;padding:18px}
+  .overlay.on{display:flex}
+  .modal{background:var(--surface);border-radius:18px;max-width:540px;width:100%;max-height:88vh;overflow:auto;padding:22px}
+  .modal h3{margin:0 0 4px;font-size:18px;font-weight:800}
+  .modal .x{float:right;border:0;background:var(--surface-2);border-radius:9px;width:32px;height:32px;font-size:16px}
+
+  #toast{position:fixed;left:50%;bottom:88px;transform:translateX(-50%) translateY(20px);background:#1b2330;color:#fff;
+    padding:12px 18px;border-radius:12px;font-size:13.5px;font-weight:700;opacity:0;transition:.25s;z-index:90;box-shadow:var(--shadow-float);max-width:90vw}
+  #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  .bars{display:flex;align-items:flex-end;gap:9px;height:130px;padding-top:18px}
+  .bars .b{flex:1;background:var(--brand-soft);border-radius:7px 7px 0 0;position:relative;min-height:6px}
+  .bars .b span{position:absolute;top:-18px;left:0;right:0;text-align:center;font-size:11px;font-weight:800;color:var(--ink-2)}
+  .bars .b small{position:absolute;bottom:-20px;left:0;right:0;text-align:center;font-size:10.5px;color:var(--ink-3);font-weight:700}
+  .bars .b.hot{background:var(--brand)} .bars .b.fc{background:repeating-linear-gradient(45deg,var(--surface-2),var(--surface-2) 4px,#dfe5eb 4px,#dfe5eb 8px)}
+
+  .pbar{height:9px;background:var(--surface-2);border-radius:99px;overflow:hidden}
+  .pbar i{display:block;height:100%;background:var(--ok);border-radius:99px}
+  .pbar.warn i{background:var(--warn)} .pbar.danger i{background:var(--danger)}
+
+  .gauge{display:flex;align-items:center;gap:14px}
+  .gauge .ring{--p:0;width:88px;height:88px;border-radius:50%;flex:0 0 88px;
+    background:conic-gradient(var(--gc,var(--brand)) calc(var(--p)*1%), var(--surface-2) 0);display:grid;place-items:center}
+  .gauge .ring i{width:64px;height:64px;border-radius:50%;background:#fff;display:grid;place-items:center;font-weight:800;font-size:19px;font-style:normal}
+
+  .appr-line{display:flex;align-items:center;gap:0;margin:10px 0;flex-wrap:wrap}
+  .appr-node{flex:1;min-width:74px;text-align:center;font-size:11.5px}
+  .appr-node .dot{width:30px;height:30px;border-radius:50%;border:2px solid var(--line);margin:0 auto 5px;display:grid;place-items:center;font-size:13px;background:#fff}
+  .appr-node.done .dot{border-color:var(--ok);background:var(--ok-soft);color:var(--ok)}
+  .appr-node.cur .dot{border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}
+  .appr-arrow{color:var(--ink-3);font-size:13px;padding:0 2px;align-self:flex-start;margin-top:9px}
+
+  .log{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;background:#11161f;color:#cdd6e2;border-radius:11px;padding:13px 14px;overflow-x:auto;line-height:1.7}
+  .log .t{color:#5f6b7d} .log .ok{color:#5fd39a} .log .wn{color:#f0c674} .log .er{color:#e88}
+  .log .tag{color:#7ab6f0}
+
+  .siteband{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px}
+  .siteband .sc{flex:0 0 auto;min-width:172px;border:1px solid var(--line);border-radius:12px;padding:12px 13px;background:var(--surface);cursor:pointer}
+  .siteband .sc.on{border-color:var(--brand);box-shadow:0 0 0 2px var(--brand-soft)}
+  .siteband .sc b{font-size:13.5px} .siteband .sc .m{font-size:11px;color:var(--ink-3);font-weight:700;margin-top:2px}
+  .siteband .sc .cidx{font-size:20px;font-weight:800;margin-top:6px}
+
+  .wx{display:flex;align-items:center;gap:12px;padding:13px;border-radius:12px;border:1px solid var(--line)}
+  .wx.warn{background:var(--warn-soft);border-color:#eccf8a} .wx.danger{background:var(--danger-soft);border-color:#e9b6b9}
+  .wx .ico{font-size:26px} .wx b{font-size:14px} .wx .d{font-size:11.5px;color:var(--ink-2)}
+
+  .bottomnav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:50;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);
+    border-top:1px solid var(--line);padding:6px 4px 9px;grid-template-columns:repeat(5,1fr)}
+  .bottomnav button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;font-weight:700;color:var(--ink-3);padding:5px 2px}
+  .bottomnav button .ic{font-size:18px} .bottomnav button.active{color:var(--brand)}
+  .scrim{display:none;position:fixed;inset:0;background:rgba(20,24,30,.5);z-index:55}.scrim.on{display:block}
+
+  @media(max-width:860px){
+    .kpis{grid-template-columns:1fr 1fr} .two-col,.three-col{grid-template-columns:1fr} .grid2{grid-template-columns:1fr}
+    .sidebar{position:fixed;left:0;top:0;z-index:60;transform:translateX(-100%);transition:transform .22s;height:100dvh}
+    body.drawer-open .sidebar{transform:none;box-shadow:var(--shadow-float)} body.drawer-open .scrim{display:block}
+    .main{width:100%} .hamb{display:grid;place-items:center} .content{padding:16px 14px 92px}
+    .bottomnav{display:grid} .page-h{font-size:20px} table.tbl{font-size:11.5px} table.tbl th,table.tbl td{padding:7px 6px}
+    #toast{bottom:96px} .topbar .role-pill,.topbar .site-pill{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="scrim" id="scrim" onclick="closeDrawer()"></div>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand"><div class="logo">S</div><div><b>세이프온</b><small>본사·다현장 안전관리 v2</small></div></div>
+    <div class="tenant">
+      <label>본사 / 현장 (멀티테넌트)</label>
+      <select id="siteSel" onchange="setSite(this.value)"></select>
+    </div>
+    <div class="nav-sec">본사·현황</div>
+    <button class="nav-btn" data-view="hq" onclick="go('hq')"><span class="ic">▤</span>본사 통합 대시보드</button>
+    <button class="nav-btn" data-view="riskindex" onclick="go('riskindex')"><span class="ic">◎</span>중대재해 위험지수</button>
+    <button class="nav-btn" data-view="dashboard" onclick="go('dashboard')"><span class="ic">▥</span>현장 안전현황</button>
+    <button class="nav-btn" data-view="weather" onclick="go('weather')"><span class="ic">☼</span>기상 위험경보</button>
+    <div class="nav-sec">현장 기록</div>
+    <button class="nav-btn" data-view="risk" onclick="go('risk')"><span class="ic">▦</span>위험성평가</button>
+    <button class="nav-btn" data-view="tbm" onclick="go('tbm')"><span class="ic">✎</span>TBM 작업전점검</button>
+    <button class="nav-btn" data-view="incident" onclick="go('incident')"><span class="ic">⚠</span>아차사고 신고</button>
+    <button class="nav-btn" data-view="edu" onclick="go('edu')"><span class="ic">◉</span>안전교육 이수</button>
+    <div class="nav-sec">서류·결재·연동</div>
+    <button class="nav-btn" data-view="docs" onclick="go('docs')"><span class="ic">▤</span>법정 안전서류</button>
+    <button class="nav-btn" data-view="approval" onclick="go('approval')"><span class="ic">✓</span>전자결재함<span class="badge" id="apprBadge" style="display:none">0</span></button>
+    <button class="nav-btn" data-view="notify" onclick="go('notify')"><span class="ic">✉</span>알림톡·연동로그</button>
+    <button class="nav-btn" data-view="settings" onclick="go('settings')"><span class="ic">⚙</span>현장·연동 설정</button>
+    <div class="role-box">
+      <label>로그인 역할 (RBAC 데모)</label>
+      <select id="roleSel" onchange="setRole(this.value)"></select>
+      <div class="rdesc" id="roleDesc"></div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="hamb" onclick="openDrawer()">☰</button>
+      <h1 id="topTitle">본사 통합 대시보드</h1>
+      <span class="site-pill" id="sitePill">현장: —</span>
+      <span class="role-pill" id="rolePill">역할</span>
+      <div class="spacer"></div>
+      <button class="bell" onclick="go('notify')">🔔<span class="dot" id="bellDot" style="display:none">0</span></button>
+    </header>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<nav class="bottomnav" id="bottomnav">
+  <button data-view="hq" onclick="go('hq')"><span class="ic">▤</span>본사</button>
+  <button data-view="riskindex" onclick="go('riskindex')"><span class="ic">◎</span>위험지수</button>
+  <button data-view="risk" onclick="go('risk')"><span class="ic">▦</span>평가</button>
+  <button data-view="incident" onclick="go('incident')"><span class="ic">⚠</span>아차사고</button>
+  <button onclick="openDrawer()"><span class="ic">☰</span>더보기</button>
+</nav>
+
+<div class="overlay" id="overlay"><div class="modal" id="modalBody"></div></div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* ═══════════════ 상수 ═══════════════ */
+const LS_KEY = "safeon-v2";
+const STD_RISK = [
+  {proc:"철근·거푸집", haz:"개구부·단부 추락", base:[4,4]},
+  {proc:"고소작업", haz:"이동식 비계 전도·추락", base:[4,3]},
+  {proc:"양중·인양", haz:"줄걸이 탈락 낙하물", base:[4,3]},
+  {proc:"굴착", haz:"흙막이 붕괴·매몰", base:[5,2]},
+  {proc:"전기", haz:"가설전선 감전", base:[4,2]},
+  {proc:"용접·화기", haz:"불티 화재·질식", base:[3,3]},
+];
+const TBM_ITEMS = [
+  {t:"작업 내용·순서 공유", d:"금일 공정·작업 위치·인원 배치 전달"},
+  {t:"보호구 착용 확인", d:"안전모·안전대·안전화·보안경 지급·착용"},
+  {t:"위험요인 주지", d:"오늘의 핵심 위험요인 및 대책 설명"},
+  {t:"작업자 건강상태 확인", d:"음주·피로·고혈압 등 이상 유무"},
+  {t:"안전시설 점검", d:"안전난간·개구부 덮개·비계 고정 상태"},
+  {t:"비상연락·대피경로", d:"사고 시 119·관리자 연락 및 대피 동선"},
+];
+const EDU_COURSES = [
+  {nm:"건설업 기초안전보건교육(4h)", legal:true},
+  {nm:"정기 안전보건교육(분기)", legal:true},
+  {nm:"특별안전보건교육(고소·밀폐)", legal:true},
+  {nm:"MSDS·화학물질 취급교육", legal:false},
+];
+// RBAC: 역할별 접근 가능 뷰 + 결재 가능 단계
+const ROLES = {
+  worker:  {nm:"작업자 / 반장", desc:"TBM 서명·아차사고 신고·교육 이수 확인만 가능. 본사/위험지수/결재 비공개.", views:["dashboard","tbm","incident","edu"], apprStep:-1},
+  manager: {nm:"현장소장 / 안전관리책임자", desc:"담당 현장 전 기능 + 현장소장 결재. 타 현장·본사 위험지수는 열람만.", views:["dashboard","weather","risk","tbm","incident","edu","docs","approval","notify","settings","riskindex"], apprStep:1},
+  hsm:     {nm:"본사 안전관리자 (HSE팀)", desc:"전 현장 본사 대시보드·위험지수·연동로그 + 안전관리자 결재. 알림톡 발송 권한.", views:["hq","riskindex","dashboard","weather","risk","tbm","incident","edu","docs","approval","notify","settings"], apprStep:0},
+  client:  {nm:"원청 / 발주처 (감독)", desc:"전 현장 안전현황·위험지수·법정서류 열람 전용(읽기). 기록 작성·결재 불가.", views:["hq","riskindex","dashboard","weather","docs"], apprStep:-1, readonly:true},
+  ceo:     {nm:"대표이사 (경영책임자)", desc:"본사 통합·위험지수 + 경영책임자 최종 결재(중대재해처벌법 §4 의무 이행 입증).", views:["hq","riskindex","dashboard","weather","risk","tbm","incident","edu","docs","approval","notify","settings"], apprStep:2},
+};
+const APPR_LINE = [{role:"안전관리자",step:0},{role:"현장소장",step:1},{role:"경영책임자",step:2}];
+
+/* ═══════════════ 시드: 본사 + 3개 현장 ═══════════════ */
+function seedWorkers(prefix, trades){
+  return trades.map((t,i)=>({id:prefix+(i+1), nm:t.nm, trade:t.trade, role:i===0?"반장":"작업자"}));
+}
+function seedEdu(workers){
+  const edu=[]; workers.forEach((w,i)=>EDU_COURSES.forEach((c,j)=>{
+    const done=!((i+j)%4===0); edu.push({wid:w.id,course:c.nm,legal:c.legal,done,date:done?"2026-04-1"+((i+j)%9):""});
+  })); return edu;
+}
+function seed(){
+  const s1w=seedWorkers("a",[{nm:"김현장",trade:"철근공"},{nm:"이성호",trade:"형틀목공"},{nm:"박정수",trade:"전기공"},{nm:"최영길",trade:"비계공"},{nm:"정민재",trade:"용접공"},{nm:"한동욱",trade:"보통인부"}]);
+  const s2w=seedWorkers("b",[{nm:"오태석",trade:"굴착공"},{nm:"임재현",trade:"철근공"},{nm:"강수민",trade:"신호수"},{nm:"윤대호",trade:"전기공"},{nm:"서지훈",trade:"보통인부"}]);
+  const s3w=seedWorkers("c",[{nm:"문상철",trade:"비계공"},{nm:"권나래",trade:"안전관리"},{nm:"배성우",trade:"용접공"},{nm:"신동주",trade:"형틀목공"}]);
+  const sites=[
+    {id:"s1", name:"강북 주상복합 신축공사", addr:"서울 강북구", contractor:"<TODO: 사용자 입력>", workers:s1w, edu:seedEdu(s1w),
+      risks:[], tbms:[], incidents:[], docs:[], approvals:[], seq:{risk:0,tbm:0,inc:0,doc:0,appr:0},
+      wx:{tmax:33, wind:7, rain:0}, seedTrend:[2,1,3,1,2,0,0], seedHi:1},
+    {id:"s2", name:"수원 물류센터 증축공사", addr:"경기 수원시", contractor:"<TODO: 사용자 입력>", workers:s2w, edu:seedEdu(s2w),
+      risks:[], tbms:[], incidents:[], docs:[], approvals:[], seq:{risk:0,tbm:0,inc:0,doc:0,appr:0},
+      wx:{tmax:35, wind:13, rain:0}, seedTrend:[1,2,2,3,4,2,3], seedHi:3},
+    {id:"s3", name:"부산 도로 교량 보수공사", addr:"부산 사하구", contractor:"<TODO: 사용자 입력>", workers:s3w, edu:seedEdu(s3w),
+      risks:[], tbms:[], incidents:[], docs:[], approvals:[], seq:{risk:0,tbm:0,inc:0,doc:0,appr:0},
+      wx:{tmax:29, wind:4, rain:12}, seedTrend:[0,1,0,1,0,2,1], seedHi:0},
+  ];
+  return {company:"세이프온 시범 종합건설", role:"hsm", curSite:"s1", sites, notifyLog:[], integ:{kakao:true, weather:true, sds:true, eapproval:true}};
+}
+let S = load();
+function load(){
+  try{const r=JSON.parse(localStorage.getItem(LS_KEY)); if(r&&r.sites) return migrate(r);}catch(e){}
+  const s=seed(); localStorage.setItem(LS_KEY,JSON.stringify(s)); return s;
+}
+function migrate(s){
+  s.notifyLog=s.notifyLog||[]; s.integ=s.integ||{kakao:true,weather:true,sds:true,eapproval:true};
+  s.sites.forEach(st=>{["risks","tbms","incidents","docs","approvals"].forEach(k=>st[k]=st[k]||[]); st.seq=st.seq||{risk:0,tbm:0,inc:0,doc:0,appr:0};});
+  return s;
+}
+function save(){ localStorage.setItem(LS_KEY,JSON.stringify(S)); }
+function site(){ return S.sites.find(x=>x.id===S.curSite)||S.sites[0]; }
+function nid(k){ const st=site(); st.seq[k]=(st.seq[k]||0)+1; return st.seq[k]; }
+
+/* ═══════════════ 유틸 ═══════════════ */
+const $ = s=>document.querySelector(s);
+const esc = s=>(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const today = ()=> new Date().toISOString().slice(0,10);
+const now = ()=> new Date().toTimeString().slice(0,8);
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("on"),2200);}
+function riskGrade(p,s){const v=p*s; if(v>=15)return{v,lvl:"상",cls:"danger"}; if(v>=8)return{v,lvl:"중",cls:"warn"}; return{v,lvl:"하",cls:"ok"};}
+function openModal(html){$("#modalBody").innerHTML=html;$("#overlay").classList.add("on");}
+function closeModal(){$("#overlay").classList.remove("on");}
+$("#overlay").addEventListener("click",e=>{if(e.target.id==="overlay")closeModal();});
+function role(){ return ROLES[S.role]||ROLES.manager; }
+function can(view){ return role().views.includes(view); }
+function readonly(){ return !!role().readonly; }
+function guardWrite(){ if(readonly()){ toast("열람 전용 역할입니다 — 기록 작성·결재 권한이 없습니다"); return false; } return true; }
+
+/* ═══════════════ 알고리즘 1: 중대재해 위험지수(CSI) ═══════════════ */
+// 0~100 가중 합성지수. 높을수록 위험. 6개 안전요인을 가중 결합한다(자체 모델, [추정] 가중치).
+function recentTrend(st){
+  // 시드 추세 + 실 신고를 오늘 칸에 누적
+  const tr=[...st.seedTrend]; st.incidents.forEach(()=>tr[6]++); return tr;
+}
+function siteCSI(st){
+  const eduTot=st.edu.length, eduDone=st.edu.filter(e=>e.done).length;
+  const eduRate=eduTot?eduDone/eduTot:1;
+  const overdue=st.edu.filter(e=>e.legal&&!e.done).length;
+  // 고위험(상) 요인 수 = 시드 + 실 평가
+  const hiReal=st.risks.reduce((a,r)=>a+r.items.filter(i=>riskGrade(i.p,i.s).v>=15).length,0);
+  const hi=st.seedHi+hiReal;
+  const openInc=st.incidents.filter(i=>i.status!=="조치완료").length;
+  const tr=recentTrend(st); const incRate7=tr.reduce((a,b)=>a+b,0)/7; // 일평균 아차사고
+  const tbmToday=st.tbms.filter(t=>t.date===today()).length;
+  const wx=st.wx;
+  // 요인별 0~1 정규화(클램프)
+  const f_edu = Math.min(1, overdue/4 + (1-eduRate)*0.5);           // 교육 미이수
+  const f_hi  = Math.min(1, hi/5);                                  // 고위험 요인
+  const f_inc = Math.min(1, openInc/5*0.6 + incRate7/4*0.4);        // 아차사고 빈도·미결
+  const f_tbm = tbmToday>0?0:0.7;                                   // 당일 TBM 미실시
+  const f_wx  = Math.min(1, Math.max(0,(wx.tmax-31)/8)*0.6 + Math.max(0,(wx.wind-9)/12)*0.5 + Math.max(0,(wx.rain-10)/30)*0.4); // 기상
+  const f_doc = st.approvals.some(a=>a.status==="완결")?0:(st.risks.length?0.2:0.5); // 서류·결재 이행
+  // 가중치(합 1.0) — 중대재해 기여도 가정[추정]
+  const W={edu:0.20, hi:0.26, inc:0.22, tbm:0.12, wx:0.12, doc:0.08};
+  const raw = f_edu*W.edu + f_hi*W.hi + f_inc*W.inc + f_tbm*W.tbm + f_wx*W.wx + f_doc*W.doc;
+  const csi = Math.round(raw*100);
+  let band, cls; if(csi>=60){band="위험";cls="danger";} else if(csi>=35){band="주의";cls="warn";} else {band="안정";cls="ok";}
+  return {csi, band, cls, factors:[
+    {k:"법정교육 미이수", v:f_edu, w:W.edu, raw:`미이수 ${overdue}명`},
+    {k:"고위험(상) 요인", v:f_hi, w:W.hi, raw:`${hi}건`},
+    {k:"아차사고 빈도·미결", v:f_inc, w:W.inc, raw:`미결 ${openInc}·일평균 ${incRate7.toFixed(1)}`},
+    {k:"당일 TBM 미실시", v:f_tbm, w:W.tbm, raw:tbmToday>0?"실시":"미실시"},
+    {k:"기상 위험", v:f_wx, w:W.wx, raw:`최고 ${wx.tmax}℃·풍속 ${wx.wind}㎧`},
+    {k:"서류·결재 이행", v:f_doc, w:W.doc, raw:st.approvals.some(a=>a.status==="완결")?"완결 있음":"미완결"},
+  ]};
+}
+/* ═══════════════ 알고리즘 2: 위험 추세 선형회귀 예측 ═══════════════ */
+function linForecast(series){
+  // 최소제곱 1차회귀로 다음 2시점 예측(음수는 0 클램프)
+  const n=series.length, xs=[...Array(n).keys()];
+  const mx=xs.reduce((a,b)=>a+b,0)/n, my=series.reduce((a,b)=>a+b,0)/n;
+  let num=0, den=0; for(let i=0;i<n;i++){num+=(xs[i]-mx)*(series[i]-my); den+=(xs[i]-mx)**2;}
+  const slope=den?num/den:0, intercept=my-slope*mx;
+  const f=k=>Math.max(0, +(slope*(n-1+k)+intercept).toFixed(1));
+  return {slope:+slope.toFixed(2), next:[f(1),f(2)]};
+}
+
+/* ═══════════════ 외부연동 로그 + 알림톡 mock ═══════════════ */
+function logEvent(channel, type, msg, lvl){
+  S.notifyLog.unshift({id:Date.now()+Math.random(), ts:today()+" "+now(), site:site().id, channel, type, msg, lvl:lvl||"ok"});
+  if(S.notifyLog.length>120) S.notifyLog.pop();
+  save(); refreshBadges();
+}
+function sendKakao(targetCount, title, body){
+  if(!S.integ.kakao){ toast("카카오 알림톡 연동 OFF"); return; }
+  // mock 발송: 수신자 수·템플릿·상태코드 로그 적재
+  logEvent("KAKAO", "알림톡", `[${title}] 수신 ${targetCount}명 발송요청 → 상태 2000(정상) · ${esc(body)}`, "ok");
+  toast(`카카오 알림톡 ${targetCount}명 발송(mock)`);
+}
+function fetchWeather(st){
+  if(!S.integ.weather) return st.wx;
+  // mock 기상 API: 시드값에 미세변동(결정적 의사난수)
+  const seed=(st.id.charCodeAt(1)*7)%5;
+  return {tmax:st.wx.tmax, wind:st.wx.wind, rain:st.wx.rain};
+}
+function weatherAlert(wx){
+  const a=[];
+  if(wx.tmax>=33) a.push({lvl:wx.tmax>=35?"danger":"warn", k:"폭염", msg:`최고기온 ${wx.tmax}℃ — ${wx.tmax>=35?"경보":"주의보"}. 옥외작업 휴게(매시 10~15분)·시원한 물·그늘 의무.`});
+  if(wx.wind>=10) a.push({lvl:wx.wind>=14?"danger":"warn", k:"강풍", msg:`순간풍속 ${wx.wind}㎧ — 타워크레인·양중작업·고소 비계 작업 중지 검토.`});
+  if(wx.rain>=10) a.push({lvl:wx.rain>=30?"danger":"warn", k:"호우", msg:`강수 ${wx.rain}㎜ — 굴착 사면 붕괴·감전 위험. 흙막이·배수 점검.`});
+  return a;
+}
+
+/* 결재 라인 */
+function newApproval(kind, title, refId){
+  const st=site();
+  const line=APPR_LINE.map((l,i)=>({role:l.role, who:"<지정>", state:i===0?"cur":"wait"}));
+  const a={id:nid("appr"), kind, title, refId, line, status:"진행", date:today()};
+  st.approvals.unshift(a);
+  if(S.integ.eapproval) logEvent("EAPPROVAL","전자결재 상신",`[${esc(title)}] ${kind} 결재선 상신 → 1단계 안전관리자 대기`,"ok");
+  save(); refreshBadges(); return a;
+}
+
+/* ═══════════════ 라우팅 ═══════════════ */
+const TITLES={hq:"본사 통합 대시보드",riskindex:"중대재해 위험지수",dashboard:"현장 안전현황",weather:"기상 위험경보",risk:"위험성평가",tbm:"TBM 작업전점검",incident:"아차사고 신고",edu:"안전교육 이수 관리",docs:"법정 안전서류",approval:"전자결재함",notify:"알림톡·외부 연동 로그",settings:"현장·연동 설정"};
+let curView="hq";
+function go(v){
+  if(!can(v)){ toast("현재 역할("+role().nm+")은 이 메뉴 권한이 없습니다"); v=role().views[0]; }
+  curView=v;
+  document.querySelectorAll(".nav-btn,[data-view]").forEach(b=>b.classList.toggle("active", b.dataset.view===v));
+  $("#topTitle").textContent=TITLES[v]||"";
+  $("#content").innerHTML=`<div class="view active">${VIEWS[v]()}</div>`;
+  if(AFTER[v]) AFTER[v]();
+  closeDrawer(); window.scrollTo(0,0);
+}
+function openDrawer(){document.body.classList.add("drawer-open");}
+function closeDrawer(){document.body.classList.remove("drawer-open");}
+function setSite(id){ S.curSite=id; save(); refreshBadges(); go(curView); toast("현장 전환: "+site().name); }
+function setRole(r){
+  S.role=r; save();
+  // 권한 갱신 후 네비 잠금 표시
+  applyRoleNav();
+  refreshBadges();
+  if(!can(curView)) curView=role().views[0];
+  go(curView);
+  toast("역할 전환: "+role().nm);
+}
+function applyRoleNav(){
+  document.querySelectorAll(".sidebar .nav-btn[data-view]").forEach(b=>{
+    const v=b.dataset.view; b.classList.toggle("lock", !can(v));
+  });
+  $("#roleDesc").textContent=role().desc;
+  $("#rolePill").textContent=role().nm.split(" / ")[0].split(" (")[0];
+}
+function refreshBadges(){
+  const pend=S.sites.reduce((a,st)=>a+st.approvals.filter(x=>x.status==="진행").length,0);
+  const unread=S.notifyLog.filter(l=>l.site===site().id).length;
+  ["#apprBadge"].forEach(sel=>{const e=$(sel);const p=site().approvals.filter(a=>a.status==="진행").length;e.textContent=p;e.style.display=p?"":"none";});
+  const bd=$("#bellDot"); bd.textContent=unread; bd.style.display=unread?"":"none";
+  $("#sitePill").textContent="현장: "+site().name;
+}
+
+/* ═══════════════ 뷰: 본사 통합 대시보드 ═══════════════ */
+const VIEWS={};
+VIEWS.hq = ()=>{
+  const rows=S.sites.map(st=>({st, c:siteCSI(st)}));
+  const avg=Math.round(rows.reduce((a,r)=>a+r.c.csi,0)/rows.length);
+  const worst=rows.slice().sort((a,b)=>b.c.csi-a.c.csi)[0];
+  const totWorkers=S.sites.reduce((a,st)=>a+st.workers.length,0);
+  const totOverdue=S.sites.reduce((a,st)=>a+st.edu.filter(e=>e.legal&&!e.done).length,0);
+  const totOpen=S.sites.reduce((a,st)=>a+st.incidents.filter(i=>i.status!=="조치완료").length,0);
+  return `
+  <h2 class="page-h">본사 통합 대시보드</h2>
+  <p class="page-sub">${esc(S.company)} · 전 현장 ${S.sites.length}곳의 안전 상태를 본사(HSE팀·경영책임자) 관점으로 통합합니다. 중대재해처벌법 §4 경영책임자 의무 이행을 현장 단위로 입증합니다.</p>
+  <div class="grid kpis">
+    <div class="card kpi info"><div class="lbl">◎ 본사 평균 위험지수</div><div class="val">${avg}<small> /100</small></div><div class="sub">전 현장 가중 위험지수 평균</div></div>
+    <div class="card kpi ${worst.c.cls==='danger'?'alert':''}"><div class="lbl">▲ 최고위험 현장</div><div class="val" style="font-size:18px">${esc(worst.st.name.split(" ")[0])}</div><div class="sub">위험지수 ${worst.c.csi} · ${worst.c.band}</div></div>
+    <div class="card kpi ${totOverdue?'alert':'good'}"><div class="lbl">⚠ 법정교육 미이수(전사)</div><div class="val">${totOverdue}<small> 명</small></div><div class="sub">근로자 ${totWorkers}명 중</div></div>
+    <div class="card kpi ${totOpen?'alert':'good'}"><div class="lbl">⚑ 미결 안전조치(전사)</div><div class="val">${totOpen}<small> 건</small></div><div class="sub">아차사고 조치 대기</div></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <div class="sec-h">현장별 위험지수 비교 <span class="chip muted">${S.sites.length} 현장</span><button class="more" onclick="go('riskindex')">위험지수 상세 ›</button></div>
+    <div class="bars" style="height:150px">
+      ${rows.map(r=>`<div class="b ${r.c.cls==='danger'?'hot':''}" style="height:${Math.max(8,r.c.csi)}%"><span>${r.c.csi}</span><small>${esc(r.st.name.split(" ")[0])}</small></div>`).join("")}
+    </div>
+    <div style="height:18px"></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <div class="sec-h">전 현장 안전 현황</div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>현장</th><th class="c">근로자</th><th class="c">위험지수</th><th class="c">고위험요인</th><th class="c">미이수</th><th class="c">미결조치</th></tr></thead>
+    <tbody>${rows.map(r=>{const st=r.st;const hi=st.seedHi+st.risks.reduce((a,x)=>a+x.items.filter(i=>riskGrade(i.p,i.s).v>=15).length,0);const od=st.edu.filter(e=>e.legal&&!e.done).length;const op=st.incidents.filter(i=>i.status!=="조치완료").length;
+      return `<tr><td><b style="cursor:pointer" onclick="setSite('${st.id}');go('dashboard')">${esc(st.name)}</b><div class="meta">${esc(st.addr)}</div></td>
+      <td class="c">${st.workers.length}</td><td class="c"><span class="risk-cell chip ${r.c.cls}">${r.c.csi} ${r.c.band}</span></td>
+      <td class="c">${hi}</td><td class="c">${od?`<span class="chip danger">${od}</span>`:'<span class="chip ok">0</span>'}</td><td class="c">${op?`<span class="chip warn">${op}</span>`:'<span class="chip ok">0</span>'}</td></tr>`;}).join("")}</tbody></table></div>
+  </div>`;
+};
+
+/* ═══════════════ 뷰: 중대재해 위험지수(알고리즘 상세) ═══════════════ */
+VIEWS.riskindex = ()=>{
+  const st=site(); const c=siteCSI(st);
+  const tr=recentTrend(st); const fc=linForecast(tr);
+  const full=[...tr,...fc.next]; const mx=Math.max(...full,1);
+  const dys=["월","화","수","목","금","토","오늘","내일","D+2"];
+  const trend = fc.slope>0.15?"악화":fc.slope<-0.15?"개선":"보합";
+  return `
+  <h2 class="page-h">중대재해 위험지수 — ${esc(st.name)}</h2>
+  <p class="page-sub">6개 안전요인(교육·고위험·아차사고·TBM·기상·서류)을 가중 결합해 0~100 위험지수(CSI)를 산정하고, 최근 추세를 선형회귀로 예측합니다. <span class="chip muted">자체 가중모델 [추정]</span></p>
+  <div class="grid two-col">
+    <div class="card">
+      <div class="sec-h">현재 위험지수</div>
+      <div class="gauge"><div class="ring" style="--p:${c.csi};--gc:${c.cls==='danger'?'#bd2d33':c.cls==='warn'?'#9a6400':'#157a4a'}"><i>${c.csi}</i></div>
+        <div><div class="chip ${c.cls}" style="font-size:13px">${c.band}</div>
+        <div class="meta" style="margin-top:8px;max-width:230px">${c.csi>=60?"즉시 작업중지·시정조치 권고. 경영책임자 보고 대상.":c.csi>=35?"중점 관리 필요. 미이수·고위험 요인 우선 해소.":"관리 양호. 현 수준 유지."}</div></div></div>
+    </div>
+    <div class="card">
+      <div class="sec-h">7일 추세 + 2시점 예측 <span class="chip ${trend==='악화'?'danger':trend==='개선'?'ok':'muted'}">${trend} (기울기 ${fc.slope})</span></div>
+      <div class="bars">${full.map((v,i)=>`<div class="b ${i<7?(i===6?'hot':''):'fc'}" style="height:${Math.max(8,v/mx*100)}%"><span>${v}</span><small>${dys[i]}</small></div>`).join("")}</div>
+      <div style="height:20px"></div>
+      <div class="meta">실선=실측 아차사고, 빗금=선형회귀 예측. 예측 D+1 ${fc.next[0]}건·D+2 ${fc.next[1]}건.</div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <div class="sec-h">위험지수 요인 기여도 분해</div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>안전요인</th><th>현황</th><th class="c">가중치</th><th class="c">정규화값</th><th class="c">기여점수</th><th>기여도</th></tr></thead>
+    <tbody>${c.factors.map(f=>{const contrib=Math.round(f.v*f.w*100);return `<tr><td><b>${f.k}</b></td><td>${esc(f.raw)}</td><td class="c">${Math.round(f.w*100)}%</td><td class="c">${f.v.toFixed(2)}</td><td class="c"><b>${contrib}</b></td>
+      <td><div class="pbar ${f.v>=0.6?'danger':f.v>=0.3?'warn':''}"><i style="width:${Math.round(f.v*100)}%"></i></div></td></tr>`;}).join("")}
+      <tr><td colspan="4" style="text-align:right"><b>합성 위험지수 CSI</b></td><td class="c"><b>${c.csi}</b></td><td><span class="chip ${c.cls}">${c.band}</span></td></tr></tbody></table></div>
+    <div class="btn-row"><button class="btn" onclick="exportCsiCsv()">위험지수 CSV 내보내기</button>
+      ${can('notify')&&!readonly()?`<button class="btn pri" onclick="alertHighRisk()">고위험 현장 알림톡 발송</button>`:""}</div>
+  </div>`;
+};
+function alertHighRisk(){
+  if(!guardWrite()) return;
+  const st=site(); const c=siteCSI(st);
+  sendKakao(st.workers.length+2, "현장 위험지수 경보", `${st.name} 위험지수 ${c.csi}(${c.band}). 관리감독자 점검 요청.`);
+  go("riskindex");
+}
+function exportCsiCsv(){
+  let csv="현장,위험지수,등급,법정미이수,고위험요인,미결조치\n";
+  S.sites.forEach(st=>{const c=siteCSI(st);const hi=st.seedHi+st.risks.reduce((a,x)=>a+x.items.filter(i=>riskGrade(i.p,i.s).v>=15).length,0);const od=st.edu.filter(e=>e.legal&&!e.done).length;const op=st.incidents.filter(i=>i.status!=="조치완료").length;
+    csv+=`${st.name},${c.csi},${c.band},${od},${hi},${op}\n`;});
+  downloadFile(csv,"전현장_위험지수.csv","text/csv");
+  logEvent("CSV","위험지수 내보내기",`전 현장 ${S.sites.length}곳 위험지수 CSV 외부 출력`,"ok");
+  toast("위험지수 CSV 내보내기 완료");
+}
+
+/* ═══════════════ 뷰: 현장 안전현황 ═══════════════ */
+VIEWS.dashboard = ()=>{
+  const st=site();
+  const eduTot=st.edu.length, eduDone=st.edu.filter(e=>e.done).length, eduRate=eduTot?Math.round(eduDone/eduTot*100):0;
+  const overdue=st.edu.filter(e=>e.legal&&!e.done).length;
+  const hi=st.seedHi+st.risks.reduce((a,r)=>a+r.items.filter(i=>riskGrade(i.p,i.s).v>=15).length,0);
+  const tbmToday=st.tbms.filter(t=>t.date===today()).length;
+  const openInc=st.incidents.filter(i=>i.status!=="조치완료").length;
+  const tr=recentTrend(st); const mx=Math.max(...tr,1); const days=["월","화","수","목","금","토","오늘"];
+  const c=siteCSI(st); const wa=weatherAlert(st.wx);
+  return `
+  <h2 class="page-h">현장 안전현황 — ${esc(st.name)}</h2>
+  <p class="page-sub">${esc(st.addr)} · 현재 역할: <b>${esc(role().nm)}</b>${readonly()?' <span class="chip info">열람전용</span>':''} · 의무 이행 현황을 입증 가능한 형태로 집계합니다.</p>
+  ${wa.length?`<div class="wx ${wa[0].lvl}" style="margin-bottom:14px"><div class="ico">${wa[0].lvl==='danger'?'⛔':'⚠'}</div><div><b>${wa[0].k} ${wa[0].lvl==='danger'?'경보':'주의보'}</b><div class="d">${esc(wa[0].msg)}</div></div></div>`:""}
+  <div class="grid kpis">
+    <div class="card kpi ${overdue?'alert':''}"><div class="lbl">⚠ 법정교육 미이수</div><div class="val">${overdue}<small> 명</small></div></div>
+    <div class="card kpi"><div class="lbl">✎ 오늘 TBM 기록</div><div class="val">${tbmToday}<small> 건</small></div></div>
+    <div class="card kpi ${hi?'alert':''}"><div class="lbl">▦ 고위험(상) 요인</div><div class="val">${hi}<small> 건</small></div></div>
+    <div class="card kpi ${c.cls==='ok'?'good':c.cls==='danger'?'alert':'info'}"><div class="lbl">◎ 현장 위험지수</div><div class="val">${c.csi}<small> ${c.band}</small></div></div>
+  </div>
+  <div class="grid two-col" style="margin-top:14px">
+    <div class="card">
+      <div class="sec-h">최근 7일 아차사고 추세 ${can('incident')&&!readonly()?`<button class="more" onclick="go('incident')">신고 ›</button>`:""}</div>
+      <div class="bars">${tr.map((v,i)=>`<div class="b ${i===6?'hot':''}" style="height:${Math.max(6,v/mx*100)}%"><span>${v}</span><small>${days[i]}</small></div>`).join("")}</div>
+      <div style="height:18px"></div>
+    </div>
+    <div class="card">
+      <div class="sec-h">의무 이행 체크</div>
+      ${[["위험성평가 실시",st.risks.length>0],["당일 TBM 기록",tbmToday>0],["법정 안전교육 100% 이수",overdue===0],["안전서류 결재 진행",st.approvals.length>0]].map(([t,ok])=>`<div class="row"><span class="chip ${ok?'ok':'warn'}">${ok?'완료':'필요'}</span><div class="nm">${t}</div></div>`).join("")}
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <div class="sec-h">미결 안전 조치 <span class="chip muted">${openInc} 건</span></div>
+    ${st.incidents.filter(i=>i.status!=="조치완료").slice(0,4).map(i=>`<div class="row"><div class="av">⚠</div><div><div class="nm">${esc(i.where)} — ${esc(i.type)}</div><div class="meta">${i.date} · 신고 ${esc(i.reporter)}</div></div>
+      <div class="rt"><span class="chip ${i.severity==='상'?'danger':'warn'}">위험 ${i.severity}</span></div></div>`).join("")
+      || `<div class="meta" style="padding:14px 4px">미결 아차사고가 없습니다.</div>`}
+  </div>`;
+};
+
+/* ═══════════════ 뷰: 기상 위험경보(외부 연동) ═══════════════ */
+VIEWS.weather = ()=>{
+  const st=site(); const wx=fetchWeather(st); const al=weatherAlert(wx);
+  return `<h2 class="page-h">기상 위험경보 — ${esc(st.name)}</h2>
+  <p class="page-sub">기상청 API(mock) 연동. 폭염·강풍·호우 임계 초과 시 작업중지·휴게 가이드를 자동 발령하고 알림톡으로 통지합니다.</p>
+  <div class="grid three-col">
+    <div class="card kpi ${wx.tmax>=33?'alert':''}"><div class="lbl">☼ 최고기온</div><div class="val">${wx.tmax}<small> ℃</small></div><div class="sub">${wx.tmax>=35?'폭염경보':wx.tmax>=33?'폭염주의보':'정상'}</div></div>
+    <div class="card kpi ${wx.wind>=10?'alert':''}"><div class="lbl">💨 순간풍속</div><div class="val">${wx.wind}<small> ㎧</small></div><div class="sub">${wx.wind>=14?'양중중지 검토':wx.wind>=10?'주의':'정상'}</div></div>
+    <div class="card kpi ${wx.rain>=10?'alert':''}"><div class="lbl">☔ 강수량</div><div class="val">${wx.rain}<small> ㎜</small></div><div class="sub">${wx.rain>=30?'호우경보':wx.rain>=10?'호우주의보':'정상'}</div></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <div class="sec-h">발령 경보 <span class="chip ${al.length?'danger':'ok'}">${al.length}건</span></div>
+    ${al.length? al.map(a=>`<div class="wx ${a.lvl}" style="margin-bottom:10px"><div class="ico">${a.lvl==='danger'?'⛔':'⚠'}</div><div><b>${a.k} ${a.lvl==='danger'?'경보':'주의보'}</b><div class="d">${esc(a.msg)}</div></div></div>`).join("")
+      : `<div class="meta" style="padding:8px 4px">현재 발령된 기상 위험경보가 없습니다.</div>`}
+    ${al.length&&can('notify')&&!readonly()?`<div class="btn-row"><button class="btn pri" onclick="sendWeatherAlert()">전 작업자에게 경보 알림톡 발송</button></div>`:""}
+  </div>
+  <div class="card" style="margin-top:14px"><div class="sec-h">전 현장 기상 비교</div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>현장</th><th class="c">최고기온</th><th class="c">풍속</th><th class="c">강수</th><th class="c">경보</th></tr></thead>
+    <tbody>${S.sites.map(s=>{const a=weatherAlert(s.wx);return `<tr><td>${esc(s.name)}</td><td class="c">${s.wx.tmax}℃</td><td class="c">${s.wx.wind}㎧</td><td class="c">${s.wx.rain}㎜</td><td class="c">${a.length?`<span class="chip danger">${a.length}</span>`:'<span class="chip ok">0</span>'}</td></tr>`;}).join("")}</tbody></table></div>
+  </div>`;
+};
+function sendWeatherAlert(){
+  if(!guardWrite()) return;
+  const st=site(); const al=weatherAlert(st.wx);
+  if(!al.length) return toast("발령된 경보가 없습니다");
+  sendKakao(st.workers.length, "기상 위험경보", al.map(a=>a.k).join("·")+" — 작업중지·휴게 권고");
+  go("weather");
+}
+
+/* ═══════════════ 뷰: 위험성평가 ═══════════════ */
+let RW=null;
+VIEWS.risk = ()=>{
+  const st=site();
+  if(RW) return riskWizard();
+  return `<h2 class="page-h">위험성평가 — ${esc(st.name)}</h2>
+  <p class="page-sub">공정별 위험요인을 빈도·강도로 평가하고 감소대책과 함께 기록합니다. (산업안전보건법 §36)</p>
+  ${readonly()?'':'<button class="btn pri" onclick="startRisk()">+ 새 위험성평가 작성</button>'}
+  <div style="height:16px"></div>
+  ${st.risks.length? st.risks.map(r=>{const hi=r.items.filter(i=>riskGrade(i.p,i.s).v>=15).length;
+    return `<div class="card" style="margin-bottom:12px"><div class="sec-h">${esc(r.proc)} 위험성평가 <span class="chip muted">${r.date}</span>${hi?`<span class="chip danger">고위험 ${hi}</span>`:""}<button class="more" onclick="genRiskDoc(${r.id})">PDF</button></div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>위험요인</th><th class="c">빈도</th><th class="c">강도</th><th class="c">위험성</th><th>감소대책</th></tr></thead>
+      <tbody>${r.items.map(i=>{const g=riskGrade(i.p,i.s);return `<tr><td>${esc(i.haz)}</td><td class="c">${i.p}</td><td class="c">${i.s}</td><td class="c"><span class="risk-cell chip ${g.cls}">${g.v} ${g.lvl}</span></td><td>${esc(i.act)}</td></tr>`;}).join("")}</tbody></table></div></div>`;
+  }).join("") : `<div class="card"><div class="meta">아직 작성된 위험성평가가 없습니다.</div></div>`}`;
+};
+function startRisk(){ if(!guardWrite())return; RW={step:0, proc:STD_RISK[0].proc, items:STD_RISK.filter(r=>r.proc===STD_RISK[0].proc).map(r=>({haz:r.haz,p:r.base[0],s:r.base[1],act:""}))}; go("risk"); }
+function riskWizard(){
+  const steps=["공정 선택","위험요인 평가","감소대책","검토·발행"]; const procs=[...new Set(STD_RISK.map(r=>r.proc))]; let body="";
+  if(RW.step===0){
+    body=`<div class="field"><label>평가 대상 공정</label><select onchange="rwProc(this.value)">${procs.map(p=>`<option ${p===RW.proc?'selected':''}>${p}</option>`).join("")}</select></div>
+    <div class="card"><div class="meta">선택한 공정의 표준 위험요인이 자동 로드됩니다.</div>${RW.items.map(i=>`<div class="row"><div class="av">▦</div><div class="nm">${esc(i.haz)}</div></div>`).join("")}</div>`;
+  } else if(RW.step===1){
+    body=`<p class="page-sub">빈도(1~5)×강도(1~5)로 위험성을 산정합니다. 15↑ 상 · 8↑ 중 · 그 외 하.</p>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>위험요인</th><th class="c">빈도</th><th class="c">강도</th><th class="c">위험성</th></tr></thead><tbody>
+    ${RW.items.map((i,idx)=>{const g=riskGrade(i.p,i.s);return `<tr><td>${esc(i.haz)}</td>
+      <td class="c"><select onchange="rwSet(${idx},'p',this.value)">${[1,2,3,4,5].map(n=>`<option ${n===i.p?'selected':''}>${n}</option>`).join("")}</select></td>
+      <td class="c"><select onchange="rwSet(${idx},'s',this.value)">${[1,2,3,4,5].map(n=>`<option ${n===i.s?'selected':''}>${n}</option>`).join("")}</select></td>
+      <td class="c"><span class="risk-cell chip ${g.cls}" id="rg${idx}">${g.v} ${g.lvl}</span></td></tr>`;}).join("")}</tbody></table></div>`;
+  } else if(RW.step===2){
+    body=RW.items.map((i,idx)=>`<div class="field"><label>${esc(i.haz)} — 위험성 감소대책</label>
+      <textarea onchange="rwSet(${idx},'act',this.value)" placeholder="예: 안전난간·개구부 덮개 설치, 안전대 부착설비 사용">${esc(i.act)}</textarea></div>`).join("");
+  } else {
+    body=`<div class="card"><div class="sec-h">${esc(RW.proc)} 위험성평가 — 검토</div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>위험요인</th><th class="c">위험성</th><th>감소대책</th></tr></thead><tbody>
+    ${RW.items.map(i=>{const g=riskGrade(i.p,i.s);return `<tr><td>${esc(i.haz)}</td><td class="c"><span class="risk-cell chip ${g.cls}">${g.v} ${g.lvl}</span></td><td>${esc(i.act)||'<span style="color:#bd2d33">미입력</span>'}</td></tr>`;}).join("")}</tbody></table></div></div>
+    <div class="card"><div class="meta">발행 시 ① 평가표 저장 ② 법정서류함 등록 ③ 전자결재(안전관리자→소장→경영책임자) 상신 ④ 고위험 발생 시 관리감독자 알림톡이 자동 발송됩니다.</div></div>`;
+  }
+  return `<h2 class="page-h">위험성평가 작성</h2>
+  <div class="steps">${steps.map((s,i)=>`<div class="step ${i<RW.step?'done':i===RW.step?'on':''}"><b>${i+1}</b>${s}</div>`).join("")}</div>${body}
+  <div class="btn-row">${RW.step>0?`<button class="btn" onclick="rwNav(-1)">← 이전</button>`:`<button class="btn" onclick="RW=null;go('risk')">취소</button>`}
+    ${RW.step<3?`<button class="btn pri" onclick="rwNav(1)">다음 →</button>`:`<button class="btn pri" onclick="rwFinish()">발행 + 결재상신</button>`}</div>`;
+}
+function rwProc(p){ RW.proc=p; RW.items=STD_RISK.filter(r=>r.proc===p).map(r=>({haz:r.haz,p:r.base[0],s:r.base[1],act:""})); go("risk"); }
+function rwSet(i,k,v){ RW.items[i][k]=(k==='act')?v:+v; if(k!=='act'){const g=riskGrade(RW.items[i].p,RW.items[i].s);const el=$("#rg"+i);if(el){el.textContent=g.v+" "+g.lvl;el.className="risk-cell chip "+g.cls;}} }
+function rwNav(d){ RW.step=Math.max(0,Math.min(3,RW.step+d)); go("risk"); }
+function rwFinish(){
+  const st=site();
+  const r={id:nid("risk"), proc:RW.proc, date:today(), items:RW.items.map(i=>({...i}))};
+  st.risks.unshift(r);
+  const d={id:nid("doc"), type:"위험성평가표", title:RW.proc+" 위험성평가표", date:today(), refKind:"risk", refId:r.id};
+  st.docs.unshift(d);
+  newApproval("위험성평가", d.title, r.id);
+  const hi=r.items.filter(i=>riskGrade(i.p,i.s).v>=15).length;
+  if(hi>0) sendKakao(3, "고위험 작업 통지", `${RW.proc} 고위험(상) ${hi}건 식별 — 관리감독자 현장 점검 요청`);
+  save(); RW=null; go("risk"); toast("위험성평가 발행 · 결재 상신 완료");
+}
+
+/* ═══════════════ 뷰: TBM ═══════════════ */
+let TW=null;
+VIEWS.tbm = ()=>{
+  const st=site();
+  if(TW) return tbmWizard();
+  return `<h2 class="page-h">TBM 작업전점검 — ${esc(st.name)}</h2>
+  <p class="page-sub">작업 시작 전 위험요인을 공유하고 참석자 전원이 서명합니다. 타임스탬프·서명이 함께 기록됩니다.</p>
+  ${readonly()?'':'<button class="btn pri" onclick="startTbm()">+ 오늘 TBM 시작</button>'}
+  <div style="height:16px"></div>
+  ${st.tbms.length? st.tbms.map(t=>`<div class="card" style="margin-bottom:12px"><div class="sec-h">${esc(t.proc)} TBM <span class="chip muted">${t.date} ${t.time}</span><span class="chip ok">서명 ${t.signs.length}명</span><button class="more" onclick="genTbmDoc(${t.id})">PDF</button></div>
+    <div class="meta" style="margin-bottom:8px">점검 ${t.checks.filter(c=>c).length}/${TBM_ITEMS.length} · 위험요인: ${esc(t.hazard)}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${t.signs.map(s=>`<div class="sign-thumb"><img src="${s.img}" alt="서명"><b style="font-size:12px">${esc(s.nm)}</b></div>`).join("")}</div></div>`).join("")
+    : `<div class="card"><div class="meta">금일 TBM 기록이 없습니다.</div></div>`}`;
+};
+function startTbm(){ if(!guardWrite())return; TW={step:0, proc:"철근·거푸집", checks:TBM_ITEMS.map(()=>false), hazard:"", signs:[]}; go("tbm"); }
+function tbmWizard(){
+  const steps=["점검항목","위험요인","참석 서명"]; let body="";
+  if(TW.step===0){
+    body=`<div class="field"><label>금일 작업 공정</label><input value="${esc(TW.proc)}" onchange="TW.proc=this.value"></div>
+    ${TBM_ITEMS.map((it,i)=>`<label class="check-item ${TW.checks[i]?'checked':''}" id="ci${i}"><input type="checkbox" ${TW.checks[i]?'checked':''} onchange="tbmCheck(${i},this.checked)"><div><div class="t">${it.t}</div><div class="d">${it.d}</div></div></label>`).join("")}`;
+  } else if(TW.step===1){
+    body=`<div class="field"><label>오늘의 핵심 위험요인 및 대책</label><textarea onchange="TW.hazard=this.value" placeholder="예: 3층 개구부 단부 추락 — 안전난간·덮개 확인, 안전대 체결 후 작업">${esc(TW.hazard)}</textarea></div>
+      <div class="card"><div class="meta">점검 진행률</div><div class="pbar" style="margin-top:8px"><i style="width:${TW.checks.filter(c=>c).length/TBM_ITEMS.length*100}%"></i></div></div>`;
+  } else {
+    body=`<p class="page-sub">참석자가 패드에 서명하면 명단에 추가됩니다 (캔버스 → 이미지 저장).</p>
+    <div class="field"><label>참석자 이름</label><input id="signName" placeholder="이름 입력 후 서명"></div>
+    <div class="sign-wrap"><canvas id="signpad"></canvas></div>
+    <div class="btn-row"><button class="btn sm" onclick="clearSign()">지우기</button><button class="btn pri sm" onclick="addSign()">＋ 서명 추가</button></div>
+    <div style="margin-top:14px">${TW.signs.map(s=>`<div class="sign-thumb"><img src="${s.img}"><b style="font-size:13px">${esc(s.nm)}</b><span class="chip ok" style="margin-left:auto">서명완료</span></div>`).join("")||'<div class="meta">아직 서명한 참석자가 없습니다.</div>'}</div>`;
+  }
+  return `<h2 class="page-h">TBM 작업전점검</h2>
+  <div class="steps">${steps.map((s,i)=>`<div class="step ${i<TW.step?'done':i===TW.step?'on':''}"><b>${i+1}</b>${s}</div>`).join("")}</div>${body}
+  <div class="btn-row">${TW.step>0?`<button class="btn" onclick="twNav(-1)">← 이전</button>`:`<button class="btn" onclick="TW=null;go('tbm')">취소</button>`}
+    ${TW.step<2?`<button class="btn pri" onclick="twNav(1)">다음 →</button>`:`<button class="btn pri" onclick="tbmFinish()">TBM 일지 저장</button>`}</div>`;
+}
+function tbmCheck(i,v){ TW.checks[i]=v; $("#ci"+i).classList.toggle("checked",v); }
+function twNav(d){ TW.step=Math.max(0,Math.min(2,TW.step+d)); go("tbm"); if(TW.step===2) initSign(); }
+let SIGN=null;
+function initSign(){
+  const c=$("#signpad"); if(!c) return;
+  const ratio=window.devicePixelRatio||1; c.width=c.offsetWidth*ratio; c.height=c.offsetHeight*ratio;
+  const x=c.getContext("2d"); x.scale(ratio,ratio); x.lineWidth=2.4; x.lineCap="round"; x.strokeStyle="#1b2330";
+  let drawing=false,empty=true;
+  const pos=e=>{const r=c.getBoundingClientRect();const t=e.touches?e.touches[0]:e;return [t.clientX-r.left,t.clientY-r.top];};
+  const start=e=>{drawing=true;empty=false;const[a,b]=pos(e);x.beginPath();x.moveTo(a,b);e.preventDefault();};
+  const move=e=>{if(!drawing)return;const[a,b]=pos(e);x.lineTo(a,b);x.stroke();e.preventDefault();};
+  const end=()=>drawing=false;
+  c.onmousedown=start;c.onmousemove=move;window.addEventListener("mouseup",end);
+  c.ontouchstart=start;c.ontouchmove=move;c.ontouchend=end;
+  SIGN={canvas:c,isEmpty:()=>empty,clear:()=>{x.clearRect(0,0,c.width,c.height);empty=true;}};
+}
+function clearSign(){ SIGN&&SIGN.clear(); }
+function addSign(){
+  const nm=$("#signName").value.trim();
+  if(!nm) return toast("참석자 이름을 입력하세요");
+  if(!SIGN||SIGN.isEmpty()) return toast("서명을 입력하세요");
+  TW.signs.push({nm, img:SIGN.canvas.toDataURL("image/png")});
+  $("#signName").value=""; toast(nm+" 서명 추가됨"); TW.step=2; go("tbm"); initSign();
+}
+function tbmFinish(){
+  if(TW.signs.length===0) return toast("참석자 서명을 1명 이상 추가하세요");
+  const st=site(); const n=new Date();
+  const t={id:nid("tbm"), proc:TW.proc, date:today(), time:n.toTimeString().slice(0,5), checks:[...TW.checks], hazard:TW.hazard, signs:TW.signs.map(s=>({...s}))};
+  st.tbms.unshift(t);
+  st.docs.unshift({id:nid("doc"), type:"TBM 일지", title:TW.proc+" TBM 일지", date:today(), refKind:"tbm", refId:t.id});
+  logEvent("EAPPROVAL","TBM 일지 등록",`${TW.proc} TBM ${t.signs.length}명 서명 완료 — 서류함 등록`,"ok");
+  save(); TW=null; go("tbm"); refreshBadges(); toast("TBM 일지 저장 완료 ("+t.signs.length+"명 서명)");
+}
+
+/* ═══════════════ 뷰: 아차사고 ═══════════════ */
+let IW=null;
+VIEWS.incident = ()=>{
+  const st=site();
+  if(IW) return incWizard();
+  return `<h2 class="page-h">아차사고 신고 — ${esc(st.name)}</h2>
+  <p class="page-sub">사고로 이어질 뻔한 상황을 즉시 신고합니다. 사진·위치·조치가 기록되어 재발방지에 활용됩니다.</p>
+  ${readonly()?'':'<button class="btn pri" onclick="startInc()">+ 아차사고 신고</button>'}
+  <div style="height:16px"></div>
+  ${st.incidents.length? st.incidents.map(i=>`<div class="card" style="margin-bottom:12px"><div class="sec-h">${esc(i.type)} <span class="chip ${i.severity==='상'?'danger':i.severity==='중'?'warn':'muted'}">위험 ${i.severity}</span><span class="chip ${i.status==='조치완료'?'ok':'warn'}">${i.status}</span>${(i.status!=='조치완료'&&!readonly())?`<button class="more" onclick="resolveInc(${i.id})">조치완료</button>`:''}</div>
+    <div class="meta">${i.date} · ${esc(i.where)} · 신고 ${esc(i.reporter)}</div>
+    <div style="margin:8px 0;font-size:13.5px">${esc(i.desc)}</div>
+    ${i.photos&&i.photos.length?`<div class="photo-grid">${i.photos.map(p=>`<img src="${p}">`).join("")}</div>`:""}</div>`).join("")
+    : `<div class="card"><div class="meta">접수된 아차사고가 없습니다.</div></div>`}`;
+};
+function startInc(){ if(!guardWrite())return; IW={step:0, type:"추락(떨어짐)", severity:"중", where:"", reporter:"", desc:"", photos:[]}; go("incident"); }
+function incWizard(){
+  const steps=["유형·위험도","현장 사진","상세·신고"]; let body="";
+  if(IW.step===0){
+    const types=["추락(떨어짐)","낙하물(맞음)","협착(끼임)","전도(넘어짐)","감전","화재·폭발","장비 충돌","기타"];
+    body=`<div class="field"><label>아차사고 유형</label><select onchange="IW.type=this.value">${types.map(t=>`<option ${t===IW.type?'selected':''}>${t}</option>`).join("")}</select></div>
+    <div class="field"><label>위험도</label><select onchange="IW.severity=this.value">${["상","중","하"].map(t=>`<option ${t===IW.severity?'selected':''}>${t}</option>`).join("")}</select></div>
+    <div class="field"><label>발생 위치</label><input value="${esc(IW.where)}" onchange="IW.where=this.value" placeholder="예: 3층 동측 개구부"></div>`;
+  } else if(IW.step===1){
+    body=`<label class="photo-drop" for="incPhoto">📷 현장 사진 촬영/첨부 (탭하여 선택)<input id="incPhoto" type="file" accept="image/*" multiple style="display:none" onchange="incPhotos(this.files)"></label>
+    <div class="photo-grid" id="incPhotoGrid">${IW.photos.map(p=>`<img src="${p}">`).join("")}</div>
+    ${IW.photos.length?`<div class="meta" style="margin-top:8px">${IW.photos.length}장 첨부됨</div>`:`<div class="meta" style="margin-top:8px">사진은 선택사항이지만 첨부 시 재발방지 검토에 활용됩니다.</div>`}`;
+  } else {
+    body=`<div class="field"><label>신고자</label><input value="${esc(IW.reporter)}" onchange="IW.reporter=this.value" placeholder="이름"></div>
+    <div class="field"><label>상황 상세</label><textarea onchange="IW.desc=this.value" placeholder="무슨 일이 있었는지, 어떻게 사고로 이어질 뻔했는지 기술">${esc(IW.desc)}</textarea></div>
+    <div class="card"><div class="meta">신고 시 ① 대장 등록 ② 추세·위험지수 반영 ③ 위험도 '상'이면 즉시 결재 상신 + 관리자 알림톡.</div></div>`;
+  }
+  return `<h2 class="page-h">아차사고 신고</h2>
+  <div class="steps">${steps.map((s,i)=>`<div class="step ${i<IW.step?'done':i===IW.step?'on':''}"><b>${i+1}</b>${s}</div>`).join("")}</div>${body}
+  <div class="btn-row">${IW.step>0?`<button class="btn" onclick="iwNav(-1)">← 이전</button>`:`<button class="btn" onclick="IW=null;go('incident')">취소</button>`}
+    ${IW.step<2?`<button class="btn pri" onclick="iwNav(1)">다음 →</button>`:`<button class="btn pri" onclick="incFinish()">아차사고 신고</button>`}</div>`;
+}
+function incPhotos(files){ [...files].forEach(f=>{const r=new FileReader();r.onload=e=>{IW.photos.push(e.target.result);$("#incPhotoGrid").innerHTML=IW.photos.map(p=>`<img src="${p}">`).join("");};r.readAsDataURL(f);}); }
+function iwNav(d){ IW.step=Math.max(0,Math.min(2,IW.step+d)); go("incident"); }
+function incFinish(){
+  if(!IW.where){ IW.step=0; go("incident"); return toast("발생 위치를 입력하세요"); }
+  if(!IW.reporter) return toast("신고자를 입력하세요");
+  const st=site();
+  const i={id:nid("inc"), type:IW.type, severity:IW.severity, where:IW.where, reporter:IW.reporter, desc:IW.desc, photos:[...IW.photos], date:today(), status:"접수"};
+  st.incidents.unshift(i);
+  if(IW.severity==="상"){ newApproval("아차사고 긴급조치", IW.type+" — "+IW.where, i.id); sendKakao(2, "긴급 아차사고", `${IW.type} @${IW.where} 위험도 '상' — 즉시 조치 요망`); }
+  save(); IW=null; go("incident"); refreshBadges(); toast("아차사고 신고 접수 완료");
+}
+function resolveInc(id){ const i=site().incidents.find(x=>x.id===id); if(i){i.status="조치완료";save();go("incident");toast("조치완료 처리");} }
+
+/* ═══════════════ 뷰: 안전교육 ═══════════════ */
+VIEWS.edu = ()=>{
+  const st=site(); const byW={}; st.workers.forEach(w=>byW[w.id]={w,courses:st.edu.filter(e=>e.wid===w.id)});
+  const overdue=st.edu.filter(e=>e.legal&&!e.done).length;
+  return `<h2 class="page-h">안전교육 이수 관리 — ${esc(st.name)}</h2>
+  <p class="page-sub">근로자·교육별 이수 현황을 추적합니다. 법정교육 미이수자는 자동 알림 처리되며 미이수자에게 알림톡을 발송할 수 있습니다.</p>
+  <div class="grid kpis" style="grid-template-columns:repeat(3,1fr)">
+    <div class="card kpi"><div class="lbl">대상 근로자</div><div class="val">${st.workers.length}<small> 명</small></div></div>
+    <div class="card kpi ${overdue?'alert':'good'}"><div class="lbl">법정교육 미이수</div><div class="val">${overdue}<small> 건</small></div></div>
+    <div class="card kpi good"><div class="lbl">전체 이수율</div><div class="val">${Math.round(st.edu.filter(e=>e.done).length/st.edu.length*100)}<small> %</small></div></div>
+  </div>
+  <div class="card" style="margin-top:14px"><div class="sec-h">근로자별 이수 현황</div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>근로자</th><th>직종</th>${EDU_COURSES.map(c=>`<th class="c">${c.nm.split("(")[0]}</th>`).join("")}</tr></thead>
+    <tbody>${st.workers.map(w=>{const cs=byW[w.id].courses;return `<tr><td><b>${esc(w.nm)}</b></td><td>${esc(w.trade)}</td>
+      ${EDU_COURSES.map(c=>{const e=cs.find(x=>x.course===c.nm);const done=e&&e.done;return `<td class="c"><span class="chip ${done?'ok':(c.legal?'danger':'muted')}" style="cursor:${readonly()?'default':'pointer'}" ${readonly()?'':`onclick="toggleEdu('${w.id}','${c.nm.replace(/'/g,"")}')"`}>${done?'이수':(c.legal?'미이수':'—')}</span></td>`;}).join("")}</tr>`;}).join("")}</tbody></table></div>
+    <div class="btn-row"><button class="btn" onclick="exportEduCsv()">CSV 내보내기</button><label class="btn" style="cursor:pointer">CSV 가져오기<input type="file" accept=".csv" style="display:none" onchange="importEduCsv(this.files[0])"></label>
+      <button class="btn" onclick="genEduDoc()">교육일지 PDF</button>${overdue&&!readonly()?`<button class="btn pri" onclick="nudgeEdu()">미이수자 알림톡</button>`:""}</div>
+  </div>`;
+};
+function toggleEdu(wid,course){ const st=site(); const e=st.edu.find(x=>x.wid===wid&&x.course.replace(/'/g,"")===course); if(e){e.done=!e.done;e.date=e.done?today():"";save();go("edu");refreshBadges();toast(e.done?"이수 처리":"미이수 처리");} }
+function nudgeEdu(){ if(!guardWrite())return; const st=site(); const n=st.edu.filter(e=>e.legal&&!e.done).length; sendKakao(n, "법정교육 미이수 안내", `법정 안전보건교육 미이수 ${n}건 — 기한 내 이수 요청`); go("edu"); }
+function exportEduCsv(){
+  const st=site(); let csv="근로자,직종,교육과정,법정,이수여부,이수일\n";
+  st.edu.forEach(e=>{const w=st.workers.find(x=>x.id===e.wid);csv+=`${w?w.nm:''},${w?w.trade:''},${e.course},${e.legal?'법정':'일반'},${e.done?'이수':'미이수'},${e.date}\n`;});
+  downloadFile(csv,"안전교육이수현황.csv","text/csv");
+  logEvent("CSV","교육현황 내보내기",`${st.name} 교육 이수현황 ${st.edu.length}행 CSV 출력`,"ok");
+  toast("CSV 내보내기 완료");
+}
+function importEduCsv(file){
+  if(!file){ return; } if(!guardWrite())return;
+  const r=new FileReader();
+  r.onload=e=>{
+    const st=site(); const lines=String(e.target.result).split(/\r?\n/).slice(1).filter(x=>x.trim());
+    let upd=0;
+    lines.forEach(ln=>{const c=ln.split(",");if(c.length<5)return;const nm=c[0].trim(),course=c[2].trim(),done=c[4].trim()==="이수";
+      const w=st.workers.find(x=>x.nm===nm); if(!w)return;
+      const ed=st.edu.find(x=>x.wid===w.id&&x.course===course); if(ed){ed.done=done;ed.date=done?(c[5]||today()).trim():"";upd++;}});
+    save(); logEvent("CSV","교육현황 가져오기",`외부 CSV ${lines.length}행 파싱 → ${upd}건 갱신`,"ok"); go("edu"); refreshBadges(); toast(`CSV 가져오기: ${upd}건 갱신`);
+  };
+  r.readAsText(file,"utf-8");
+}
+function downloadFile(content,name,type){ const b=new Blob(["﻿"+content],{type});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=name;a.click();URL.revokeObjectURL(u); }
+
+/* ═══════════════ 뷰: 법정 안전서류 ═══════════════ */
+VIEWS.docs = ()=>{
+  const st=site();
+  return `<h2 class="page-h">법정 안전서류 — ${esc(st.name)}</h2>
+  <p class="page-sub">위험성평가·TBM·교육 기록에서 법정 안전서류를 자동 생성하고 PDF로 출력·보관합니다.</p>
+  <div class="grid kpis" style="grid-template-columns:repeat(4,1fr)">
+    ${[["위험성평가표",st.risks.length],["TBM 일지",st.tbms.length],["안전교육일지",1],["아차사고 대장",st.incidents.length]].map(([t,n])=>`<div class="card kpi"><div class="lbl">${t}</div><div class="val">${n}<small> 건</small></div></div>`).join("")}
+  </div>
+  <div class="card" style="margin-top:14px"><div class="sec-h">서류함 <span class="chip muted">${st.docs.length} 건</span></div>
+    ${st.docs.length? st.docs.map(d=>`<div class="row"><div class="av">▤</div><div><div class="nm">${esc(d.title)}</div><div class="meta">${d.type} · ${d.date}</div></div>
+      <div class="rt"><button class="btn sm" onclick="genDocPdf(${d.id})">PDF 생성</button></div></div>`).join("")
+      : `<div class="meta" style="padding:12px 4px">위험성평가·TBM을 작성하면 서류가 자동 등록됩니다.</div>`}
+    <div class="btn-row"><button class="btn" onclick="genEduDoc()">안전교육일지 PDF</button><button class="btn" onclick="genIncDoc()">아차사고 대장 PDF</button></div>
+  </div>`;
+};
+
+/* ═══════════════ 뷰: 전자결재함(RBAC 결재) ═══════════════ */
+VIEWS.approval = ()=>{
+  const st=site();
+  return `<h2 class="page-h">전자결재함 — ${esc(st.name)}</h2>
+  <p class="page-sub">안전관리자 → 현장소장 → 경영책임자 순으로 결재합니다. <b>현재 역할(${esc(role().nm.split(" (")[0])})은 ${role().apprStep>=0?`${APPR_LINE[role().apprStep].role} 단계`:"결재 권한 없음(열람)"}.</b></p>
+  ${st.approvals.length? st.approvals.map(a=>{
+    const curIdx=a.line.findIndex(l=>l.state==="cur");
+    const myTurn = curIdx>=0 && role().apprStep===curIdx;
+    return `<div class="card" style="margin-bottom:12px"><div class="sec-h">${esc(a.title)} <span class="chip brand">${a.kind}</span><span class="chip ${a.status==='완결'?'ok':'warn'}">${a.status}</span><span class="chip muted">${a.date}</span></div>
+      <div class="appr-line">${a.line.map((l,i)=>`${i>0?'<span class="appr-arrow">→</span>':''}<div class="appr-node ${l.state==='done'?'done':l.state==='cur'?'cur':''}"><div class="dot">${l.state==='done'?'✓':i+1}</div>${l.role}<br><b>${esc(l.who)}</b></div>`).join("")}</div>
+      ${a.status==='진행'&&curIdx>=0 ? (myTurn ? `<div class="btn-row"><button class="btn pri sm" onclick="approve(${a.id})">${a.line[curIdx].role} 결재 승인</button></div>` : `<div class="meta">현재 ${esc(a.line[curIdx].role)} 결재 대기 — 역할 전환 시 승인 가능</div>`):""}
+    </div>`;
+  }).join("") : `<div class="card"><div class="meta">상신된 결재가 없습니다. 위험성평가를 발행하면 자동 상신됩니다.</div></div>`}`;
+};
+function approve(id){
+  const st=site(); const a=st.approvals.find(x=>x.id===id); if(!a) return;
+  const i=a.line.findIndex(l=>l.state==="cur"); if(i<0) return;
+  if(role().apprStep!==i) return toast("현재 역할은 이 단계 결재 권한이 없습니다");
+  a.line[i].state="done"; a.line[i].who=role().nm.split(" / ")[0].split(" (")[0];
+  if(i+1<a.line.length){ a.line[i+1].state="cur"; } else { a.status="완결"; }
+  if(S.integ.eapproval) logEvent("EAPPROVAL","결재 승인",`[${esc(a.title)}] ${APPR_LINE[i].role} 승인 → ${a.status==="완결"?"최종 완결":"다음 결재자 대기"}`,"ok");
+  save(); go("approval"); refreshBadges(); toast(a.status==="완결"?"결재 완결":"결재 승인 → 다음 결재자");
+}
+
+/* ═══════════════ 뷰: 알림톡·외부 연동 로그 ═══════════════ */
+VIEWS.notify = ()=>{
+  const logs=S.notifyLog.filter(l=>l.site===site().id);
+  const counts={KAKAO:0,WEATHER:0,CSV:0,EAPPROVAL:0}; S.notifyLog.forEach(l=>counts[l.channel]=(counts[l.channel]||0)+1);
+  return `<h2 class="page-h">알림톡·외부 연동 로그</h2>
+  <p class="page-sub">카카오 알림톡·기상 API·CSV 입출력·전자결재 등 외부 시스템 연동 이벤트가 시점·채널·상태와 함께 적재됩니다. (mock — 오프라인 시연용)</p>
+  <div class="grid kpis">
+    <div class="card kpi info"><div class="lbl">✉ 카카오 알림톡</div><div class="val">${counts.KAKAO||0}<small> 발송</small></div></div>
+    <div class="card kpi"><div class="lbl">☼ 기상 API</div><div class="val">${counts.WEATHER||0}<small> 조회</small></div></div>
+    <div class="card kpi"><div class="lbl">⇅ CSV 입출력</div><div class="val">${counts.CSV||0}<small> 건</small></div></div>
+    <div class="card kpi"><div class="lbl">✓ 전자결재</div><div class="val">${counts.EAPPROVAL||0}<small> 이벤트</small></div></div>
+  </div>
+  <div class="card" style="margin-top:14px"><div class="sec-h">현장 연동 이벤트 로그 <span class="chip muted">${logs.length}건</span>
+    ${can('notify')&&!readonly()?`<button class="more" onclick="testKakao()">테스트 알림톡 발송 ›</button>`:""}</div>
+    ${logs.length?`<div class="log">${logs.slice(0,40).map(l=>`<div><span class="t">${l.ts}</span> <span class="tag">[${l.channel}]</span> <span class="${l.lvl==='warn'?'wn':l.lvl==='er'?'er':'ok'}">${esc(l.type)}</span> ${esc(l.msg)}</div>`).join("")}</div>`
+      :`<div class="meta" style="padding:10px 4px">아직 연동 이벤트가 없습니다. 위험성평가 발행·기상경보·CSV 출력 시 자동 기록됩니다.</div>`}
+  </div>`;
+};
+function testKakao(){ if(!guardWrite())return; sendKakao(1, "연동 테스트", "세이프온 알림톡 연동 정상 (상태코드 2000)"); go("notify"); }
+
+/* ═══════════════ 뷰: 현장·연동 설정 ═══════════════ */
+VIEWS.settings = ()=>{
+  const st=site();
+  return `<h2 class="page-h">현장·연동 설정 — ${esc(st.name)}</h2>
+  <p class="page-sub">현장 기본정보·외부 연동 스위치·데이터를 관리합니다.</p>
+  <div class="card">
+    <div class="field"><label>현장명</label><input value="${esc(st.name)}" onchange="site().name=this.value;save();refreshBadges()"></div>
+    <div class="grid2"><div class="field"><label>시공사(원청)</label><input value="${esc(st.contractor)}" onchange="site().contractor=this.value;save()" placeholder="<TODO: 사용자 입력>"></div>
+      <div class="field"><label>소재지</label><input value="${esc(st.addr)}" onchange="site().addr=this.value;save()"></div></div>
+    <div class="card" style="background:var(--surface-2)"><div class="meta"><b>적용 법령:</b> 중대재해처벌법(상시근로자 5인 이상)·산업안전보건법. 위험성평가·교육·기록 의무 부과.</div></div>
+  </div>
+  <div class="card" style="margin-top:14px"><div class="sec-h">외부 시스템 연동 (mock)</div>
+    ${[["kakao","카카오 알림톡","위험·미이수·경보 통지"],["weather","기상청 API","폭염·강풍·호우 경보"],["sds","MSDS·물질 DB","화학물질 정보 조회"],["eapproval","전자결재 게이트웨이","결재 상신·승인 연계"]].map(([k,t,d])=>`<div class="row"><div class="av">${S.integ[k]?'✓':'·'}</div><div><div class="nm">${t}</div><div class="meta">${d}</div></div>
+      <div class="rt"><button class="btn sm ${S.integ[k]?'pri':''}" onclick="toggleInteg('${k}')">${S.integ[k]?'ON':'OFF'}</button></div></div>`).join("")}
+  </div>
+  <div class="card" style="margin-top:14px"><div class="btn-row">
+    <button class="btn" onclick="backupJson()">전체 백업 (JSON)</button>
+    <button class="btn" onclick="resetAll()">데이터 초기화</button></div></div>`;
+};
+function toggleInteg(k){ S.integ[k]=!S.integ[k]; save(); go("settings"); toast((({kakao:'알림톡',weather:'기상API',sds:'MSDS',eapproval:'전자결재'})[k])+" "+(S.integ[k]?"연동 ON":"연동 OFF")); }
+function backupJson(){ downloadFile(JSON.stringify(S,null,2),"safeon-v2-backup.json","application/json"); toast("백업 JSON 다운로드"); }
+function resetAll(){ if(confirm("모든 데이터를 초기화하시겠습니까?")){ localStorage.removeItem(LS_KEY); S=load(); initRoleSel(); go("hq"); refreshBadges(); toast("초기화 완료"); } }
+
+/* ═══════════════ PDF 생성 ═══════════════ */
+function pdfReady(){ return window.jspdf && window.jspdf.jsPDF; }
+function koCanvasPage(lines){
+  const W=794, pad=48; let H=120+lines.length*30+80;
+  const c=document.createElement("canvas"); const sc=2; c.width=W*sc; c.height=H*sc;
+  const x=c.getContext("2d"); x.scale(sc,sc); x.fillStyle="#fff"; x.fillRect(0,0,W,H); x.fillStyle="#1b2330";
+  x.font="bold 24px -apple-system,'Apple SD Gothic Neo',sans-serif";
+  let y=64; x.fillText(lines[0],pad,y); y+=14;
+  x.strokeStyle="#e2601a"; x.lineWidth=3; x.beginPath(); x.moveTo(pad,y); x.lineTo(W-pad,y); x.stroke(); y+=36;
+  for(let i=1;i<lines.length;i++){const ln=lines[i];
+    if(ln.startsWith("##")){x.font="bold 17px sans-serif";x.fillStyle="#b94c10";x.fillText(ln.slice(2).trim(),pad,y);y+=30;}
+    else if(ln.startsWith("--")){x.strokeStyle="#e2e7ec";x.lineWidth=1;x.beginPath();x.moveTo(pad,y-10);x.lineTo(W-pad,y-10);x.stroke();y+=6;}
+    else{x.font="14px sans-serif";x.fillStyle="#1b2027";x.fillText(ln,pad,y);y+=28;}}
+  x.font="12px sans-serif"; x.fillStyle="#828b97";
+  x.fillText("본 문서는 세이프온(SafeOn)에서 자동 생성된 법정 안전서류입니다. 생성일 "+today(),pad,H-32);
+  return {dataUrl:c.toDataURL("image/jpeg",0.92), W, H};
+}
+function makePdf(lines,fname){
+  if(!pdfReady()){ toast("PDF 라이브러리 미로딩 — 텍스트 폴백"); downloadFile(lines.join("\n"),fname.replace(".pdf",".txt"),"text/plain"); return; }
+  const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:"pt",format:"a4"});
+  const {dataUrl,W,H}=koCanvasPage(lines); const pw=doc.internal.pageSize.getWidth(); const ph=pw*(H/W);
+  doc.addImage(dataUrl,"JPEG",0,0,pw,ph); doc.save(fname); toast("PDF 생성 완료: "+fname);
+}
+function genDocPdf(id){ const d=site().docs.find(x=>x.id===id); if(!d)return; if(d.refKind==="risk")return genRiskDoc(d.refId); if(d.refKind==="tbm")return genTbmDoc(d.refId); }
+function genRiskDoc(rid){
+  const st=site(); const r=st.risks.find(x=>x.id===rid); if(!r) return toast("대상 없음");
+  const L=["위험성평가표 — "+st.name,"## 평가 개요","공정: "+r.proc+"    평가일: "+r.date,"평가방법: 빈도(1~5) × 강도(1~5)","--","## 위험요인 및 감소대책"];
+  r.items.forEach((i,n)=>{const g=riskGrade(i.p,i.s);L.push((n+1)+". "+i.haz+"  [빈도 "+i.p+" × 강도 "+i.s+" = "+g.v+" "+g.lvl+"]");L.push("   감소대책: "+(i.act||"-"));});
+  L.push("--","## 결재","안전관리자 (서명)        현장소장 (서명)        경영책임자 (서명)");
+  makePdf(L,"위험성평가표_"+r.proc+".pdf");
+}
+function genTbmDoc(tid){
+  const st=site(); const t=st.tbms.find(x=>x.id===tid); if(!t) return toast("대상 없음");
+  const L=["TBM(작업전점검) 일지 — "+st.name,"## 개요","공정: "+t.proc+"    일시: "+t.date+" "+t.time,"위험요인: "+(t.hazard||"-"),"--","## 점검항목"];
+  TBM_ITEMS.forEach((it,i)=>L.push((t.checks[i]?"[V] ":"[ ] ")+it.t));
+  L.push("--","## 참석자 서명 ("+t.signs.length+"명)",t.signs.map(s=>s.nm).join(", "));
+  makePdf(L,"TBM일지_"+t.date+".pdf");
+}
+function genEduDoc(){
+  const st=site(); const L=["안전교육 이수 일지 — "+st.name,"## 교육 이수 현황","작성일: "+today(),"--"];
+  st.workers.forEach(w=>{const cs=st.edu.filter(e=>e.wid===w.id&&e.done).map(e=>e.course.split("(")[0]);L.push(w.nm+" ("+w.trade+"): "+(cs.join(", ")||"이수 없음"));});
+  const od=st.edu.filter(e=>e.legal&&!e.done).length; L.push("--","## 미이수 (법정)",od+"건 — 재교육 대상");
+  makePdf(L,"안전교육일지.pdf");
+}
+function genIncDoc(){
+  const st=site(); const L=["아차사고 대장 — "+st.name,"## 신고 내역","작성일: "+today(),"--"];
+  if(!st.incidents.length) L.push("접수된 아차사고 없음");
+  st.incidents.forEach((i,n)=>{L.push((n+1)+". ["+i.date+"] "+i.type+" / 위험 "+i.severity+" / "+i.where);L.push("   "+(i.desc||"-")+"  ("+i.status+")");});
+  makePdf(L,"아차사고대장.pdf");
+}
+
+/* ═══════════════ 부팅 ═══════════════ */
+const AFTER={ tbm:()=>{ if(TW&&TW.step===2) initSign(); } };
+function initRoleSel(){
+  $("#roleSel").innerHTML=Object.entries(ROLES).map(([k,r])=>`<option value="${k}">${r.nm}</option>`).join("");
+  $("#siteSel").innerHTML=S.sites.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join("");
+  $("#roleSel").value=S.role||"hsm"; $("#siteSel").value=S.curSite;
+}
+window.addEventListener("DOMContentLoaded",()=>{
+  initRoleSel(); applyRoleNav(); refreshBadges();
+  go(can("hq")?"hq":role().views[0]);
+});
+window.__FEATURES=["멀티테넌트본사3현장","현장전환","RBAC5역할","역할별뷰잠금","열람전용권한","본사통합대시보드","현장별위험지수비교","전사KPI집계","중대재해위험지수CSI","6요인가중모델","요인기여도분해","선형회귀추세예측","위험지수CSV","현장안전현황","현장위험지수배지","기상위험경보뷰","폭염강풍호우임계","기상API연동mock","전현장기상비교","경보알림톡발송","위험성평가4단계","공정표준위험요인","빈도강도자동산정","감소대책입력","고위험알림톡","위험성평가PDF","TBM3단계","점검6종","캔버스서명","다중참석자","TBM일지PDF","아차사고3단계","사진실업로드","사진미리보기","위험도상결재상신","긴급알림톡","아차사고대장","교육이수매트릭스","교육토글","교육CSV내보내기","교육CSV가져오기","미이수자알림톡","교육일지PDF","법정서류자동등록","서류함PDF4종","전자결재3단계RBAC","단계별결재권한","결재연동로그","카카오알림톡mock","연동이벤트로그","연동스위치4종","현장설정","JSON백업","데이터초기화","반응형바텀탭드로어"];
+</script>
+</body>
+</html>
