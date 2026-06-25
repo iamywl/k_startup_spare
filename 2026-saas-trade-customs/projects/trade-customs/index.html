@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>트레이드릴레이 · 수출 통관·관세 자동화 SaaS (v1)</title>
+<!-- jsPDF (오프라인 폴백: 없으면 mock 안내) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    /* 무역/통관 도메인 — 신뢰의 인디고/블루, WCAG AA 톤 */
+    --brand:#2f5fd8; --brand-d:#1f3fa8; --brand-l:#e8eefb;
+    --ink:#15203a; --sec:#4a5872; --ter:#8893a8;
+    --bg:#f4f6fb; --surf:#ffffff; --surf2:#eef2f9; --line:#dfe5f0;
+    --ok:#1f9d57; --okbg:#e7f6ee; --warn:#c98a00; --warnbg:#fdf3da;
+    --bad:#d24b4b; --badbg:#fbeaea; --info:#2f6fd0; --infobg:#e8f0fb;
+    --r:14px; --r2:18px; --sb:248px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;max-width:100%;overflow-x:hidden}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Malgun Gothic",sans-serif;
+    background:linear-gradient(180deg,#eef2fb,#f4f6fb 240px);color:var(--ink);font-size:15px;line-height:1.5}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  input,select,textarea{font-family:inherit;font-size:15px}
+  h1,h2,h3,h4{margin:0;line-height:1.25}
+  .muted{color:var(--sec)} .ter{color:var(--ter)}
+  .hidden{display:none!important}
+  .app{display:flex;min-height:100vh}
+  .sidebar{width:var(--sb);flex:0 0 var(--sb);background:var(--surf);border-right:1px solid var(--line);
+    position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:18px 12px;gap:4px;overflow-y:auto}
+  .brand{display:flex;align-items:center;gap:10px;padding:6px 8px 14px}
+  .brand .logo{width:34px;height:34px;border-radius:10px;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:800;font-size:16px}
+  .brand b{font-size:17px}
+  .navsec{font-size:11px;font-weight:700;color:var(--ter);padding:12px 10px 4px;letter-spacing:.04em}
+  .nav{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:11px;color:var(--sec);font-weight:600;font-size:14px;transition:.12s;width:100%;text-align:left}
+  .nav:hover{background:var(--surf2)}
+  .nav.active{background:var(--brand-l);color:var(--brand-d)}
+  .nav .ic{width:20px;text-align:center}
+  .nav .badge{margin-left:auto;background:var(--bad);color:#fff;font-size:11px;font-weight:700;border-radius:9px;padding:1px 7px}
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:12px;padding:12px 22px;
+    background:rgba(255,255,255,.72);backdrop-filter:saturate(180%) blur(18px);border-bottom:1px solid var(--line)}
+  @supports not (backdrop-filter:blur(1px)){.topbar{background:#fff}}
+  .topbar h2{font-size:18px}
+  .grow{flex:1}
+  .content{padding:22px;max-width:1180px;width:100%;margin:0 auto}
+  .iconbtn{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-size:17px;color:var(--sec);background:var(--surf2)}
+  .iconbtn:active{transform:scale(.95)}
+  .card{background:var(--surf);border:1px solid var(--line);border-radius:var(--r2);padding:18px}
+  .card h3{font-size:15px;margin-bottom:4px}
+  .grid{display:grid;gap:14px}
+  .g2{grid-template-columns:repeat(2,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g4{grid-template-columns:repeat(4,1fr)}
+  .kpi .v{font-size:25px;font-weight:800;letter-spacing:-.02em}
+  .kpi .l{font-size:13px;color:var(--sec);font-weight:600}
+  .kpi .d{font-size:12px;margin-top:3px}
+  .row{display:flex;align-items:center;gap:10px}
+  .sp{justify-content:space-between}
+  .wrap{flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px}
+  .pill.ok{background:var(--okbg);color:var(--ok)} .pill.warn{background:var(--warnbg);color:var(--warn)}
+  .pill.bad{background:var(--badbg);color:var(--bad)} .pill.info{background:var(--infobg);color:var(--info)}
+  .pill.brand{background:var(--brand-l);color:var(--brand-d)} .pill.gray{background:var(--surf2);color:var(--sec)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px 15px;border-radius:11px;font-weight:700;font-size:14px;background:var(--surf2);color:var(--ink);transition:.12s}
+  .btn:active{transform:scale(.97)} .btn.pri{background:var(--brand);color:#fff} .btn.pri:hover{background:var(--brand-d)}
+  .btn.dang{background:var(--badbg);color:var(--bad)} .btn.sm{padding:6px 11px;font-size:13px;border-radius:9px}
+  .btn.gho{background:transparent;border:1px solid var(--line)}
+  .btn:disabled{opacity:.4;pointer-events:none}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+  th{font-size:12px;color:var(--ter);font-weight:700}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+  .field label{font-size:13px;font-weight:600;color:var(--sec)}
+  .field input,.field select,.field textarea{padding:11px 12px;border:1px solid var(--line);border-radius:11px;background:var(--surf);width:100%}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-l)}
+  .seg{display:flex;gap:6px;flex-wrap:wrap}
+  .seg button{padding:7px 12px;border-radius:9px;font-size:13px;font-weight:600;background:var(--surf2);color:var(--sec)}
+  .seg button.on{background:var(--brand);color:#fff}
+  .progress{height:8px;background:var(--surf2);border-radius:99px;overflow:hidden}
+  .progress > i{display:block;height:100%;background:var(--brand);border-radius:99px}
+  .steps{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+  .steps .st{flex:1;min-width:90px;padding:9px 8px;border-radius:11px;background:var(--surf2);font-size:12px;font-weight:700;color:var(--ter);text-align:center;position:relative}
+  .steps .st.on{background:var(--brand-l);color:var(--brand-d)}
+  .steps .st.done{background:var(--okbg);color:var(--ok)}
+  .ovl{position:fixed;inset:0;z-index:60;background:rgba(21,32,58,.34);display:grid;place-items:center;padding:18px}
+  .modal{background:var(--surf);border-radius:20px;max-width:600px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 24px 60px rgba(0,0,0,.22)}
+  .modal .hd{position:sticky;top:0;background:var(--surf);display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--line);z-index:1}
+  .modal .bd{padding:18px}
+  .modal .ft{position:sticky;bottom:0;background:var(--surf);padding:14px 18px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end}
+  #toasts{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:90;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+  .toast{background:var(--ink);color:#fff;padding:11px 18px;border-radius:12px;font-size:14px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.25);opacity:0;transform:translateY(8px);transition:.25s;max-width:90vw;text-align:center}
+  .toast.show{opacity:1;transform:none}
+  .bars{display:flex;align-items:flex-end;gap:10px;height:130px;padding-top:18px}
+  .bars .bar{flex:1;background:var(--surf2);border-radius:8px 8px 0 0;position:relative;min-height:4px}
+  .bars .bar > i{position:absolute;bottom:0;left:0;right:0;background:var(--brand);border-radius:8px 8px 0 0}
+  .bars .bar span{position:absolute;top:-17px;left:0;right:0;text-align:center;font-size:11px;font-weight:700;color:var(--sec)}
+  .bars .bar em{position:absolute;bottom:-20px;left:0;right:0;text-align:center;font-size:11px;color:var(--ter);font-style:normal}
+  .cand{border:1px solid var(--line);border-radius:13px;padding:12px;margin-bottom:10px;cursor:pointer;transition:.12s}
+  .cand:hover{border-color:var(--brand)}
+  .cand.sel{border-color:var(--brand);background:var(--brand-l)}
+  .checkitem{display:flex;align-items:flex-start;gap:11px;padding:11px 4px;border-bottom:1px solid var(--line)}
+  .checkbox{width:24px;height:24px;border-radius:7px;border:2px solid var(--line);flex:0 0 auto;display:grid;place-items:center;color:#fff;font-size:13px;cursor:pointer}
+  .checkbox.on{background:var(--brand);border-color:var(--brand)}
+  .tl{position:relative;padding-left:22px}
+  .tl::before{content:"";position:absolute;left:6px;top:4px;bottom:4px;width:2px;background:var(--line)}
+  .tl .it{position:relative;padding:0 0 14px}
+  .tl .it::before{content:"";position:absolute;left:-21px;top:4px;width:11px;height:11px;border-radius:50%;background:var(--brand);border:2px solid var(--surf)}
+  .hs{font-variant-numeric:tabular-nums;font-weight:700;letter-spacing:.02em}
+  .mtop{display:none}
+  .bottomnav{display:none}
+  .drawer,.drawerbd{display:none}
+  /* ===== responsive ===== */
+  @media (max-width:860px){
+    .sidebar{display:none}
+    .topbar{display:none}
+    .mtop{display:flex;position:sticky;top:0;z-index:40;align-items:center;gap:10px;padding:11px 14px;
+      background:rgba(255,255,255,.85);backdrop-filter:saturate(180%) blur(18px);border-bottom:1px solid var(--line)}
+    .mtop .logo{width:30px;height:30px;border-radius:9px;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:800;font-size:14px}
+    .mtop b{font-size:16px}
+    .content{padding:14px 14px 96px;max-width:100%}
+    .g2,.g3,.g4{grid-template-columns:1fr}
+    .g2.keep{grid-template-columns:1fr 1fr}
+    .bottomnav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:50;background:rgba(255,255,255,.94);
+      backdrop-filter:saturate(180%) blur(18px);border-top:1px solid var(--line);padding:6px 4px 8px;justify-content:space-around}
+    .bottomnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:600;color:var(--ter);padding:5px 2px;position:relative}
+    .bottomnav button.on{color:var(--brand-d)}
+    .bottomnav .ic{font-size:18px}
+    .bottomnav .badge{position:absolute;top:0;right:18%;background:var(--bad);color:#fff;font-size:9px;border-radius:8px;padding:0 5px;font-weight:700}
+    .drawerbd{display:block;position:fixed;inset:0;z-index:70;background:rgba(21,32,58,.4)}
+    .drawer{display:flex;flex-direction:column;position:fixed;top:0;bottom:0;right:0;width:84%;max-width:320px;z-index:71;
+      background:var(--surf);padding:16px 12px;overflow-y:auto;box-shadow:-12px 0 40px rgba(0,0,0,.2)}
+    .modal{max-width:100%;border-radius:18px 18px 0 0;align-self:flex-end;max-height:92vh}
+    .ovl{place-items:end center;padding:0}
+    #toasts{bottom:96px}
+    .content .card{padding:15px}
+    .kpi .v{font-size:22px}
+    .steps .st{min-width:0;font-size:11px;padding:8px 4px}
+    .tablewrap table{min-width:560px}
+    .tablewrap td,.tablewrap th{white-space:nowrap}
+  }
+  @media (max-width:380px){ .g2.keep{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="toasts"></div>
+<div id="modalRoot"></div>
+<div id="drawerRoot"></div>
+
+<script>
+/* ===========================================================================
+   트레이드릴레이 — 수출 통관·관세 자동화 SaaS · v1 단일 HTML 데모 (오프라인 자체완결)
+   기능 카운트 목록은 파일 하단 FEATURES[] 배열 참조 (결과보고서 §2 기능표 소스).
+   상태: localStorage 'traderelay-v1'. 키 없이 mock 동작. 로그인 없이 즉시 시연.
+   =========================================================================== */
+const LS_KEY = "traderelay-v1";
+const won = n => "₩" + Math.round(n).toLocaleString("ko-KR");
+const usd = n => "$" + Number(n).toLocaleString("en-US",{maximumFractionDigits:0});
+const num = n => Math.round(n).toLocaleString("ko-KR");
+const pct = n => Math.round(n) + "%";
+const todayISO = () => new Date().toISOString().slice(0,10);
+const uid = p => p + "-" + Math.random().toString(36).slice(2,8);
+
+/* ---------- HS코드 분류 룰셋 (데모 — 대표 품목, 키워드 점수 매칭) ----------
+   실서비스는 관세청·WCO HS DB·관세율 연동. v1은 룰 근거를 노출하는 휴먼인더루프. */
+const HS_RULES = [
+  { hs:"3304.99", label:"기초화장용 제품류(스킨케어 크림·세럼)", rate:6.5, kw:["화장품","크림","세럼","스킨케어","로션","에센스","cosmetic","cream","serum"] },
+  { hs:"3304.10", label:"입술화장용 제품류(립스틱·립밤)", rate:6.5, kw:["립스틱","립밤","틴트","lip"] },
+  { hs:"3401.30", label:"유기계면활성제(클렌징·워시)", rate:6.5, kw:["클렌징","워시","비누","wash","cleanser","soap"] },
+  { hs:"3305.10", label:"두발용 제품류(샴푸)", rate:8, kw:["샴푸","헤어","트리트먼트","shampoo","hair"] },
+  { hs:"6109.10", label:"면제 티셔츠·셔츠류", rate:13, kw:["티셔츠","셔츠","면","코튼","tshirt","cotton","tee"] },
+  { hs:"6204.62", label:"여성용 면제 바지", rate:13, kw:["바지","팬츠","청바지","데님","pants","jeans","denim"] },
+  { hs:"6404.19", label:"고무·플라스틱 밑창 직물제 신발", rate:13, kw:["신발","운동화","스니커즈","shoes","sneaker"] },
+  { hs:"4202.22", label:"플라스틱시트·방직용 핸드백", rate:8, kw:["가방","핸드백","백팩","bag","handbag"] },
+  { hs:"9503.00", label:"완구·장난감류", rate:8, kw:["장난감","완구","피규어","toy","figure"] },
+  { hs:"1905.90", label:"베이커리·과자류(스낵·쿠키)", rate:8, kw:["과자","쿠키","스낵","비스킷","snack","cookie","biscuit"] },
+  { hs:"2106.90", label:"기타 조제식료품(건강기능식품·분말)", rate:8, kw:["건강기능식품","영양제","분말","보충제","supplement","vitamin"] },
+  { hs:"8517.62", label:"통신·데이터 기기(블루투스 등)", rate:0, kw:["블루투스","이어폰","스피커","무선","bluetooth","earphone","gadget"] },
+];
+/* 협정별 결정기준(데모 단순화: 세번변경 CTH + 부가가치 RVC) + 상대국 MFN 관세(데모값) */
+const FTA = {
+  "한미FTA": { partner:"미국", mfn:0,  note:"한미 FTA — 대부분 즉시·단계 철폐", crit:["세번변경(CTH): 4단위 세번이 원재료와 다름","부가가치(RVC): 역내 부가가치 35% 이상","원산지증명: 자율발급(수출자 작성)"] },
+  "한EU FTA": { partner:"EU", mfn:6.5, note:"한EU FTA — 인증수출자 원산지신고", crit:["세번변경(CTH): 4단위 세번 변경","부가가치: MaxNOM(비원산지 재료 최대) 기준 충족","인증수출자 번호로 송품장 원산지신고"] },
+  "RCEP": { partner:"일본·아세안 등", mfn:8, note:"RCEP — 역내 누적, 기관·자율 발급", crit:["세번변경(CTH) 또는 RVC 40% 이상","역내 누적(원재료 역내산 인정)","원산지증명서(C/O) 발급"] },
+  "한중FTA": { partner:"중국", mfn:10, note:"한중 FTA — 기관발급 C/O", crit:["세번변경(CTH) 또는 RVC 40% 이상","기관발급 원산지증명서(C/O)","품목별 양허단계 확인"] },
+  "한아세안FTA": { partner:"아세안", mfn:8, note:"한아세안 — Form AK 기관발급", crit:["세번변경 또는 RVC 40% 이상","Form AK 원산지증명서","품목별 양허 확인"] },
+};
+const STAGES = ["등록","HS분류","원산지","신고서","환급"];
+
+/* ---------- HS 분류 보조 엔진 ---------- */
+function classifyHS(text){
+  const t = (text||"").toLowerCase();
+  const scored = HS_RULES.map(r=>{
+    let hit=0; r.kw.forEach(k=>{ if(t.includes(k.toLowerCase())) hit++; });
+    const conf = hit===0 ? 0 : Math.min(96, 40 + hit*22);
+    return { hs:r.hs, label:r.label, rate:r.rate, conf, reason: r.kw.filter(k=>t.includes(k.toLowerCase())) };
+  }).filter(c=>c.conf>0).sort((a,b)=>b.conf-a.conf);
+  if(scored.length===0){
+    // 미매칭 — 낮은 신뢰도 일반 후보 안내(휴먼검수 유도)
+    return [{ hs:"미분류", label:"키워드 매칭 없음 — 사전심사 권장", rate:8, conf:0, reason:[] }];
+  }
+  return scored.slice(0,3);
+}
+/* 원산지 판정: 체크된 기준 수로 충족 판정, 절감액 = (MFN - 0) × 수출금액 */
+function originResult(agreement, checks, valueUSD){
+  const f = FTA[agreement];
+  const need = f.crit.length;
+  const met = checks.filter(Boolean).length;
+  const ok = met >= Math.ceil(need*0.66) && checks[0]; // 핵심기준(첫째) 필수
+  const saveUSD = ok ? Math.round(valueUSD * f.mfn/100) : 0;
+  return { ok, met, need, mfn:f.mfn, saveUSD, partner:f.partner };
+}
+/* 간이정액환급 추정(데모): 수출금액(원) × 데모 환급률 */
+function refundEstimate(valueKRW){
+  // 간이정액환급은 품목별 1만원당 환급액 고시 — 데모는 0.6% 가정값
+  return Math.round(valueKRW * 0.006);
+}
+
+/* ---------- 시드 데이터 ---------- */
+function seed(){
+  const fx = 1380; // 데모 환율 USD→KRW
+  const mk = (id, name, desc, qty, unitUSD, dest, stage) => ({
+    id, name, desc, qty, unitUSD, dest, stage,
+    hs:null, hsLabel:null, mfn:null,
+    agreement:null, originOk:null, saveUSD:0,
+    refundKRW:0, refundStatus:null,
+    docs:[], createdAt:todayISO(),
+    history:[{t:todayISO(), e:"수출 건 등록"}],
+  });
+  const items = [
+    mk("e1","수분크림 세트 (미국)","비건 수분 크림·세럼 스킨케어 cosmetic cream serum", 600, 18, "미국", "환급"),
+    mk("e2","오버핏 코튼 티셔츠","면 cotton 티셔츠 tee 의류", 1200, 9, "일본", "신고서"),
+    mk("e3","대용량 멀티비타민 분말","건강기능식품 supplement vitamin 분말", 400, 22, "베트남", "원산지"),
+    mk("e4","무선 블루투스 이어폰","bluetooth earphone 무선 가젯", 300, 35, "중국", "HS분류"),
+    mk("e5","천연 클렌징 폼","클렌징 워시 cleanser wash 화장품", 800, 7, "유럽연합", "등록"),
+  ];
+  // e1: 완결 — HS/원산지/신고서/환급까지
+  Object.assign(items[0], {
+    hs:"3304.99", hsLabel:"기초화장용 제품류(스킨케어 크림·세럼)", mfn:0,
+    agreement:"한미FTA", originOk:true, saveUSD:0,
+    refundKRW: refundEstimate(600*18*fx), refundStatus:"신청완료",
+    docs:["수출신고서","커머셜인보이스","원산지증명서(C/O)"],
+    history:[{t:todayISO(),e:"수출 건 등록"},{t:todayISO(),e:"HS 3304.99 확정"},{t:todayISO(),e:"한미FTA 원산지 충족"},{t:todayISO(),e:"수출신고서 생성"},{t:todayISO(),e:"간이정액환급 신청"}],
+  });
+  // e2: 신고서까지
+  Object.assign(items[1], {
+    hs:"6109.10", hsLabel:"면제 티셔츠·셔츠류", mfn:8,
+    agreement:"RCEP", originOk:true, saveUSD: Math.round(1200*9*8/100),
+    refundKRW:0, refundStatus:null, docs:["수출신고서","커머셜인보이스"],
+    history:[{t:todayISO(),e:"수출 건 등록"},{t:todayISO(),e:"HS 6109.10 확정"},{t:todayISO(),e:"RCEP 원산지 충족"},{t:todayISO(),e:"수출신고서 생성"}],
+  });
+  // e3: 원산지 단계
+  Object.assign(items[2], { hs:"2106.90", hsLabel:"기타 조제식료품(건강기능식품·분말)", mfn:8,
+    history:[{t:todayISO(),e:"수출 건 등록"},{t:todayISO(),e:"HS 2106.90 확정"}] });
+  // e4: HS분류 단계
+  Object.assign(items[3], { history:[{t:todayISO(),e:"수출 건 등록"}] });
+
+  return { _view:"dashboard", fx, fxRate:fx,
+    org:{ name:"글로우셀러 (역직구)", bizno:"123-45-67890", rep:"수출담당" },
+    items };
+}
+
+/* ---------- store ---------- */
+let S = load();
+function load(){ try{ const r=localStorage.getItem(LS_KEY); if(r) return JSON.parse(r);}catch(e){} const s=seed(); localStorage.setItem(LS_KEY,JSON.stringify(s)); return s; }
+function save(){ localStorage.setItem(LS_KEY, JSON.stringify(S)); }
+function setView(v){ S._view=v; save(); render(); }
+function item(id){ return S.items.find(i=>i.id===id); }
+function advance(it, stage, ev){ const idx=STAGES.indexOf(stage); if(idx>STAGES.indexOf(it.stage)) it.stage=stage; if(ev) it.history.push({t:todayISO(),e:ev}); }
+
+/* ---------- toast ---------- */
+function toast(msg){
+  const w=document.getElementById("toasts"); const t=document.createElement("div");
+  t.className="toast"; t.textContent=msg; w.appendChild(t);
+  requestAnimationFrame(()=>t.classList.add("show"));
+  setTimeout(()=>{ t.classList.remove("show"); setTimeout(()=>t.remove(),250); },1900);
+}
+/* ---------- modal ---------- */
+function modal(html){ document.getElementById("modalRoot").innerHTML = `<div class="ovl" onclick="if(event.target===this)closeModal()"><div class="modal">${html}</div></div>`; }
+function closeModal(){ document.getElementById("modalRoot").innerHTML=""; }
+
+/* ---------- derived metrics ---------- */
+function metrics(){
+  const fx=S.fx;
+  const totalUSD = S.items.reduce((a,i)=>a+i.qty*i.unitUSD,0);
+  const saveUSD = S.items.reduce((a,i)=>a+(i.saveUSD||0),0);
+  const refundKRW = S.items.reduce((a,i)=>a+(i.refundKRW||0),0);
+  const unfiled = S.items.filter(i=>STAGES.indexOf(i.stage)<3).length;
+  const unrefunded = S.items.filter(i=>i.stage==="신고서"||i.stage==="환급").filter(i=>!i.refundStatus).length;
+  const byStage = STAGES.map(s=>S.items.filter(i=>i.stage===s).length);
+  return { totalUSD, saveUSD, refundKRW, unfiled, unrefunded, byStage, fx };
+}
+
+/* =====================================================================
+   VIEWS
+   ===================================================================== */
+const NAV = [
+  { v:"dashboard", ic:"📊", t:"수출 대시보드" },
+  { v:"items", ic:"📦", t:"품목·HS코드" },
+  { v:"origin", ic:"🌐", t:"FTA 원산지" },
+  { v:"docs", ic:"📄", t:"수출신고서" },
+  { v:"refund", ic:"💰", t:"관세 환급" },
+  { v:"data", ic:"⚙️", t:"데이터·설정" },
+];
+
+function viewDashboard(){
+  const m=metrics();
+  const labels=STAGES;
+  const maxB=Math.max(1,...m.byStage);
+  return `
+  <div class="grid g4" style="margin-bottom:14px">
+    ${kpi("진행 중 수출 건", num(S.items.length)+"건", "전체 등록 건수","brand")}
+    ${kpi("FTA 절감액 (누적)", usd(m.saveUSD), "특혜관세 적용 절감 [데모]","ok")}
+    ${kpi("환급 추정 (누적)", won(m.refundKRW), "간이정액환급 추정 [데모]","info")}
+    ${kpi("미신고/미환급", m.unfiled+" / "+m.unrefunded, "신고서·환급 대기","warn")}
+  </div>
+  <div class="grid g2" style="margin-bottom:14px">
+    <div class="card">
+      <h3>단계별 수출 건 (릴레이 파이프라인)</h3>
+      <div class="muted" style="font-size:13px;margin-bottom:6px">품목 등록 → HS분류 → 원산지 → 신고서 → 환급</div>
+      <div class="bars">
+        ${m.byStage.map((n,i)=>`<div class="bar"><i style="height:${Math.round(n/maxB*100)}%"></i><span>${n}</span><em>${labels[i]}</em></div>`).join("")}
+      </div>
+    </div>
+    <div class="card">
+      <h3>오늘의 액션</h3>
+      <div class="tl" style="margin-top:10px">
+        ${S.items.filter(i=>STAGES.indexOf(i.stage)<4).slice(0,4).map(i=>`
+          <div class="it"><b>${i.name}</b> <span class="pill gray">${i.stage}</span>
+          <div class="muted" style="font-size:13px">${nextHint(i)}</div></div>`).join("") || '<div class="muted">대기 액션 없음</div>'}
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="row sp"><h3>수출 건 목록</h3><button class="btn pri sm" onclick="openNewItem()">+ 수출 건 등록</button></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>품목</th><th>도착국</th><th class="num">수출금액</th><th>HS코드</th><th>FTA</th><th>단계</th><th></th></tr></thead>
+      <tbody>${S.items.map(i=>`<tr>
+        <td><b>${i.name}</b></td><td>${i.dest}</td>
+        <td class="num">${usd(i.qty*i.unitUSD)}</td>
+        <td>${i.hs?`<span class="hs">${i.hs}</span>`:'<span class="ter">—</span>'}</td>
+        <td>${i.agreement?`<span class="pill ${i.originOk?'ok':'warn'}">${i.agreement}</span>`:'<span class="ter">—</span>'}</td>
+        <td>${stagePill(i.stage)}</td>
+        <td><button class="btn sm gho" onclick="openItem('${i.id}')">열기</button></td>
+      </tr>`).join("")}</tbody>
+    </table></div>
+  </div>`;
+}
+function nextHint(i){
+  switch(i.stage){
+    case "등록": return "→ 품목·HS코드 탭에서 HS 분류 보조 실행";
+    case "HS분류": return "→ FTA 원산지 탭에서 원산지 판정";
+    case "원산지": return "→ 수출신고서 탭에서 신고서·인보이스 생성";
+    case "신고서": return "→ 관세 환급 탭에서 환급 신청 추적";
+    default: return "처리 완료";
+  }
+}
+function stagePill(s){ const idx=STAGES.indexOf(s); const cls= idx>=4?"ok":idx>=3?"info":idx>=1?"brand":"gray"; return `<span class="pill ${cls}">${s}</span>`; }
+function kpi(l,v,d,cls){ return `<div class="card kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="d ${cls?'':''}"><span class="pill ${cls}">${d}</span></div></div>`; }
+
+function viewItems(){
+  return `
+  <div class="card" style="margin-bottom:14px">
+    <div class="row sp"><h3>품목 등록 + HS코드 분류 보조</h3><button class="btn pri sm" onclick="openNewItem()">+ 새 품목</button></div>
+    <div class="muted" style="font-size:13px;margin-top:4px">품명·소재·용도를 입력하면 키워드 룰·점수로 HS 후보를 제시한다(휴먼검수 확정). 자기주장 AI 아님 — 매칭 근거를 노출한다.</div>
+  </div>
+  <div class="grid g2">
+    ${S.items.map(i=>`<div class="card">
+      <div class="row sp"><b>${i.name}</b>${stagePill(i.stage)}</div>
+      <div class="muted" style="font-size:13px;margin:4px 0 8px">${i.desc}</div>
+      <div class="row wrap" style="gap:8px;font-size:13px">
+        <span class="pill gray">${i.dest}</span>
+        <span class="pill gray">${usd(i.qty*i.unitUSD)}</span>
+        ${i.hs?`<span class="pill brand hs">HS ${i.hs}</span><span class="pill gray">MFN ${i.mfn}%</span>`:`<span class="pill warn">HS 미분류</span>`}
+      </div>
+      <div class="row" style="margin-top:12px;gap:8px">
+        <button class="btn sm pri" onclick="runClassify('${i.id}')">HS 분류 보조</button>
+        <button class="btn sm gho" onclick="openItem('${i.id}')">상세</button>
+      </div>
+    </div>`).join("")}
+  </div>`;
+}
+
+function viewOrigin(){
+  const cand = S.items.filter(i=>i.hs);
+  return `
+  <div class="card" style="margin-bottom:14px">
+    <h3>FTA 원산지 판정 — 어느 협정으로 관세를 얼마나 아끼나</h3>
+    <div class="muted" style="font-size:13px;margin-top:4px">협정 선택 → 결정기준 체크 → 충족 여부·절감액 산정 → 원산지증명서(C/O) 초안. HS 분류가 끝난 건만 판정 가능.</div>
+  </div>
+  ${cand.length===0?'<div class="card muted">HS 분류가 완료된 수출 건이 없습니다. 먼저 품목·HS코드 탭에서 분류하세요.</div>':
+  `<div class="grid g2">${cand.map(i=>`<div class="card">
+    <div class="row sp"><b>${i.name}</b>${i.agreement?`<span class="pill ${i.originOk?'ok':'warn'}">${i.agreement} ${i.originOk?'충족':'미충족'}</span>`:'<span class="pill gray">미판정</span>'}</div>
+    <div class="row wrap" style="gap:8px;margin:6px 0;font-size:13px">
+      <span class="pill brand hs">HS ${i.hs}</span><span class="pill gray">${i.dest}</span><span class="pill gray">${usd(i.qty*i.unitUSD)}</span>
+      ${i.saveUSD>0?`<span class="pill ok">절감 ${usd(i.saveUSD)}</span>`:''}
+    </div>
+    <button class="btn sm pri" onclick="openOrigin('${i.id}')">원산지 판정 실행</button>
+  </div>`).join("")}</div>`}`;
+}
+
+function viewDocs(){
+  const cand = S.items.filter(i=>i.hs);
+  return `
+  <div class="card" style="margin-bottom:14px">
+    <h3>수출신고서·인보이스 자동생성</h3>
+    <div class="muted" style="font-size:13px;margin-top:4px">품목·금액·원산지를 자동 채워 수출신고서·커머셜 인보이스·원산지증명서(C/O) 초안을 PDF로 생성한다. 매 건 재입력 0.</div>
+  </div>
+  ${cand.length===0?'<div class="card muted">HS 분류가 완료된 건이 없습니다.</div>':
+  `<div class="tablewrap card"><table>
+    <thead><tr><th>품목</th><th>도착국</th><th class="num">금액</th><th>HS</th><th>생성된 서류</th><th>액션</th></tr></thead>
+    <tbody>${cand.map(i=>`<tr>
+      <td><b>${i.name}</b></td><td>${i.dest}</td><td class="num">${usd(i.qty*i.unitUSD)}</td><td class="hs">${i.hs}</td>
+      <td>${i.docs.length?i.docs.map(d=>`<span class="pill ok" style="margin:2px">${d}</span>`).join(""):'<span class="ter">미생성</span>'}</td>
+      <td><div class="row" style="gap:6px"><button class="btn sm pri" onclick="genDocs('${i.id}')">신고서 생성</button>
+      ${i.docs.length?`<button class="btn sm gho" onclick="downloadPDF('${i.id}')">PDF</button>`:''}</div></td>
+    </tr>`).join("")}</tbody>
+  </table></div>`}`;
+}
+
+function viewRefund(){
+  const cand = S.items.filter(i=>i.docs.includes("수출신고서"));
+  const m=metrics();
+  return `
+  <div class="grid g2 keep" style="margin-bottom:14px">
+    ${kpi("환급 추정 누적", won(m.refundKRW), "간이정액환급 [데모]","info")}
+    ${kpi("미환급 건", num(cand.filter(i=>!i.refundStatus).length)+"건", "신청 대기","warn")}
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <h3>관세 환급 추적 — 받을 돈을 빠짐없이</h3>
+    <div class="muted" style="font-size:13px;margin-top:4px">수출 완료(신고서 생성) 건의 간이정액환급 추정액을 산정하고 신청 상태를 추적한다. 미신청 = 흘려보낸 현금.</div>
+  </div>
+  ${cand.length===0?'<div class="card muted">수출신고서가 생성된 건이 없습니다. 먼저 수출신고서를 생성하세요.</div>':
+  `<div class="tablewrap card"><table>
+    <thead><tr><th>품목</th><th class="num">수출금액(원)</th><th class="num">환급 추정</th><th>상태</th><th>액션</th></tr></thead>
+    <tbody>${cand.map(i=>{ const est = i.refundKRW || refundEstimate(i.qty*i.unitUSD*S.fx); return `<tr>
+      <td><b>${i.name}</b></td>
+      <td class="num">${won(i.qty*i.unitUSD*S.fx)}</td>
+      <td class="num"><b>${won(est)}</b></td>
+      <td>${i.refundStatus?`<span class="pill ${i.refundStatus==='지급완료'?'ok':'info'}">${i.refundStatus}</span>`:'<span class="pill warn">미신청</span>'}</td>
+      <td>${refundAction(i,est)}</td>
+    </tr>`;}).join("")}</tbody>
+  </table></div>`}`;
+}
+function refundAction(i,est){
+  if(!i.refundStatus) return `<button class="btn sm pri" onclick="refundStep('${i.id}','신청완료',${est})">환급 신청</button>`;
+  if(i.refundStatus==="신청완료") return `<button class="btn sm gho" onclick="refundStep('${i.id}','심사중',${est})">심사 진행</button>`;
+  if(i.refundStatus==="심사중") return `<button class="btn sm pri" onclick="refundStep('${i.id}','지급완료',${est})">지급 처리</button>`;
+  return `<span class="pill ok">완료</span>`;
+}
+
+function viewData(){
+  return `
+  <div class="card" style="margin-bottom:14px">
+    <h3>데이터 입출력</h3>
+    <div class="muted" style="font-size:13px;margin:4px 0 12px">주문 CSV 를 업로드하면 품목 설명을 행별로 자동 HS 분류해 일괄 등록한다. 신고·환급 내역은 CSV 로 내보내 회계와 연계한다.</div>
+    <div class="row wrap" style="gap:10px">
+      <label class="btn pri" style="cursor:pointer">주문 CSV 업로드<input type="file" accept=".csv" style="display:none" onchange="importCSV(event)"></label>
+      <button class="btn gho" onclick="downloadSampleCSV()">샘플 CSV 받기</button>
+      <button class="btn gho" onclick="exportCSV()">내역 CSV 내보내기</button>
+    </div>
+    <div class="muted" style="font-size:12px;margin-top:10px">CSV 형식: <code>품명,소재용도설명,수량,단가(USD),도착국</code></div>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <h3>업체 정보</h3>
+    <div class="grid g3" style="margin-top:10px">
+      <div class="field"><label>상호</label><input value="${S.org.name}" onchange="S.org.name=this.value;save()"></div>
+      <div class="field"><label>사업자번호</label><input value="${S.org.bizno}" onchange="S.org.bizno=this.value;save()"></div>
+      <div class="field"><label>USD→KRW 환율(데모)</label><input type="number" value="${S.fx}" onchange="S.fx=+this.value||1380;save();render()"></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>데이터 관리</h3>
+    <div class="muted" style="font-size:13px;margin:4px 0 12px">상태는 브라우저 localStorage('${LS_KEY}')에 저장된다. 새로고침해도 유지된다.</div>
+    <button class="btn dang sm" onclick="resetAll()">데모 데이터 초기화</button>
+  </div>`;
+}
+
+/* =====================================================================
+   ACTIONS
+   ===================================================================== */
+function openNewItem(){
+  modal(`<div class="hd"><b>새 수출 건 등록</b><button class="iconbtn" onclick="closeModal()">✕</button></div>
+  <div class="bd">
+    <div class="field"><label>품명</label><input id="ni_name" placeholder="예: 수분크림 세트"></div>
+    <div class="field"><label>소재·용도 설명 (HS 분류용 키워드)</label><textarea id="ni_desc" rows="2" placeholder="예: 비건 수분 크림 세럼 스킨케어 cosmetic"></textarea></div>
+    <div class="grid g3">
+      <div class="field"><label>수량</label><input id="ni_qty" type="number" value="100"></div>
+      <div class="field"><label>단가(USD)</label><input id="ni_unit" type="number" value="10"></div>
+      <div class="field"><label>도착국</label><input id="ni_dest" value="미국"></div>
+    </div>
+  </div>
+  <div class="ft"><button class="btn gho" onclick="closeModal()">취소</button><button class="btn pri" onclick="saveNewItem()">등록</button></div>`);
+}
+function saveNewItem(){
+  const name=val("ni_name"), desc=val("ni_desc"), qty=+val("ni_qty")||1, unit=+val("ni_unit")||1, dest=val("ni_dest")||"미국";
+  if(!name){ toast("품명을 입력하세요"); return; }
+  const it={ id:uid("e"), name, desc, qty, unitUSD:unit, dest, stage:"등록", hs:null,hsLabel:null,mfn:null,agreement:null,originOk:null,saveUSD:0,refundKRW:0,refundStatus:null,docs:[],createdAt:todayISO(),history:[{t:todayISO(),e:"수출 건 등록"}] };
+  S.items.unshift(it); save(); closeModal(); toast("수출 건 등록됨 — HS 분류로 진행하세요"); setView("items");
+}
+function val(id){ return (document.getElementById(id)||{}).value || ""; }
+
+function runClassify(id){
+  const it=item(id); const cands=classifyHS(it.desc + " " + it.name);
+  modal(`<div class="hd"><b>HS코드 분류 보조 · ${it.name}</b><button class="iconbtn" onclick="closeModal()">✕</button></div>
+  <div class="bd">
+    <div class="muted" style="font-size:13px;margin-bottom:10px">입력: "${it.desc}" — 키워드 룰·점수 매칭 결과(휴먼검수 확정).</div>
+    ${cands.map((c,idx)=>`<div class="cand ${idx===0?'sel':''}" data-hs="${c.hs}" data-rate="${c.rate}" data-label="${c.label}" onclick="pickCand(this)">
+      <div class="row sp"><span class="hs" style="font-size:16px">${c.hs}</span><span class="pill ${c.conf>=70?'ok':c.conf>0?'warn':'gray'}">신뢰도 ${c.conf}%</span></div>
+      <div style="font-size:14px;margin:2px 0">${c.label}</div>
+      <div class="muted" style="font-size:12px">기본관세(MFN) ${c.rate}% · 매칭 근거: ${c.reason.length?c.reason.join(", "):'없음(사전심사 권장)'}</div>
+    </div>`).join("")}
+  </div>
+  <div class="ft"><button class="btn gho" onclick="closeModal()">취소</button><button class="btn pri" onclick="confirmHS('${id}')">선택 HS 확정</button></div>`);
+}
+let _picked=null;
+function pickCand(el){ document.querySelectorAll(".cand").forEach(c=>c.classList.remove("sel")); el.classList.add("sel"); _picked={hs:el.dataset.hs,rate:+el.dataset.rate,label:el.dataset.label}; }
+function confirmHS(id){
+  const sel=document.querySelector(".cand.sel"); const p=_picked|| (sel?{hs:sel.dataset.hs,rate:+sel.dataset.rate,label:sel.dataset.label}:null);
+  if(!p || p.hs==="미분류"){ toast("유효한 HS 후보를 선택하세요"); return; }
+  const it=item(id); it.hs=p.hs; it.hsLabel=p.label; it.mfn=p.rate; advance(it,"HS분류",`HS ${p.hs} 확정`); _picked=null; save(); closeModal(); toast(`HS ${p.hs} 확정 — 원산지 판정으로 진행`); setView("origin");
+}
+
+function openOrigin(id){
+  const it=item(id);
+  const ags=Object.keys(FTA);
+  const cur = it.agreement || suggestAgreement(it.dest);
+  modal(`<div class="hd"><b>FTA 원산지 판정 · ${it.name}</b><button class="iconbtn" onclick="closeModal()">✕</button></div>
+  <div class="bd">
+    <div class="field"><label>적용 협정 선택 (도착국: ${it.dest})</label>
+      <select id="or_ag" onchange="renderCrit('${id}')">${ags.map(a=>`<option ${a===cur?'selected':''}>${a}</option>`).join("")}</select></div>
+    <div id="or_crit"></div>
+  </div>
+  <div class="ft"><button class="btn gho" onclick="closeModal()">취소</button><button class="btn pri" onclick="confirmOrigin('${id}')">원산지 판정</button></div>`);
+  renderCrit(id);
+}
+function suggestAgreement(dest){
+  if(dest.includes("미국")) return "한미FTA";
+  if(dest.includes("유럽")||dest.includes("EU")) return "한EU FTA";
+  if(dest.includes("중국")) return "한중FTA";
+  if(dest.includes("일본")) return "RCEP";
+  return "한아세안FTA";
+}
+function renderCrit(id){
+  const ag=document.getElementById("or_ag").value; const f=FTA[ag];
+  document.getElementById("or_crit").innerHTML = `
+    <div class="muted" style="font-size:13px;margin:6px 0">${f.note} · 상대국 기본관세(MFN) <b>${f.mfn}%</b> · 결정기준 체크(핵심기준 ① 필수):</div>
+    ${f.crit.map((c,idx)=>`<div class="checkitem"><div class="checkbox ${idx===0?'on':''}" data-i="${idx}" onclick="this.classList.toggle('on')">${idx===0?'✓':''}</div><div style="font-size:14px">${idx===0?'<b>① </b>':''}${c}</div></div>`).join("")}`;
+}
+function confirmOrigin(id){
+  const it=item(id); const ag=document.getElementById("or_ag").value;
+  const checks=[...document.querySelectorAll("#or_crit .checkbox")].map(b=>b.classList.contains("on"));
+  const r=originResult(ag, checks, it.qty*it.unitUSD);
+  it.agreement=ag; it.originOk=r.ok; it.saveUSD=r.saveUSD; it.mfn=r.mfn;
+  advance(it,"원산지", `${ag} 원산지 ${r.ok?'충족':'미충족'}`); save(); closeModal();
+  if(r.ok) toast(`${ag} 원산지 충족 — 절감 ${usd(r.saveUSD)} · C/O 초안 생성 가능`);
+  else toast(`${ag} 미충족(기준 ${r.met}/${r.need}) — 기준 보완 또는 다른 협정 검토`);
+  render();
+}
+
+function genDocs(id){
+  const it=item(id);
+  const docs=["수출신고서","커머셜인보이스"]; if(it.originOk) docs.push("원산지증명서(C/O)");
+  it.docs=docs; advance(it,"신고서","수출신고서·인보이스 생성"); save();
+  toast(`${docs.length}종 서류 생성 — PDF 출력 가능`); render();
+}
+function downloadPDF(id){
+  const it=item(id);
+  const J = window.jspdf && window.jspdf.jsPDF;
+  if(!J){ toast("[오프라인 폴백] jsPDF 미로드 — 텍스트 미리보기로 대체"); previewDoc(it); return; }
+  const doc=new J({unit:"pt",format:"a4"});
+  const L=48; let y=64;
+  doc.setFontSize(18); doc.text("EXPORT DECLARATION / COMMERCIAL INVOICE", L, y); y+=10;
+  doc.setFontSize(9); doc.setTextColor(120); doc.text("TradeRelay v1 demo - auto-generated", L, y+8); y+=34; doc.setTextColor(0);
+  const line=(k,v)=>{ doc.setFontSize(10); doc.setTextColor(110); doc.text(k, L, y); doc.setTextColor(0); doc.setFontSize(11); doc.text(String(v), L+150, y); y+=22; };
+  line("Exporter", S.org.name+" ("+S.org.bizno+")");
+  line("Item", it.name);
+  line("Destination", it.dest);
+  line("HS Code", it.hs+"  ("+(it.hsLabel||"")+")");
+  line("Quantity / Unit", it.qty+" / "+usd(it.unitUSD));
+  line("Total Value", usd(it.qty*it.unitUSD));
+  line("FTA Agreement", it.agreement?(it.agreement+(it.originOk?" (origin OK)":" (not met)")):"-");
+  line("Tariff Saving", it.saveUSD>0?usd(it.saveUSD):"-");
+  line("Refund (est.)", it.refundKRW?won(it.refundKRW):won(refundEstimate(it.qty*it.unitUSD*S.fx)));
+  y+=10; doc.setDrawColor(180); doc.line(L,y,547,y); y+=24;
+  doc.setFontSize(9); doc.setTextColor(120);
+  doc.text("Documents: "+it.docs.join(" / "), L, y); y+=16;
+  doc.text("Issued: "+todayISO()+"  *Demo PoC - not for official customs filing.", L, y);
+  doc.save("export-"+it.id+".pdf");
+  toast("PDF 생성 완료 (export-"+it.id+".pdf)");
+}
+function previewDoc(it){
+  modal(`<div class="hd"><b>서류 미리보기 (폴백) · ${it.name}</b><button class="iconbtn" onclick="closeModal()">✕</button></div>
+  <div class="bd"><pre style="white-space:pre-wrap;font-size:13px">수출신고서 / 커머셜 인보이스
+수출자: ${S.org.name} (${S.org.bizno})
+품목: ${it.name}
+도착국: ${it.dest}
+HS: ${it.hs} (${it.hsLabel||""})
+수량/단가: ${it.qty} / ${usd(it.unitUSD)}
+총액: ${usd(it.qty*it.unitUSD)}
+FTA: ${it.agreement||"-"} ${it.originOk?"(원산지 충족)":""}
+절감액: ${it.saveUSD?usd(it.saveUSD):"-"}
+서류: ${it.docs.join(" / ")}
+* 데모 PoC — 실 통관 신고용 아님</pre></div>
+  <div class="ft"><button class="btn pri" onclick="closeModal()">닫기</button></div>`);
+}
+
+function refundStep(id,status,est){
+  const it=item(id); it.refundStatus=status; it.refundKRW=est;
+  if(status==="신청완료") advance(it,"환급","간이정액환급 신청");
+  it.history.push({t:todayISO(), e:"환급 "+status});
+  save(); toast("환급 상태: "+status); render();
+}
+
+/* ---------- detail modal ---------- */
+function openItem(id){
+  const it=item(id);
+  modal(`<div class="hd"><b>${it.name}</b><button class="iconbtn" onclick="closeModal()">✕</button></div>
+  <div class="bd">
+    <div class="steps">${STAGES.map((s,idx)=>`<div class="st ${it.stage===s?'on':STAGES.indexOf(it.stage)>idx?'done':''}">${s}</div>`).join("")}</div>
+    <div class="row wrap" style="gap:8px;margin-bottom:10px">
+      <span class="pill gray">${it.dest}</span><span class="pill gray">${usd(it.qty*it.unitUSD)}</span>
+      ${it.hs?`<span class="pill brand hs">HS ${it.hs}</span>`:''}
+      ${it.agreement?`<span class="pill ${it.originOk?'ok':'warn'}">${it.agreement}</span>`:''}
+      ${it.saveUSD>0?`<span class="pill ok">절감 ${usd(it.saveUSD)}</span>`:''}
+      ${it.refundStatus?`<span class="pill info">환급 ${it.refundStatus}</span>`:''}
+    </div>
+    <h4 style="font-size:13px;color:var(--sec);margin-bottom:6px">진행 이력</h4>
+    <div class="tl">${it.history.map(h=>`<div class="it"><b>${h.e}</b><div class="muted" style="font-size:12px">${h.t}</div></div>`).join("")}</div>
+  </div>
+  <div class="ft">
+    ${!it.hs?`<button class="btn pri" onclick="closeModal();runClassify('${id}')">HS 분류</button>`:
+      !it.agreement?`<button class="btn pri" onclick="closeModal();openOrigin('${id}')">원산지 판정</button>`:
+      !it.docs.length?`<button class="btn pri" onclick="genDocs('${id}');closeModal()">신고서 생성</button>`:
+      `<button class="btn gho" onclick="downloadPDF('${id}')">PDF</button>`}
+    <button class="btn gho" onclick="closeModal()">닫기</button>
+  </div>`);
+}
+
+/* ---------- CSV ---------- */
+function downloadSampleCSV(){
+  const csv="품명,소재용도설명,수량,단가USD,도착국\n글로우 립밤,립밤 틴트 lip cosmetic,500,6,미국\n데님 청바지,데님 청바지 jeans denim,300,24,일본\n블루투스 스피커,bluetooth 무선 스피커 speaker,200,40,베트남\n";
+  dl("traderelay-sample.csv", csv); toast("샘플 CSV 다운로드");
+}
+function importCSV(ev){
+  const f=ev.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    const lines=r.result.split(/\r?\n/).filter(l=>l.trim());
+    let added=0;
+    lines.slice(1).forEach(l=>{
+      const c=l.split(","); if(c.length<5) return;
+      const [name,desc,qty,unit,dest]=c;
+      const cands=classifyHS(desc+" "+name); const top=cands[0];
+      const it={ id:uid("e"), name:name.trim(), desc:desc.trim(), qty:+qty||1, unitUSD:+unit||1, dest:(dest||"미국").trim(),
+        stage: top && top.conf>0 ? "HS분류":"등록",
+        hs: top&&top.conf>0?top.hs:null, hsLabel: top&&top.conf>0?top.label:null, mfn: top&&top.conf>0?top.rate:null,
+        agreement:null,originOk:null,saveUSD:0,refundKRW:0,refundStatus:null,docs:[],createdAt:todayISO(),
+        history:[{t:todayISO(),e:"CSV 일괄 등록"}].concat(top&&top.conf>0?[{t:todayISO(),e:`자동 HS ${top.hs} (신뢰도 ${top.conf}%)`}]:[]) };
+      S.items.unshift(it); added++;
+    });
+    save(); toast(added+"건 CSV 일괄 등록·자동 분류 완료"); setView("items");
+  };
+  r.readAsText(f,"utf-8"); ev.target.value="";
+}
+function exportCSV(){
+  const head="품명,도착국,HS코드,MFN(%),FTA협정,원산지충족,수출금액USD,절감USD,환급추정KRW,단계,환급상태\n";
+  const rows=S.items.map(i=>[i.name,i.dest,i.hs||"",i.mfn??"",i.agreement||"",i.originOk==null?"":(i.originOk?"Y":"N"),i.qty*i.unitUSD,i.saveUSD||0, i.refundKRW||refundEstimate(i.qty*i.unitUSD*S.fx), i.stage, i.refundStatus||""].join(",")).join("\n");
+  dl("traderelay-export.csv", head+rows); toast("내역 CSV 내보내기 완료");
+}
+function dl(name,txt){ const b=new Blob(["﻿"+txt],{type:"text/csv;charset=utf-8"}); const u=URL.createObjectURL(b); const a=document.createElement("a"); a.href=u; a.download=name; a.click(); URL.revokeObjectURL(u); }
+
+function resetAll(){ if(confirm("데모 데이터를 초기화할까요?")){ localStorage.removeItem(LS_KEY); S=load(); setView("dashboard"); toast("초기화 완료"); } }
+
+/* =====================================================================
+   RENDER SHELL
+   ===================================================================== */
+function navItems(active, mobile){
+  return NAV.map(n=>{
+    const badge = n.v==="refund" ? metrics().unrefunded : (n.v==="docs"? metrics().unfiled : 0);
+    return `<button class="nav ${active===n.v?'active':''}" data-view="${n.v}" onclick="${mobile?'closeDrawer();':''}setView('${n.v}')">
+      <span class="ic">${n.ic}</span><span>${n.t}</span>${badge>0?`<span class="badge">${badge}</span>`:''}</button>`;
+  }).join("");
+}
+function bottomNav(active){
+  const main=NAV.slice(0,4);
+  return `<div class="bottomnav">
+    ${main.map(n=>{const b=n.v==="docs"?metrics().unfiled:0; return `<button class="${active===n.v?'on':''}" data-view="${n.v}" onclick="setView('${n.v}')"><span class="ic">${n.ic}</span>${n.t.replace(/^.*?·?\s*/,'').slice(0,5)}${b>0?`<span class="badge">${b}</span>`:''}</button>`;}).join("")}
+    <button id="moreTab" class="${['refund','data'].includes(active)?'on':''}" onclick="openDrawer()"><span class="ic">⋯</span>더보기</button>
+  </div>`;
+}
+function openDrawer(){ document.getElementById("drawerRoot").innerHTML=`<div class="drawerbd" onclick="closeDrawer()"></div><div class="drawer" id="navDrawer"><div class="brand"><div class="logo">TR</div><b>트레이드릴레이</b></div>${navItems(S._view,true)}</div>`; }
+function closeDrawer(){ document.getElementById("drawerRoot").innerHTML=""; }
+
+function viewTitle(){ return (NAV.find(n=>n.v===S._view)||NAV[0]).t; }
+function renderView(){
+  switch(S._view){
+    case "items": return viewItems();
+    case "origin": return viewOrigin();
+    case "docs": return viewDocs();
+    case "refund": return viewRefund();
+    case "data": return viewData();
+    default: return viewDashboard();
+  }
+}
+function render(){
+  document.getElementById("root").innerHTML = `
+  <div class="app">
+    <aside class="sidebar" id="navDesktop">
+      <div class="brand"><div class="logo">TR</div><b>트레이드릴레이</b></div>
+      <div class="navsec">수출 통관·관세</div>
+      ${navItems(S._view,false)}
+      <div style="margin-top:auto;padding:10px 8px;font-size:11px;color:var(--ter)">v1 PoC · 오프라인 데모<br>${S.org.name}</div>
+    </aside>
+    <div class="main">
+      <div class="mtop"><div class="logo">TR</div><b>트레이드릴레이</b><div class="grow"></div><span class="pill brand">${viewTitle()}</span></div>
+      <div class="topbar"><h2>${viewTitle()}</h2><div class="grow"></div><span class="pill gray">오프라인 데모 · 키 없이 동작</span></div>
+      <div class="content">${renderView()}</div>
+    </div>
+  </div>
+  ${bottomNav(S._view)}`;
+}
+render();
+window.setView=setView;
+
+/* ---------- 기능 카운트 (결과보고서 §2 소스) ----------
+FEATURES:
+1 수출 대시보드 KPI 4종(건수·절감·환급·미신고/미환급)
+2 단계별 파이프라인 막대차트(등록→HS→원산지→신고서→환급)
+3 오늘의 액션 타임라인(다음 단계 힌트)
+4 수출 건 목록 테이블(품목·국가·금액·HS·FTA·단계)
+5 새 수출 건 등록 모달(품명·설명·수량·단가·국가)
+6 품목·HS 카드 뷰
+7 HS코드 분류 보조 — 키워드 룰·점수 매칭, 후보 3건
+8 HS 후보별 신뢰도(%)·MFN·매칭근거 노출
+9 HS 후보 선택·확정(휴먼인더루프)
+10 FTA 원산지 판정 뷰(HS 완료 건만)
+11 협정 선택(한미/한EU/RCEP/한중/한아세안)
+12 도착국 기반 협정 자동 추천
+13 협정별 결정기준 체크리스트(핵심기준 필수)
+14 원산지 충족 판정(기준 충족수 기반)
+15 FTA 절감액 산정(MFN×수출금액)
+16 수출신고서 자동생성
+17 커머셜 인보이스 자동생성
+18 원산지증명서(C/O) 초안 생성(충족 시)
+19 jsPDF 실 PDF 출력(폴백 텍스트 미리보기)
+20 관세 환급 추적 뷰
+21 간이정액환급 추정액 산정
+22 환급 상태 전이(미신청→신청완료→심사중→지급완료)
+23 수출 건 상세 모달 + 단계 스텝퍼
+24 진행 이력 타임라인
+25 주문 CSV 업로드 일괄 등록·자동 HS 분류
+26 샘플 CSV 다운로드
+27 내역 CSV 내보내기(11열)
+28 업체 정보·환율 편집
+29 localStorage 상태 지속
+30 데모 데이터 초기화
+31 반응형: 사이드바↔바텀탭+드로어
+32 미신고/미환급 배지 알림
+*/
+</script>
+</body>
+</html>
