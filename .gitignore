@@ -19,3 +19,6 @@ build/
 
 # 별도 git 레포 (자체 원격 iamywl/k-startup-template 로 관리)
 k-startup-template/
+
+# 심링크 형태 node_modules 도 무시 (디렉터리 패턴은 심링크 미매칭)
+node_modules

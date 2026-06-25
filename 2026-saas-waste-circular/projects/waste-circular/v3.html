@@ -1,0 +1,1820 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>리사이클로 v3 — 폐기물·순환자원 배출관리 SaaS (시리즈A · LCA·순환경제·다국어)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#f5f6f8; --surface:#ffffff; --ink:#15181d; --sub:#5b6470;
+    --line:#e7e9ee; --brand:#0a7d4b; --brand-weak:#e6f4ec; --accent:#1463ff; --accent-weak:#e9f0ff;
+    --warn:#b4540a; --warn-weak:#fdf0e6; --danger:#c0392b; --danger-weak:#fcebe9;
+    --ok:#0a7d4b; --radius:16px; --shadow:0 1px 2px rgba(20,24,29,.04),0 8px 24px rgba(20,24,29,.06);
+    --fz:15px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",
+      "Malgun Gothic",system-ui,sans-serif;
+    background:var(--bg); color:var(--ink); font-size:var(--fz); line-height:1.5;
+    -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  }
+  button{font-family:inherit; cursor:pointer}
+  a{color:inherit}
+  .app{display:flex; min-height:100vh}
+  /* ---- sidebar ---- */
+  .sidebar{
+    width:236px; flex:0 0 236px; background:var(--surface); border-right:1px solid var(--line);
+    display:flex; flex-direction:column; padding:18px 12px; position:sticky; top:0; height:100vh; overflow-y:auto;
+  }
+  .brand{display:flex; align-items:center; gap:10px; padding:6px 10px 12px}
+  .brand .logo{width:30px;height:30px;border-radius:9px;background:var(--brand);color:#fff;
+    display:grid;place-items:center;font-weight:800}
+  .brand b{font-size:17px}
+  .brand small{display:block;color:var(--sub);font-weight:500;font-size:11.5px}
+  .ver-chip{font-size:10px;font-weight:800;background:var(--accent-weak);color:var(--accent);padding:2px 7px;border-radius:999px;margin-left:auto}
+  .nav-sec{font-size:10.5px;font-weight:800;color:#9aa3af;letter-spacing:.04em;padding:12px 12px 5px;text-transform:uppercase}
+  .nav-btn{display:flex; align-items:center; gap:11px; width:100%; border:0; background:transparent;
+    color:var(--sub); padding:10px 12px; border-radius:11px; font-size:14px; font-weight:600; text-align:left}
+  .nav-btn .ic{width:20px;text-align:center}
+  .nav-btn.active{background:var(--brand-weak); color:var(--brand)}
+  .nav-btn:hover{background:#f0f2f5}
+  .nav-btn[hidden]{display:none}
+  .sidebar .spacer{flex:1}
+  .seed-tag{font-size:11px;color:var(--sub);padding:10px 12px;line-height:1.4}
+  /* ---- main ---- */
+  .main{flex:1; min-width:0; display:flex; flex-direction:column}
+  .topbar{display:flex; align-items:center; gap:10px; padding:12px 22px; background:var(--surface);
+    border-bottom:1px solid var(--line); position:sticky; top:0; z-index:20; flex-wrap:wrap}
+  .topbar h1{font-size:18px; margin:0; flex:1; min-width:120px}
+  .hamb{display:none; border:1px solid var(--line); background:#fff; border-radius:10px; width:38px;height:38px;font-size:18px}
+  .sel{border:1px solid var(--line); background:#fff; border-radius:10px; padding:8px 10px; font-size:13px; font-weight:600; max-width:46vw}
+  .sel.role{background:var(--accent-weak); border-color:#cfe0ff; color:var(--accent)}
+  .sel.lang{font-weight:800; padding:8px 12px; min-width:46px}
+  .content{padding:22px; max-width:1120px; width:100%; margin:0 auto}
+  .view{display:none}
+  .view.active{display:block; animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  /* ---- cards / grid ---- */
+  .grid{display:grid; gap:14px}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow); min-width:0}
+  .card h3{margin:0 0 12px; font-size:15px}
+  .card h3 .sub{font-weight:500;color:var(--sub);font-size:12px}
+  .kpi .label{color:var(--sub); font-size:12.5px; font-weight:600}
+  .kpi .num{font-size:26px; font-weight:800; margin-top:6px; letter-spacing:-.5px}
+  .kpi .num small{font-size:14px;font-weight:700;color:var(--sub)}
+  .kpi .delta{font-size:12px; margin-top:4px; color:var(--sub)}
+  .pill{display:inline-block; padding:3px 9px; border-radius:999px; font-size:11.5px; font-weight:700; white-space:nowrap}
+  .pill.ok{background:var(--brand-weak);color:var(--brand)}
+  .pill.warn{background:var(--warn-weak);color:var(--warn)}
+  .pill.danger{background:var(--danger-weak);color:var(--danger)}
+  .pill.info{background:var(--accent-weak);color:var(--accent)}
+  .pill.mute{background:#eef0f3;color:var(--sub)}
+  /* ---- table ---- */
+  table{width:100%; border-collapse:collapse; font-size:13.5px}
+  th,td{padding:10px 8px; text-align:left; border-bottom:1px solid var(--line); white-space:nowrap}
+  th{color:var(--sub); font-weight:700; font-size:12px}
+  td.r,th.r{text-align:right}
+  .tbl-wrap{overflow-x:auto; -webkit-overflow-scrolling:touch}
+  .tbl-wrap table{min-width:520px}
+  .tbl-wrap.wide table{min-width:680px}
+  /* ---- buttons ---- */
+  .btn{border:0; background:var(--brand); color:#fff; padding:10px 16px; border-radius:11px; font-weight:700; font-size:14px}
+  .btn:disabled{opacity:.45; cursor:not-allowed}
+  .btn.sec{background:#eef0f3; color:var(--ink)}
+  .btn.ghost{background:#fff; border:1px solid var(--line); color:var(--ink)}
+  .btn.sm{padding:7px 11px; font-size:12.5px; border-radius:9px}
+  .btn.warn{background:var(--warn)}
+  .btn.accent{background:var(--accent)}
+  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+  .field{display:flex; flex-direction:column; gap:6px; margin-bottom:12px}
+  .field label{font-size:12.5px; font-weight:700; color:var(--sub)}
+  .field input,.field select{border:1px solid var(--line); border-radius:10px; padding:10px 12px; font-size:14px; background:#fff; width:100%}
+  .field input:focus,.field select:focus{outline:2px solid var(--brand); outline-offset:-1px; border-color:var(--brand)}
+  .muted{color:var(--sub)}
+  .sec-title{font-size:13px;font-weight:800;color:var(--sub);margin:22px 0 10px}
+  .note{font-size:12.5px;color:var(--sub);margin:0 0 10px}
+  /* ---- bar / chart ---- */
+  canvas.chart{width:100%; height:180px; display:block}
+  .legend{display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--sub); margin-top:8px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:middle}
+  .bar-row{display:flex;align-items:center;gap:10px;margin:7px 0;font-size:13px}
+  .bar-row .lab{width:84px;flex:0 0 84px;color:var(--sub);font-weight:600;font-size:12px}
+  .bar-track{flex:1;height:14px;background:#eef0f3;border-radius:7px;overflow:hidden}
+  .bar-fill{height:100%;background:var(--brand);border-radius:7px}
+  .bar-row .val{width:74px;flex:0 0 74px;text-align:right;font-weight:700;font-size:12.5px}
+  /* ---- log box ---- */
+  .doc{font-size:12.5px; border:1px solid var(--line); border-radius:10px; padding:12px; background:#fafbfc}
+  .doc .ln{display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px dashed #eef0f3}
+  .doc .ln:last-child{border-bottom:0}
+  .logbox{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11.5px; line-height:1.7;
+    background:#0f1722; color:#cfe3d6; border-radius:12px; padding:12px 14px; max-height:230px; overflow:auto; white-space:pre-wrap; word-break:break-all}
+  .logbox .t{color:#7fd1a6}
+  .logbox .w{color:#f0b072}
+  /* ---- sign pad ---- */
+  .modal-bg{position:fixed; inset:0; background:rgba(15,18,22,.42); display:none; align-items:center; justify-content:center; z-index:60; padding:16px}
+  .modal-bg.show{display:flex}
+  .modal{background:#fff; border-radius:18px; width:min(540px,100%); max-height:90vh; overflow:auto; padding:20px}
+  .modal h3{margin:0 0 14px}
+  .sign-pad{border:1.5px dashed var(--line); border-radius:12px; background:#fcfcfd; touch-action:none; width:100%; height:150px; display:block}
+  .stepper{display:flex;gap:6px;margin:0 0 12px;flex-wrap:wrap}
+  .step{font-size:11px;font-weight:700;padding:5px 9px;border-radius:999px;background:#eef0f3;color:var(--sub)}
+  .step.done{background:var(--brand-weak);color:var(--brand)}
+  .step.cur{background:var(--accent-weak);color:var(--accent)}
+  /* ---- bottom nav ---- */
+  .bottomnav{display:none}
+  .toast{position:fixed; left:50%; bottom:84px; transform:translateX(-50%); background:#15181d; color:#fff;
+    padding:11px 18px; border-radius:12px; font-size:13.5px; font-weight:600; z-index:80; opacity:0; transition:.25s; pointer-events:none; max-width:90vw; text-align:center}
+  .toast.show{opacity:1}
+  /* ---- responsive ---- */
+  @media(max-width:920px){
+    .g4{grid-template-columns:repeat(2,1fr)} .g3,.g2{grid-template-columns:1fr}
+    .sidebar{position:fixed; left:0; top:0; z-index:70; transform:translateX(-100%); transition:transform .25s; box-shadow:0 0 40px rgba(0,0,0,.2)}
+    body.drawer-open .sidebar{transform:none}
+    .scrim{position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:65; display:none}
+    body.drawer-open .scrim{display:block}
+    .hamb{display:block}
+    .content{padding:16px 14px 92px}
+    .bottomnav{display:flex; position:fixed; left:0; right:0; bottom:0; background:var(--surface);
+      border-top:1px solid var(--line); z-index:50; padding:6px 4px env(safe-area-inset-bottom)}
+    .bottomnav button{flex:1; border:0; background:transparent; color:var(--sub); font-size:10px; font-weight:700;
+      display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 2px; border-radius:10px}
+    .bottomnav button .ic{font-size:18px}
+    .bottomnav button.active{color:var(--brand)}
+    .bottomnav button[hidden]{display:none}
+    .topbar{padding:10px 14px}
+    .topbar h1{font-size:16px; flex-basis:100%; order:-1}
+    .kpi .num{font-size:22px}
+    .sel{max-width:none;flex:1}
+  }
+</style>
+</head>
+<body>
+<div class="scrim" id="scrim"></div>
+<div class="app">
+  <!-- sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="logo">♻</div>
+      <div><b>리사이클로</b><small data-i18n="brandSub">순환자원 배출관리</small></div>
+      <span class="ver-chip">v3</span>
+    </div>
+
+    <div class="nav-sec" data-i18n="navOps">운영</div>
+    <button class="nav-btn active" data-view="dashboard"><span class="ic">▤</span><span data-i18n="v.dashboard">대시보드</span></button>
+    <button class="nav-btn" data-view="discharge"><span class="ic">⤓</span><span data-i18n="v.discharge">배출·계근</span></button>
+    <button class="nav-btn" data-view="manifest"><span class="ic">✍</span><span data-i18n="v.manifest">전자인계서</span></button>
+    <button class="nav-btn" data-view="settle"><span class="ic">₩</span><span data-i18n="v.settle">정산</span></button>
+
+    <div class="nav-sec" data-i18n="navIntel">인텔리전스</div>
+    <button class="nav-btn" data-view="forecast"><span class="ic">∿</span><span data-i18n="v.forecast">배출량 예측</span></button>
+    <button class="nav-btn" data-view="circular"><span class="ic">◎</span><span data-i18n="v.circular">순환경제 지표</span></button>
+    <button class="nav-btn" data-view="lca"><span class="ic">⌬</span><span data-i18n="v.lca">LCA 탄소</span></button>
+    <button class="nav-btn" data-view="route"><span class="ic">⤳</span><span data-i18n="v.route">처리경로 최적화</span></button>
+    <button class="nav-btn" data-view="recommend"><span class="ic">★</span><span data-i18n="v.recommend">처리업체 추천</span></button>
+    <button class="nav-btn" data-view="verify"><span class="ic">⚠</span><span data-i18n="v.verify">정산 검증</span></button>
+    <button class="nav-btn" data-view="risk"><span class="ic">⊘</span><span data-i18n="v.risk">부정 리스크</span></button>
+    <button class="nav-btn" data-view="esg"><span class="ic">◑</span><span data-i18n="v.esg">ESG·탄소</span></button>
+
+    <div class="nav-sec" data-i18n="navIntegr">연동·운영</div>
+    <button class="nav-btn" data-view="integration"><span class="ic">⇄</span><span data-i18n="v.integration">외부연동</span></button>
+    <button class="nav-btn" data-view="exchange"><span class="ic">⇋</span><span data-i18n="v.exchange">유가물 거래소</span></button>
+    <button class="nav-btn" data-view="partner"><span class="ic">⛟</span><span data-i18n="v.partner">운반·처리 콘솔</span></button>
+    <button class="nav-btn" data-view="audit"><span class="ic">≣</span><span data-i18n="v.audit">감사로그</span></button>
+    <button class="nav-btn" data-view="tenant"><span class="ic">⊞</span><span data-i18n="v.tenant">테넌트·권한</span></button>
+
+    <div class="spacer"></div>
+    <div class="seed-tag" data-i18n="seedTag">멀티테넌트·역할기반(RBAC) 데모<br/>로그인 불필요 · 브라우저 저장</div>
+    <button class="nav-btn" id="resetBtn"><span class="ic">↺</span><span data-i18n="reset">데모 초기화</span></button>
+  </aside>
+
+  <!-- main -->
+  <div class="main">
+    <div class="topbar">
+      <button class="hamb" id="hamb">☰</button>
+      <h1 id="viewTitle">대시보드</h1>
+      <button class="sel lang" id="langToggle" title="Language">EN</button>
+      <select class="sel" id="siteSel" title="사업장(테넌트)"></select>
+      <select class="sel role" id="roleSel" title="역할(RBAC)"></select>
+    </div>
+    <div class="content">
+
+      <!-- 1. dashboard -->
+      <section class="view active" id="view-dashboard">
+        <div class="grid g4">
+          <div class="card kpi"><div class="label">올바로 입력기한 임박</div><div class="num" id="kpiDue">0<small>건</small></div><div class="delta" id="kpiDueSub">10일 이내</div></div>
+          <div class="card kpi"><div class="label">이번 분기 처리량</div><div class="num" id="kpiTon">0<small>톤</small></div><div class="delta">처리 완료 기준</div></div>
+          <div class="card kpi"><div class="label">재활용률</div><div class="num" id="kpiRecyc">0<small>%</small></div><div class="delta" id="kpiRecycSub">전국 86.0% 대비</div></div>
+          <div class="card kpi"><div class="label">정산 이상 탐지</div><div class="num" id="kpiAnom">0<small>건</small></div><div class="delta" id="kpiAnomSub">검증 필요</div></div>
+        </div>
+        <div class="grid g2" style="margin-top:14px">
+          <div class="card">
+            <h3>월별 처리량 + 다음달 예측 <span class="sub">(이동평균·추세)</span></h3>
+            <canvas class="chart" id="chartTon"></canvas>
+            <div class="legend"><span><i style="background:#0a7d4b"></i>실측 처리량</span><span><i style="background:#1463ff"></i>예측(예측구간)</span></div>
+          </div>
+          <div class="card">
+            <h3>처리방법 구성 <span class="sub">(이번 분기)</span></h3>
+            <canvas class="chart" id="chartMix"></canvas>
+            <div class="legend">
+              <span><i style="background:#0a7d4b"></i>재활용</span>
+              <span><i style="background:#6b7280"></i>소각</span>
+              <span><i style="background:#1f2933"></i>매립</span>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <h3>처리해야 할 일 <span class="sub" id="dashRoleHint"></span></h3>
+          <div class="tbl-wrap"><table id="todoTbl"></table></div>
+        </div>
+      </section>
+
+      <!-- 2. discharge & weighing -->
+      <section class="view" id="view-discharge">
+        <div class="grid g2">
+          <div class="card" data-perm="discharge.create">
+            <h3>① 배출 등록</h3>
+            <div class="field"><label>폐기물 품목</label><select id="dItem"></select></div>
+            <div class="row">
+              <div class="field" style="flex:1"><label>예상 배출중량 (kg)</label><input id="dWeight" type="number" value="1200" min="1"/></div>
+              <div class="field" style="flex:1"><label>보관 위치</label><input id="dLoc" value="A동 집하장"/></div>
+            </div>
+            <div class="field"><label>수집·운반 / 처리 위탁사</label><select id="dHauler"></select></div>
+            <button class="btn" id="dRegister">배출 등록</button>
+          </div>
+          <div class="card">
+            <h3>② 수거·계근 <span class="sub">(체인 중량 검증 ±3%)</span></h3>
+            <p class="note">배출→운반→처리 단계 중량을 입력하면 허용오차(±3%) 내 일치 여부를 검증합니다. 계근 IoT 연동 시 자동 수신됩니다.</p>
+            <div class="row" style="margin-bottom:10px">
+              <button class="btn sm accent" id="iotPull" data-perm="weigh.iot">계근 IoT 자동수신(mock)</button>
+            </div>
+            <div class="tbl-wrap wide"><table id="weighTbl"></table></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <h3>배출 건 목록</h3>
+          <div class="tbl-wrap wide"><table id="dischargeTbl"></table></div>
+        </div>
+      </section>
+
+      <!-- 3. manifest / e-sign -->
+      <section class="view" id="view-manifest">
+        <div class="card">
+          <h3>③ 전자인계서 — 3자(배출·운반·처리) 순차 서명</h3>
+          <p class="note">계근이 끝난 배출 건은 <b>배출자 → 운반자 → 처리자</b> 3자가 순차 서명해야 인계서가 발행됩니다. 발행 시 올바로 입력기한(10일) D-day가 시작됩니다.</p>
+          <div class="tbl-wrap wide"><table id="manifestTbl"></table></div>
+        </div>
+      </section>
+
+      <!-- 4. settlement -->
+      <section class="view" id="view-settle">
+        <div class="card">
+          <h3>④ 정산 — 위탁계약 단가 × 처리중량</h3>
+          <div class="row" style="margin-bottom:12px">
+            <div class="kpi"><div class="label">정산 대기</div><div class="num" id="setPending" style="font-size:20px">0<small>원</small></div></div>
+            <div class="kpi" style="margin-left:18px"><div class="label">정산 완료</div><div class="num" id="setDone" style="font-size:20px">0<small>원</small></div></div>
+            <div class="kpi" style="margin-left:18px"><div class="label">검증 보류</div><div class="num" id="setHold" style="font-size:20px">0<small>건</small></div></div>
+          </div>
+          <p class="note">정산 검증에서 <b>이상</b>으로 판정된 건은 자동 보류되어 정산 확정이 차단됩니다(과다·과소 청구 방지).</p>
+          <div class="tbl-wrap wide"><table id="settleTbl"></table></div>
+        </div>
+      </section>
+
+      <!-- 5. forecast -->
+      <section class="view" id="view-forecast">
+        <div class="card">
+          <h3>배출량 예측 <span class="sub">(3개월 이동평균 + 최소제곱 추세)</span></h3>
+          <p class="note">사업장의 월별 실측 처리량으로 <b>다음 달 배출량</b>을 추정합니다. 추세 기울기(β)와 이동평균을 결합하고, 잔차 표준편차로 ±예측구간을 산출합니다. 처리계약·집하 캐파 사전 확보에 사용됩니다.</p>
+          <div class="grid g3">
+            <div class="card kpi" style="box-shadow:none"><div class="label">다음달 예측</div><div class="num" id="fcNext">0<small>kg</small></div><div class="delta" id="fcBand">±0</div></div>
+            <div class="card kpi" style="box-shadow:none"><div class="label">추세(월)</div><div class="num" id="fcSlope" style="font-size:22px">0<small>kg/월</small></div><div class="delta" id="fcSlopeDir">-</div></div>
+            <div class="card kpi" style="box-shadow:none"><div class="label">예측 신뢰(R²)</div><div class="num" id="fcR2" style="font-size:22px">0</div><div class="delta">적합도</div></div>
+          </div>
+          <h3 style="margin-top:18px">품목별 다음달 예측</h3>
+          <div id="fcBars"></div>
+          <div class="tbl-wrap" style="margin-top:14px"><table id="fcTbl"></table></div>
+        </div>
+      </section>
+
+      <!-- 6. recommend -->
+      <section class="view" id="view-recommend">
+        <div class="card">
+          <h3>처리업체 추천 <span class="sub">(가중 점수: 단가·거리·재활용률·신뢰도)</span></h3>
+          <p class="note">선택 품목에 대해 후보 처리사를 <b>가중 점수 모델</b>로 순위화합니다. 점수 = 0.40·단가절감 + 0.20·근접 + 0.30·재활용률 + 0.10·정산신뢰도(이상이력 반영). 추천 업체로 배출 등록 시 단가·운반비가 자동 적용됩니다.</p>
+          <div class="row" style="margin-bottom:12px">
+            <div class="field" style="min-width:220px;margin:0"><label>대상 품목</label><select id="recItem"></select></div>
+            <div class="field" style="min-width:160px;margin:0"><label>예상중량(kg)</label><input id="recWeight" type="number" value="1500"/></div>
+            <button class="btn" id="recRun" style="align-self:flex-end">추천 계산</button>
+          </div>
+          <div class="tbl-wrap wide"><table id="recTbl"></table></div>
+          <div id="recBars" style="margin-top:14px"></div>
+        </div>
+      </section>
+
+      <!-- 7. verify -->
+      <section class="view" id="view-verify">
+        <div class="card">
+          <h3>정산 검증 <span class="sub">(체인 편차 + 통계 이상치 + 단가 검증)</span></h3>
+          <p class="note">각 인계 건을 3중 룰로 검증합니다 — ① 운반↔처리 중량 편차 ±3% ② 같은 품목 평균 단가중량 대비 <b>2σ 이상치</b> ③ 청구단가가 계약단가와 불일치. 하나라도 걸리면 <b>이상</b>으로 표시되고 정산이 보류됩니다.</p>
+          <div class="row" style="margin-bottom:12px">
+            <button class="btn" id="verRun">전체 재검증 실행</button>
+            <span class="muted" id="verSummary" style="font-size:12.5px"></span>
+          </div>
+          <div class="tbl-wrap wide"><table id="verTbl"></table></div>
+        </div>
+      </section>
+
+      <!-- 8. ESG -->
+      <section class="view" id="view-esg">
+        <div class="grid g4">
+          <div class="card kpi"><div class="label">총 처리량</div><div class="num" id="esgTotal">0<small>kg</small></div></div>
+          <div class="card kpi"><div class="label">재활용률</div><div class="num" id="esgRecyc">0<small>%</small></div></div>
+          <div class="card kpi"><div class="label">매립률</div><div class="num" id="esgLand">0<small>%</small></div></div>
+          <div class="card kpi"><div class="label">탄소(CO₂e) 추정</div><div class="num" id="esgco2">0<small>kg</small></div></div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <h3>처리방법별 집계 · 탄소 환산</h3>
+          <div class="tbl-wrap"><table id="esgTbl"></table></div>
+          <div class="row" style="margin-top:14px">
+            <button class="btn" id="esgPdf">ESG 리포트 PDF</button>
+            <button class="btn accent" id="esgSubmit" data-perm="esg.submit">원청·공시 포털 제출(mock)</button>
+            <span class="muted" style="font-size:12px">탄소계수는 공개 기준 적용 대상(데모는 추정 계수 [추정]). 재활용률은 처리방법별 실집계.</span>
+          </div>
+          <div class="doc" id="esgSubmitLog" style="margin-top:12px">아직 제출 이력이 없습니다.</div>
+        </div>
+      </section>
+
+      <!-- 9. integration -->
+      <section class="view" id="view-integration">
+        <div class="grid g2">
+          <div class="card">
+            <h3>① 올바로(ALLBARO) 전자인계 전송 <span class="sub">mock</span></h3>
+            <p class="note">발행된 전자인계서를 올바로 신고 전문(XML 유사 매핑)으로 변환해 전송하고 접수번호를 수신합니다(데모 mock).</p>
+            <button class="btn" id="allbaroExport" data-perm="integration.allbaro">올바로 신고 전송</button>
+            <div class="logbox" id="allbaroLog" style="margin-top:12px">대기 중…</div>
+          </div>
+          <div class="card">
+            <h3>② 계근 IoT 게이트웨이 <span class="sub">mock</span></h3>
+            <p class="note">트럭스케일(계근기) 게이트웨이에서 운반·처리 계근값을 수신합니다. 수신 즉시 체인 검증이 재실행됩니다.</p>
+            <button class="btn accent" id="iotPull2" data-perm="weigh.iot">IoT 계근값 수신</button>
+            <div class="logbox" id="iotLog" style="margin-top:12px">대기 중…</div>
+          </div>
+        </div>
+        <div class="grid g2" style="margin-top:14px">
+          <div class="card">
+            <h3>③ 펌뱅킹 정산 CSV 입출력 <span class="sub">외부</span></h3>
+            <p class="note">정산 확정 건을 펌뱅킹 이체요청 CSV(은행·계좌·금액)로 내보내고, 이체결과 CSV를 가져와 정산 상태를 갱신합니다.</p>
+            <div class="row">
+              <button class="btn ghost" id="fbOut" data-perm="settle.confirm">펌뱅킹 이체요청 CSV</button>
+              <button class="btn ghost" id="csvOut">인계내역 CSV</button>
+            </div>
+            <div class="field" style="margin-top:12px"><label>이체결과 CSV 가져오기</label><input id="fbIn" type="file" accept=".csv"/></div>
+            <div class="doc" id="csvLog" style="margin-top:6px">대기 중.</div>
+          </div>
+          <div class="card">
+            <h3>④ 탄소 리포트 외부 제출 <span class="sub">mock</span></h3>
+            <p class="note">ESG·탄소 집계를 원청 ESG 포털 규격으로 제출합니다(접수 ID 수신). ESG 탭의 제출 버튼과 동일 채널입니다.</p>
+            <button class="btn" id="carbonSubmit" data-perm="esg.submit">탄소 리포트 제출</button>
+            <div class="logbox" id="carbonLog" style="margin-top:12px">대기 중…</div>
+          </div>
+        </div>
+        <div class="grid g2" style="margin-top:14px">
+          <div class="card">
+            <h3 data-i18n="ig.muni">⑤ 지자체 폐기물관리 연동 <span class="sub">mock</span></h3>
+            <p class="note" data-i18n="ig.muniNote">관할 지자체 폐기물관리시스템에 배출·처리 실적을 신고 전문으로 송신하고 접수번호를 수신합니다(데모 mock).</p>
+            <button class="btn" id="muniSend" data-perm="integration.allbaro">지자체 실적 신고</button>
+            <div class="logbox" id="muniLog" style="margin-top:12px">대기 중…</div>
+          </div>
+          <div class="card">
+            <h3 data-i18n="ig.keco">⑥ 환경공단 순환경제 실적 제출 <span class="sub">mock</span></h3>
+            <p class="note" data-i18n="ig.kecoNote">한국환경공단(KECO) 자원순환 실적관리 규격으로 MCI·재자원화 실적을 제출하고 접수 ID를 수신합니다.</p>
+            <button class="btn accent" id="kecoSend" data-perm="esg.submit">환경공단 실적 제출</button>
+            <div class="logbox" id="kecoLog" style="margin-top:12px">대기 중…</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 10. partner console -->
+      <section class="view" id="view-partner">
+        <div class="card">
+          <h3 id="partnerTitle">운반·처리 콘솔</h3>
+          <p class="note" id="partnerHint">역할(운반기사·처리장)에 배정된 작업만 표시됩니다. 관리자는 전체를 봅니다.</p>
+          <div class="grid g3">
+            <div class="card kpi" style="box-shadow:none"><div class="label">내 작업(대기)</div><div class="num" id="pWait" style="font-size:22px">0<small>건</small></div></div>
+            <div class="card kpi" style="box-shadow:none"><div class="label">오늘 처리</div><div class="num" id="pToday" style="font-size:22px">0<small>건</small></div></div>
+            <div class="card kpi" style="box-shadow:none"><div class="label">서명 대기</div><div class="num" id="pSign" style="font-size:22px">0<small>건</small></div></div>
+          </div>
+          <div class="tbl-wrap wide" style="margin-top:14px"><table id="partnerTbl"></table></div>
+        </div>
+      </section>
+
+      <!-- 11. audit log -->
+      <section class="view" id="view-audit">
+        <div class="card">
+          <h3>감사로그 <span class="sub">(행위자·역할·테넌트·시각)</span></h3>
+          <p class="note">모든 상태 변경(배출·계근·서명·정산·연동 전송)을 행위자·역할과 함께 기록합니다. 분쟁·심사 대응 추적성을 제공합니다.</p>
+          <div class="row" style="margin-bottom:10px">
+            <button class="btn ghost sm" id="auditCsv">감사로그 CSV</button>
+            <span class="muted" id="auditCount" style="font-size:12.5px"></span>
+          </div>
+          <div class="tbl-wrap wide"><table id="auditTbl"></table></div>
+        </div>
+      </section>
+
+      <!-- 12. tenant / rbac -->
+      <section class="view" id="view-tenant">
+        <div class="card">
+          <h3>테넌트(사업장) · 역할 권한(RBAC)</h3>
+          <p class="note">한 화면에서 여러 사업장(테넌트)의 데이터를 분리 관리하고, 역할별로 사용 가능한 기능을 제한합니다. 상단에서 테넌트·역할을 전환해 보세요.</p>
+          <div class="sec-title">테넌트별 현황</div>
+          <div class="tbl-wrap"><table id="tenantTbl"></table></div>
+          <div class="sec-title">역할 × 권한 매트릭스</div>
+          <div class="tbl-wrap wide"><table id="rbacTbl"></table></div>
+        </div>
+      </section>
+
+      <!-- 13. circular economy (MCI) -->
+      <section class="view" id="view-circular">
+        <div class="grid g4">
+          <div class="card kpi"><div class="label" data-i18n="ce.mci">물질순환지표(MCI)</div><div class="num" id="ceMci">0</div><div class="delta" data-i18n="ce.mciSub">0(선형)~1(완전순환)</div></div>
+          <div class="card kpi"><div class="label" data-i18n="ce.reuse">재자원화율</div><div class="num" id="ceReuse">0<small>%</small></div><div class="delta" data-i18n="ce.reuseSub">재활용+유가매각</div></div>
+          <div class="card kpi"><div class="label" data-i18n="ce.virgin">신재 대체량</div><div class="num" id="ceVirgin">0<small>t</small></div><div class="delta" data-i18n="ce.virginSub">2차원료 대체 추정</div></div>
+          <div class="card kpi"><div class="label" data-i18n="ce.next">다음분기 순환성</div><div class="num" id="ceNext">0</div><div class="delta" data-i18n="ce.nextSub">추세 예측</div></div>
+        </div>
+        <div class="grid g2" style="margin-top:14px">
+          <div class="card">
+            <h3 data-i18n="ce.formula">물질순환지표 산식 <span class="sub">(EMF MCI 기반 [추정])</span></h3>
+            <p class="note" data-i18n="ce.formulaNote">MCI = 1 − LFI · F(X). 선형흐름지표(LFI)는 신재 투입·매립 폐기 비중, F(X)는 사용강도 보정. 처리방법별 회수가치로 산정합니다.</p>
+            <div class="tbl-wrap"><table id="ceTbl"></table></div>
+          </div>
+          <div class="card">
+            <h3 data-i18n="ce.trend">분기별 순환성 추세 <span class="sub">(예측)</span></h3>
+            <canvas class="chart" id="ceChart"></canvas>
+            <div class="legend"><span><i style="background:#0a7d4b"></i><span data-i18n="ce.legObs">실측 MCI</span></span><span><i style="background:#1463ff"></i><span data-i18n="ce.legPred">예측</span></span></div>
+            <div id="ceBars" style="margin-top:8px"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 14. LCA carbon -->
+      <section class="view" id="view-lca">
+        <div class="grid g4">
+          <div class="card kpi"><div class="label" data-i18n="lca.total">전과정 CO₂e</div><div class="num" id="lcaTotal">0<small>t</small></div><div class="delta" data-i18n="lca.totalSub">수거~최종처분</div></div>
+          <div class="card kpi"><div class="label" data-i18n="lca.transport">운송 배출</div><div class="num" id="lcaTrans">0<small>kg</small></div><div class="delta" data-i18n="lca.transSub">거리×계수</div></div>
+          <div class="card kpi"><div class="label" data-i18n="lca.credit">재활용 크레딧</div><div class="num" id="lcaCredit">0<small>kg</small></div><div class="delta" data-i18n="lca.creditSub">회피배출(−)</div></div>
+          <div class="card kpi"><div class="label" data-i18n="lca.net">순배출</div><div class="num" id="lcaNet">0<small>t</small></div><div class="delta" data-i18n="lca.netSub">크레딧 차감 후</div></div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <h3 data-i18n="lca.title">전과정평가(LCA) 단계별 탄소 <span class="sub">(수거·운송·중간처리·최종처분·회피)</span></h3>
+          <p class="note" data-i18n="lca.note">v2의 단일 처리방법 계수를 <b>전과정 단계별 계수</b>로 분해합니다 — 수거(연료)·운송(거리×트럭계수)·중간처리(전력)·최종처분(매립가스/소각)·재활용 회피배출(크레딧). 모든 계수는 공개 기준 적용 대상(데모는 추정 [추정]).</p>
+          <div class="tbl-wrap wide"><table id="lcaTbl"></table></div>
+          <div class="row" style="margin-top:14px">
+            <button class="btn" id="lcaPdf" data-i18n="lca.pdf">LCA 리포트 PDF</button>
+            <button class="btn accent" id="lcaSubmit" data-perm="esg.submit" data-i18n="lca.submit">환경공단 실적 제출(mock)</button>
+            <span class="muted" style="font-size:12px" data-i18n="lca.disclaim">단계별 계수는 데모용 추정값 [추정].</span>
+          </div>
+          <div class="doc" id="lcaSubmitLog" style="margin-top:12px" data-i18n="lca.noLog">아직 제출 이력이 없습니다.</div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <h3 data-i18n="lca.byItem">품목별 전과정 탄소강도 <span class="sub">(kg CO₂e/kg)</span></h3>
+          <div id="lcaBars"></div>
+        </div>
+      </section>
+
+      <!-- 15. route optimization -->
+      <section class="view" id="view-route">
+        <div class="card">
+          <h3 data-i18n="rt.title">처리경로 최적화 <span class="sub">(비용·탄소 동시 최소 · 가중)</span></h3>
+          <p class="note" data-i18n="rt.note">선택 품목·중량에 대해 후보 <b>처리경로</b>(처리사 × 처리방법)를 생성하고, 정규화 비용·전과정 탄소를 가중합한 목적함수로 최적 경로를 찾습니다. 가중치 슬라이더로 비용↔탄소 선호를 조정하면 파레토 최전선에서 해가 이동합니다.</p>
+          <div class="row" style="margin-bottom:12px">
+            <div class="field" style="min-width:200px;margin:0"><label data-i18n="rt.item">대상 품목</label><select id="rtItem"></select></div>
+            <div class="field" style="min-width:150px;margin:0"><label data-i18n="rt.weight">중량(kg)</label><input id="rtWeight" type="number" value="2000"/></div>
+            <div class="field" style="min-width:200px;margin:0"><label><span data-i18n="rt.wgt">탄소 가중치</span> <span id="rtWLab">0.50</span></label><input id="rtW" type="range" min="0" max="100" value="50" style="width:100%"/></div>
+            <button class="btn" id="rtRun" style="align-self:flex-end" data-i18n="rt.run">경로 최적화</button>
+          </div>
+          <div class="grid g3">
+            <div class="card kpi" style="box-shadow:none"><div class="label" data-i18n="rt.best">최적 경로</div><div class="num" id="rtBest" style="font-size:17px">-</div><div class="delta" id="rtBestSub">-</div></div>
+            <div class="card kpi" style="box-shadow:none"><div class="label" data-i18n="rt.save">기준대비 절감</div><div class="num" id="rtSave" style="font-size:20px">0<small>%</small></div><div class="delta" data-i18n="rt.saveSub">탄소 기준</div></div>
+            <div class="card kpi" style="box-shadow:none"><div class="label" data-i18n="rt.pareto">파레토 최적해</div><div class="num" id="rtPar" style="font-size:20px">0<small>개</small></div><div class="delta" data-i18n="rt.paretoSub">지배받지 않는 해</div></div>
+          </div>
+          <div class="tbl-wrap wide" style="margin-top:14px"><table id="rtTbl"></table></div>
+        </div>
+      </section>
+
+      <!-- 16. fraud risk score -->
+      <section class="view" id="view-risk">
+        <div class="card">
+          <h3 data-i18n="rk.title">부정 정산 리스크 스코어 <span class="sub">(다요인 고도화)</span></h3>
+          <p class="note" data-i18n="rk.note">v2의 3중 룰을 넘어 <b>가중 리스크 스코어(0~100)</b>로 고도화합니다 — 체인편차·통계 이상치(z)·청구단가 괴리·Benford 1자리 적합·처리사 이상이력·심야 계근 등 요인을 가중합해 고·중·저 위험으로 분류하고, 고위험 건은 정산·올바로 전송을 동시 차단합니다.</p>
+          <div class="grid g4" style="margin-bottom:6px">
+            <div class="card kpi" style="box-shadow:none"><div class="label" data-i18n="rk.high">고위험</div><div class="num" id="rkHigh" style="font-size:22px">0<small>건</small></div></div>
+            <div class="card kpi" style="box-shadow:none"><div class="label" data-i18n="rk.mid">중위험</div><div class="num" id="rkMid" style="font-size:22px">0<small>건</small></div></div>
+            <div class="card kpi" style="box-shadow:none"><div class="label" data-i18n="rk.benford">Benford 적합도</div><div class="num" id="rkBenf" style="font-size:22px">0<small>%</small></div></div>
+            <div class="card kpi" style="box-shadow:none"><div class="label" data-i18n="rk.exposure">차단 위험금액</div><div class="num" id="rkExp" style="font-size:18px">0</div></div>
+          </div>
+          <div class="row" style="margin-bottom:12px"><button class="btn" id="rkRun" data-i18n="rk.run">리스크 재계산</button><span class="muted" id="rkSummary" style="font-size:12.5px"></span></div>
+          <div class="tbl-wrap wide"><table id="rkTbl"></table></div>
+        </div>
+      </section>
+
+      <!-- 17. recyclables exchange -->
+      <section class="view" id="view-exchange">
+        <div class="grid g2">
+          <div class="card">
+            <h3 data-i18n="ex.title">유가물 거래소 <span class="sub">mock</span></h3>
+            <p class="note" data-i18n="ex.note">재활용 가능 품목을 <b>유가물(재생원료) 거래소</b>에 매도 호가로 등록합니다. 등록 즉시 시세 기준 예상 매각대금이 산출되고, 체결 시 정산·MCI에 반영됩니다(데모 mock).</p>
+            <div class="row" style="margin-bottom:10px">
+              <div class="field" style="min-width:180px;margin:0"><label data-i18n="ex.item">품목</label><select id="exItem"></select></div>
+              <div class="field" style="min-width:130px;margin:0"><label data-i18n="ex.weight">수량(kg)</label><input id="exWeight" type="number" value="1200"/></div>
+              <button class="btn" id="exList" data-perm="exchange.trade" style="align-self:flex-end" data-i18n="ex.list">매도 등록</button>
+            </div>
+            <div class="tbl-wrap"><table id="exQuoteTbl"></table></div>
+          </div>
+          <div class="card">
+            <h3 data-i18n="ex.book">거래 체결 내역</h3>
+            <p class="note" data-i18n="ex.bookNote">등록 호가를 시세 변동에 따라 체결합니다. 체결대금은 정산 수익으로 인식되고 재자원화율에 반영됩니다.</p>
+            <button class="btn accent sm" id="exMatch" data-perm="exchange.trade" data-i18n="ex.match">시세 매칭·체결</button>
+            <div class="logbox" id="exLog" style="margin-top:12px">대기 중…</div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<!-- bottom nav (mobile) -->
+<nav class="bottomnav" id="bottomnav">
+  <button class="active" data-view="dashboard"><span class="ic">▤</span><span data-i18n="bn.dashboard">대시보드</span></button>
+  <button data-view="discharge"><span class="ic">⤓</span><span data-i18n="bn.discharge">배출</span></button>
+  <button data-view="circular"><span class="ic">◎</span><span data-i18n="bn.circular">순환성</span></button>
+  <button data-view="lca"><span class="ic">⌬</span><span data-i18n="bn.lca">LCA</span></button>
+  <button data-view="risk"><span class="ic">⊘</span><span data-i18n="bn.risk">리스크</span></button>
+</nav>
+
+<!-- signature modal -->
+<div class="modal-bg" id="signModal">
+  <div class="modal">
+    <h3 id="signTitle">전자인계서 서명</h3>
+    <div class="stepper" id="signSteps"></div>
+    <div class="doc" id="signDoc" style="margin-bottom:12px"></div>
+    <p class="muted" id="signWho" style="font-size:12.5px;margin:0 0 6px"></p>
+    <canvas class="sign-pad" id="signPad"></canvas>
+    <div class="row" style="margin-top:12px; justify-content:flex-end">
+      <button class="btn ghost sm" id="signClear">지우기</button>
+      <button class="btn sec sm" id="signCancel">취소</button>
+      <button class="btn sm" id="signConfirm">서명 제출</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ============ 상수·시드 ============ */
+const KEY = "recyclo-v3";
+const TODAY = new Date("2026-06-25");
+const dayMs = 86400000;
+const CO2 = { 재활용:0.05, 소각:1.10, 매립:0.45 }; // kg CO2e/kg [추정]
+const EPS = 0.03;       // 체인 허용오차 3%
+const SIGMA_K = 2;      // 통계 이상치 임계(2σ)
+const fmt = n => Math.round(n).toLocaleString("ko-KR");
+const won = n => LANG==="en" ? "KRW "+fmt(n) : fmt(n)+"원";
+const nowT = () => new Date().toLocaleTimeString("ko-KR", {hour12:false});
+
+/* ---- v3: LCA 전과정 단계별 탄소계수 (kg CO2e/kg, 데모 추정 [추정]) ---- */
+// 수거(collect)·중간처리(process)·최종처분(disposal) 단계별 + 운송계수 + 재활용 회피배출(크레딧)
+const LCA = {
+  truck: 0.00012,                                  // kg CO2e / (kg·km) 운송 [추정]
+  collect: { 재활용:0.012, 소각:0.012, 매립:0.010 }, // 수거 연료 [추정]
+  process:{ 재활용:0.045, 소각:0.060, 매립:0.020 }, // 중간처리 전력 [추정]
+  disposal:{ 재활용:0.000, 소각:1.030, 매립:0.420 },// 최종처분 [추정]
+  credit: { plastic:1.40, metal:3.20, wood:0.35, paper:0.90, sludge:0.0, oil:0.0 }, // 재활용 회피배출(2차원료 대체) [추정]
+};
+// 유가물 거래소 기준 시세 (원/kg, 데모 추정 [추정])
+const SCRAP_PRICE = { plastic:320, metal:980, paper:120, wood:60, sludge:0, oil:0 };
+
+const ITEMS = [
+  { id:"plastic", name:"폐합성수지", unit:180, method:"재활용", recyclable:true },
+  { id:"metal",   name:"폐금속류",   unit:60,  method:"재활용", recyclable:true },
+  { id:"sludge",  name:"무기성 오니(슬러지)", unit:240, method:"매립", recyclable:false },
+  { id:"wood",    name:"폐목재",     unit:120, method:"재활용", recyclable:true },
+  { id:"oil",     name:"폐유",       unit:320, method:"소각", recyclable:false },
+  { id:"paper",   name:"폐지류",     unit:40,  method:"재활용", recyclable:true },
+];
+// 처리사: 품목별 단가·운반비·거리(km)·재활용률 — 추천 모델 입력
+const HAULERS = [
+  { id:"h1", name:"대구환경운반(주)", nameEn:"Daegu Env. Transport", carry:50000, dist:12, recyc:0.88, units:{plastic:175,metal:62,sludge:235,wood:118,oil:330,paper:42} },
+  { id:"h2", name:"경북자원순환㈜",   nameEn:"Gyeongbuk Circular",   carry:65000, dist:28, recyc:0.93, units:{plastic:188,metal:58,sludge:228,wood:124,oil:312,paper:38} },
+  { id:"h3", name:"영남리사이클㈜",   nameEn:"Yeongnam Recycle",     carry:42000, dist:9,  recyc:0.81, units:{plastic:182,metal:65,sludge:246,wood:130,oil:345,paper:45} },
+];
+const SITES = [
+  { id:"s1", name:"성서 제1공장(금속가공)", nameEn:"Seongseo Plant #1 (metal)" },
+  { id:"s2", name:"달성 물류센터", nameEn:"Dalseong Logistics Center" },
+  { id:"s3", name:"구미 전자부품", nameEn:"Gumi Electronics" },
+];
+// RBAC
+const ROLES = {
+  admin:   { name:"관리자",   nameEn:"Admin",    perms:["*"] },
+  emitter: { name:"배출담당", nameEn:"Emitter",  perms:["discharge.create","weigh.iot","manifest.sign.emitter","integration.allbaro","esg.submit","exchange.trade"] },
+  driver:  { name:"운반기사", nameEn:"Driver",   perms:["weigh.iot","manifest.sign.driver"] },
+  proc:    { name:"처리장",   nameEn:"Processor",perms:["manifest.sign.proc","weigh.iot","exchange.trade"] },
+  auditor: { name:"심사관(읽기)", nameEn:"Auditor (read)", perms:[] },
+  esgrev:  { name:"ESG심사역", nameEn:"ESG Reviewer", perms:["esg.submit"] },
+  muni:    { name:"지자체담당", nameEn:"Municipal Officer", perms:["integration.allbaro"] },
+};
+const PERM_LABELS = {
+  "discharge.create":"배출 등록", "weigh.iot":"계근 IoT 수신",
+  "manifest.sign.emitter":"배출자 서명", "manifest.sign.driver":"운반자 서명", "manifest.sign.proc":"처리자 서명",
+  "settle.confirm":"정산 확정", "integration.allbaro":"올바로 전송", "esg.submit":"ESG 제출", "exchange.trade":"거래소 매매",
+};
+const PERM_LABELS_EN = {
+  "discharge.create":"Discharge", "weigh.iot":"Weigh IoT",
+  "manifest.sign.emitter":"Emitter sign", "manifest.sign.driver":"Driver sign", "manifest.sign.proc":"Processor sign",
+  "settle.confirm":"Settle", "integration.allbaro":"ALLBARO", "esg.submit":"ESG submit", "exchange.trade":"Exchange",
+};
+const SIGN_ORDER = [["emitter","배출자"],["driver","운반자"],["proc","처리자"]];
+const roleName = k => (LANG==="en" ? (ROLES[k]?.nameEn||k) : (ROLES[k]?.name||k));
+
+function seed(){
+  const m = [];
+  let seq = 240601;
+  // [site,itemId,weightExpected,daysAgo,stage] stage: registered|weighed|signed|settled
+  const proto = [
+    ["s1","plastic",1200, 70,"settled"],
+    ["s1","metal",   860, 64,"settled"],
+    ["s1","sludge", 2100, 52,"settled"],
+    ["s1","plastic",1280, 40,"settled"],
+    ["s1","wood",    540, 33,"settled"],
+    ["s1","metal",   910, 26,"settled"],
+    ["s1","oil",     420,  9,"signed"],
+    ["s1","plastic",1340,  5,"weighed"],
+    ["s1","sludge", 1900,  4,"weighed"],
+    ["s1","paper",   320,  1,"registered"],
+    ["s2","plastic", 980, 48,"settled"],
+    ["s2","plastic",1040, 18,"settled"],
+    ["s2","sludge", 1760, 8, "signed"],
+    ["s2","metal",   610, 3, "weighed"],
+    ["s3","metal",   720, 30,"settled"],
+    ["s3","plastic",1120, 12,"signed"],
+    ["s3","wood",    480, 2, "registered"],
+  ];
+  for(const [site,itemId,we,ago,stage] of proto){
+    const item = ITEMS.find(i=>i.id===itemId);
+    const hauler = HAULERS[(seq)%3];
+    const date = new Date(TODAY.getTime() - ago*dayMs);
+    const carryW = +(we*(1 - (Math.random()*0.02))).toFixed(0);
+    const procW  = +(carryW*(1 - (Math.random()*0.01))).toFixed(0);
+    const has = ["weighed","signed","settled"].includes(stage);
+    const signedDone = ["signed","settled"].includes(stage);
+    const unit = hauler.units[itemId] ?? item.unit;
+    m.push({
+      id:"WB"+(seq++), site, item:item.id, itemName:item.name, method:item.method,
+      unit, billUnit:unit, expected:we, carryWeight: has?carryW:null, procWeight: has?procW:null,
+      hauler:hauler.id, haulerName:hauler.name, carryFee:hauler.carry,
+      date: date.toISOString().slice(0,10), stage,
+      signs: signedDone? {emitter:true,driver:true,proc:true} : {emitter:false,driver:false,proc:false},
+      signed: signedDone, signImg:null,
+      settled: stage==="settled", hold:false,
+      allbaroSent: stage==="settled", allbaroNo: stage==="settled"? "ALB-"+(700000+seq) : null,
+    });
+  }
+  // 일부러 이상치 1건 — 같은 품목 평균 대비 과다 청구단가
+  const anom = m.find(x=>x.site==="s2" && x.item==="sludge" && x.stage==="signed");
+  if(anom){ anom.billUnit = Math.round(anom.unit*1.45); }
+  return { site:"s1", role:"admin", lang:"ko", manifests:m, audit:[], allbaroLog:[], iotLog:[], carbonLog:[],
+    muniLog:[], kecoLog:[], lcaLog:[], exchange:[], exLog:[] };
+}
+
+/* ============ 상태 ============ */
+let G = load();
+let LANG = G.lang || "ko";
+function load(){
+  try{ const r = JSON.parse(localStorage.getItem(KEY)); if(r&&r.manifests&&r.role){
+    r.muniLog=r.muniLog||[]; r.kecoLog=r.kecoLog||[]; r.lcaLog=r.lcaLog||[]; r.exchange=r.exchange||[]; r.exLog=r.exLog||[]; r.lang=r.lang||"ko";
+    return r;
+  } }catch(e){}
+  return seed();
+}
+function save(){ localStorage.setItem(KEY, JSON.stringify(G)); }
+function curSite(){ return G.site; }
+function curRole(){ return G.role; }
+function siteManifests(){ return G.manifests.filter(m=>m.site===curSite()); }
+function can(perm){ const r=ROLES[G.role]; if(!r) return false; return r.perms.includes("*")||r.perms.includes(perm); }
+
+/* ============ 감사로그 ============ */
+function audit(action, target){
+  G.audit.push({ t:new Date().toISOString(), site:curSite(), role:ROLES[G.role].name, action, target:target||"" });
+  if(G.audit.length>400) G.audit.splice(0,G.audit.length-400);
+}
+
+/* ============ 계산 ============ */
+function settleAmount(m){
+  const w = m.procWeight ?? m.carryWeight ?? m.expected;
+  return w*(m.billUnit ?? m.unit) + (m.carryFee||0);
+}
+function chainCheck(m){
+  if(m.carryWeight==null||m.procWeight==null) return null;
+  const base = m.carryWeight;
+  const err = Math.abs(m.carryWeight - m.procWeight)/base;
+  return { err, ok: err<=EPS };
+}
+function dueDays(m){
+  if(!m.signed) return null;
+  const limit = new Date(m.date).getTime() + 10*dayMs;
+  return Math.ceil((limit - TODAY.getTime())/dayMs);
+}
+
+/* ---- 정산 검증(3중) ---- */
+function itemStats(itemId){ // 같은 품목 처리중량 평균·표준편차
+  const ws = G.manifests.filter(m=>m.site===curSite()&&m.item===itemId&&m.procWeight!=null).map(m=>m.procWeight);
+  if(ws.length<2) return null;
+  const mean = ws.reduce((a,b)=>a+b,0)/ws.length;
+  const sd = Math.sqrt(ws.reduce((a,b)=>a+(b-mean)**2,0)/ws.length) || 1;
+  return { mean, sd, n:ws.length };
+}
+function verifyManifest(m){
+  const flags = [];
+  const c = chainCheck(m);
+  if(c && !c.ok) flags.push(`체인오차 ${(c.err*100).toFixed(1)}%`);
+  const st = itemStats(m.item);
+  if(st && m.procWeight!=null){
+    const z = Math.abs(m.procWeight - st.mean)/st.sd;
+    if(z>=SIGMA_K) flags.push(`중량 이상치 ${z.toFixed(1)}σ`);
+  }
+  if(m.billUnit!=null && m.unit!=null && m.billUnit!==m.unit){
+    const diff = (m.billUnit-m.unit)/m.unit*100;
+    if(Math.abs(diff)>=10) flags.push(`청구단가 ${diff>0?"+":""}${diff.toFixed(0)}%`);
+  }
+  return { ok: flags.length===0, flags };
+}
+
+/* ---- 배출량 예측: 3MA + 최소제곱 추세 ---- */
+function monthlySeries(filterFn){
+  const by={};
+  siteManifests().filter(m=>m.procWeight!=null && (!filterFn||filterFn(m)))
+    .forEach(m=>{ const k=m.date.slice(0,7); by[k]=(by[k]||0)+m.procWeight; });
+  const keys=Object.keys(by).sort();
+  return { keys, vals:keys.map(k=>by[k]) };
+}
+function forecast(vals){
+  const n=vals.length;
+  if(n===0) return { next:0, band:0, slope:0, r2:0, ma:0 };
+  if(n===1) return { next:vals[0], band:0, slope:0, r2:0, ma:vals[0] };
+  // 최소제곱 선형회귀 y=a+bx, x=0..n-1
+  const xs=vals.map((_,i)=>i);
+  const mx=xs.reduce((a,b)=>a+b,0)/n, my=vals.reduce((a,b)=>a+b,0)/n;
+  let sxy=0,sxx=0,sst=0,sse=0;
+  for(let i=0;i<n;i++){ sxy+=(xs[i]-mx)*(vals[i]-my); sxx+=(xs[i]-mx)**2; }
+  const b = sxx? sxy/sxx : 0; const a = my - b*mx;
+  for(let i=0;i<n;i++){ const yh=a+b*xs[i]; sse+=(vals[i]-yh)**2; sst+=(vals[i]-my)**2; }
+  const r2 = sst? Math.max(0,1-sse/sst) : 0;
+  const trendNext = a + b*n;
+  const ma = vals.slice(-3).reduce((s,v)=>s+v,0)/Math.min(3,n);
+  const next = Math.max(0, 0.5*trendNext + 0.5*ma); // 추세·이동평균 결합
+  const band = Math.sqrt(sse/Math.max(1,n-2)); // 잔차 표준편차 → 예측구간
+  return { next, band, slope:b, r2, ma };
+}
+
+/* ---- 처리업체 추천: 가중 점수 ---- */
+function recommend(itemId, weight){
+  const cands = HAULERS.map(h=>{
+    const unit = h.units[itemId] ?? 100;
+    const cost = weight*unit + h.carry;
+    return { h, unit, cost };
+  });
+  const costs=cands.map(c=>c.cost), maxC=Math.max(...costs), minC=Math.min(...costs);
+  const dists=HAULERS.map(h=>h.dist), maxD=Math.max(...dists), minD=Math.min(...dists);
+  // 정산신뢰도: 해당 처리사 이상이력 비율의 역
+  return cands.map(c=>{
+    const ms=G.manifests.filter(m=>m.hauler===c.h.id && m.procWeight!=null);
+    const bad=ms.filter(m=>!verifyManifest(m).ok).length;
+    const trust = ms.length? 1-(bad/ms.length) : 0.9;
+    const sCost = maxC===minC?1:(maxC-c.cost)/(maxC-minC);          // 저비용↑
+    const sDist = maxD===minD?1:(maxD-c.h.dist)/(maxD-minD);        // 근접↑
+    const sRec  = c.h.recyc;                                         // 재활용률↑
+    const score = 0.40*sCost + 0.20*sDist + 0.30*sRec + 0.10*trust;
+    return { ...c, sCost, sDist, sRec, trust, score, weight };
+  }).sort((a,b)=>b.score-a.score);
+}
+
+/* ============ 라우팅 ============ */
+const VIEW_KEYS = ["dashboard","discharge","manifest","settle","forecast","circular","lca","route",
+  "recommend","verify","risk","esg","integration","exchange","partner","audit","tenant"];
+function viewTitle(v){ return T("v."+v); }
+// 역할별 보이는 뷰
+const ROLE_VIEWS = {
+  admin:   VIEW_KEYS,
+  emitter: ["dashboard","discharge","manifest","settle","forecast","circular","lca","route","recommend","verify","risk","esg","integration","exchange","audit"],
+  driver:  ["dashboard","discharge","manifest","partner","audit"],
+  proc:    ["dashboard","discharge","manifest","partner","lca","esg","exchange","audit"],
+  auditor: ["dashboard","manifest","settle","verify","risk","circular","lca","esg","audit","tenant"],
+  esgrev:  ["dashboard","circular","lca","esg","forecast","integration","audit"],
+  muni:    ["dashboard","manifest","lca","integration","audit"],
+};
+function visibleViews(){ return ROLE_VIEWS[G.role]||VIEW_KEYS; }
+function applyRoleNav(){
+  const vis = visibleViews();
+  document.querySelectorAll(".nav-btn[data-view]").forEach(b=>{ b.hidden = !vis.includes(b.dataset.view); });
+  document.querySelectorAll("#bottomnav button[data-view]").forEach(b=>{ b.hidden = !vis.includes(b.dataset.view); });
+  // 권한 영역 토글
+  document.querySelectorAll("[data-perm]").forEach(el=>{
+    const ok = can(el.dataset.perm);
+    if(el.tagName==="BUTTON"){ el.disabled=!ok; el.title = ok?"":T("noPerm"); }
+    else { el.style.opacity = ok?"1":".5"; el.style.pointerEvents = ok?"":"none"; }
+  });
+}
+let CURRENT="dashboard";
+function go(view){
+  if(!visibleViews().includes(view)) view = visibleViews()[0];
+  CURRENT=view;
+  document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active", v.id==="view-"+view));
+  document.querySelectorAll(".nav-btn[data-view]").forEach(b=>b.classList.toggle("active", b.dataset.view===view));
+  document.querySelectorAll("#bottomnav button").forEach(b=>b.classList.toggle("active", b.dataset.view===view));
+  document.getElementById("viewTitle").textContent = viewTitle(view);
+  document.body.classList.remove("drawer-open");
+  window.scrollTo(0,0);
+  render();
+}
+window.go = go;
+document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.view)));
+document.getElementById("hamb").addEventListener("click",()=>document.body.classList.toggle("drawer-open"));
+document.getElementById("scrim").addEventListener("click",()=>document.body.classList.remove("drawer-open"));
+
+/* ============ 토스트 ============ */
+let tTimer;
+function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(tTimer); tTimer=setTimeout(()=>t.classList.remove("show"),2200); }
+
+/* ============ i18n (KO/EN) ============ */
+const I18N = {
+  ko:{
+    brandSub:"순환자원 배출관리", navOps:"운영", navIntel:"인텔리전스", navIntegr:"연동·운영",
+    seedTag:"멀티테넌트·역할기반(RBAC) 데모<br/>로그인 불필요 · 브라우저 저장", reset:"데모 초기화", noPerm:"현재 역할은 권한이 없습니다",
+    "v.dashboard":"대시보드","v.discharge":"배출·계근","v.manifest":"전자인계서","v.settle":"정산",
+    "v.forecast":"배출량 예측","v.circular":"순환경제 지표","v.lca":"LCA 탄소","v.route":"처리경로 최적화",
+    "v.recommend":"처리업체 추천","v.verify":"정산 검증","v.risk":"부정 리스크","v.esg":"ESG·탄소",
+    "v.integration":"외부연동","v.exchange":"유가물 거래소","v.partner":"운반·처리 콘솔","v.audit":"감사로그","v.tenant":"테넌트·권한",
+    "bn.dashboard":"대시보드","bn.discharge":"배출","bn.circular":"순환성","bn.lca":"LCA","bn.risk":"리스크",
+    "ce.mci":"물질순환지표(MCI)","ce.mciSub":"0(선형)~1(완전순환)","ce.reuse":"재자원화율","ce.reuseSub":"재활용+유가매각",
+    "ce.virgin":"신재 대체량","ce.virginSub":"2차원료 대체 추정","ce.next":"다음분기 순환성","ce.nextSub":"추세 예측",
+    "ce.formula":"물질순환지표 산식","ce.formulaNote":"MCI = 1 − LFI · F(X). 선형흐름지표(LFI)는 신재 투입·매립 폐기 비중, F(X)는 사용강도 보정. 처리방법별 회수가치로 산정합니다.",
+    "ce.trend":"분기별 순환성 추세","ce.legObs":"실측 MCI","ce.legPred":"예측",
+    "lca.total":"전과정 CO₂e","lca.totalSub":"수거~최종처분","lca.transport":"운송 배출","lca.transSub":"거리×계수",
+    "lca.credit":"재활용 크레딧","lca.creditSub":"회피배출(−)","lca.net":"순배출","lca.netSub":"크레딧 차감 후",
+    "lca.title":"전과정평가(LCA) 단계별 탄소","lca.note":"v2의 단일 처리방법 계수를 전과정 단계별 계수로 분해합니다 — 수거(연료)·운송(거리×트럭계수)·중간처리(전력)·최종처분(매립가스/소각)·재활용 회피배출(크레딧). 모든 계수는 공개 기준 적용 대상(데모는 추정 [추정]).",
+    "lca.pdf":"LCA 리포트 PDF","lca.submit":"환경공단 실적 제출(mock)","lca.disclaim":"단계별 계수는 데모용 추정값 [추정].","lca.noLog":"아직 제출 이력이 없습니다.","lca.byItem":"품목별 전과정 탄소강도",
+    "rt.title":"처리경로 최적화","rt.note":"선택 품목·중량에 대해 후보 처리경로(처리사 × 처리방법)를 생성하고, 정규화 비용·전과정 탄소를 가중합한 목적함수로 최적 경로를 찾습니다. 가중치 슬라이더로 비용↔탄소 선호를 조정하면 파레토 최전선에서 해가 이동합니다.",
+    "rt.item":"대상 품목","rt.weight":"중량(kg)","rt.wgt":"탄소 가중치","rt.run":"경로 최적화","rt.best":"최적 경로","rt.save":"기준대비 절감","rt.saveSub":"탄소 기준","rt.pareto":"파레토 최적해","rt.paretoSub":"지배받지 않는 해",
+    "rk.title":"부정 정산 리스크 스코어","rk.note":"v2의 3중 룰을 넘어 가중 리스크 스코어(0~100)로 고도화합니다 — 체인편차·통계 이상치(z)·청구단가 괴리·Benford 1자리 적합·처리사 이상이력·심야 계근 등 요인을 가중합해 고·중·저 위험으로 분류하고, 고위험 건은 정산·올바로 전송을 동시 차단합니다.",
+    "rk.high":"고위험","rk.mid":"중위험","rk.benford":"Benford 적합도","rk.exposure":"차단 위험금액","rk.run":"리스크 재계산",
+    "ex.title":"유가물 거래소","ex.note":"재활용 가능 품목을 유가물(재생원료) 거래소에 매도 호가로 등록합니다. 등록 즉시 시세 기준 예상 매각대금이 산출되고, 체결 시 정산·MCI에 반영됩니다(데모 mock).",
+    "ex.item":"품목","ex.weight":"수량(kg)","ex.list":"매도 등록","ex.book":"거래 체결 내역","ex.bookNote":"등록 호가를 시세 변동에 따라 체결합니다. 체결대금은 정산 수익으로 인식되고 재자원화율에 반영됩니다.","ex.match":"시세 매칭·체결",
+    "ig.muni":"⑤ 지자체 폐기물관리 연동","ig.muniNote":"관할 지자체 폐기물관리시스템에 배출·처리 실적을 신고 전문으로 송신하고 접수번호를 수신합니다(데모 mock).",
+    "ig.keco":"⑥ 환경공단 순환경제 실적 제출","ig.kecoNote":"한국환경공단(KECO) 자원순환 실적관리 규격으로 MCI·재자원화 실적을 제출하고 접수 ID를 수신합니다.",
+  },
+  en:{
+    brandSub:"Circular Resource Mgmt", navOps:"Operations", navIntel:"Intelligence", navIntegr:"Integration·Ops",
+    seedTag:"Multi-tenant · RBAC demo<br/>No login · browser-stored", reset:"Reset demo", noPerm:"Current role lacks permission",
+    "v.dashboard":"Dashboard","v.discharge":"Discharge·Weigh","v.manifest":"e-Manifest","v.settle":"Settlement",
+    "v.forecast":"Forecast","v.circular":"Circularity (MCI)","v.lca":"LCA Carbon","v.route":"Route Optimizer",
+    "v.recommend":"Processor Rec.","v.verify":"Settle Verify","v.risk":"Fraud Risk","v.esg":"ESG·Carbon",
+    "v.integration":"Integrations","v.exchange":"Scrap Exchange","v.partner":"Hauler Console","v.audit":"Audit Log","v.tenant":"Tenant·RBAC",
+    "bn.dashboard":"Home","bn.discharge":"Discharge","bn.circular":"MCI","bn.lca":"LCA","bn.risk":"Risk",
+    "ce.mci":"Material Circularity (MCI)","ce.mciSub":"0(linear)~1(circular)","ce.reuse":"Resource recovery","ce.reuseSub":"Recycle+resale",
+    "ce.virgin":"Virgin offset","ce.virginSub":"2nd-raw substitution est.","ce.next":"Next-Q circularity","ce.nextSub":"trend forecast",
+    "ce.formula":"MCI formula","ce.formulaNote":"MCI = 1 − LFI · F(X). LFI = virgin input & landfill share; F(X) = use-intensity factor. Derived from recovery value per method.",
+    "ce.trend":"Quarterly circularity trend","ce.legObs":"Observed MCI","ce.legPred":"Forecast",
+    "lca.total":"Life-cycle CO₂e","lca.totalSub":"collect→disposal","lca.transport":"Transport emission","lca.transSub":"distance×factor",
+    "lca.credit":"Recycling credit","lca.creditSub":"avoided emission (−)","lca.net":"Net emission","lca.netSub":"after credit",
+    "lca.title":"Life-Cycle Assessment (LCA) carbon by stage","lca.note":"v2's single-method factor is decomposed into life-cycle stage factors — collection (fuel), transport (distance×truck factor), processing (power), final disposal (landfill gas/incineration), recycling avoided-emission (credit). All factors subject to official standards (demo uses estimates [est.]).",
+    "lca.pdf":"LCA report PDF","lca.submit":"Submit to KECO (mock)","lca.disclaim":"Stage factors are demo estimates [est.].","lca.noLog":"No submission yet.","lca.byItem":"Life-cycle carbon intensity by item",
+    "rt.title":"Treatment route optimization","rt.note":"For the chosen item·weight, candidate routes (processor × method) are generated and the optimum is found by a weighted objective of normalized cost + life-cycle carbon. The weight slider shifts the solution along the Pareto frontier.",
+    "rt.item":"Item","rt.weight":"Weight(kg)","rt.wgt":"Carbon weight","rt.run":"Optimize","rt.best":"Optimal route","rt.save":"vs baseline","rt.saveSub":"carbon basis","rt.pareto":"Pareto-optimal","rt.paretoSub":"non-dominated",
+    "rk.title":"Fraud settlement risk score","rk.note":"Beyond v2's 3 rules, an advanced weighted risk score (0–100) combines chain deviation, statistical outlier (z), billing-unit gap, Benford first-digit fit, processor anomaly history, off-hours weighing — classified high/mid/low; high-risk blocks settlement and ALLBARO at once.",
+    "rk.high":"High risk","rk.mid":"Mid risk","rk.benford":"Benford fit","rk.exposure":"Blocked exposure","rk.run":"Recompute risk",
+    "ex.title":"Recyclables exchange","ex.note":"List recyclable items as sell quotes on the scrap (secondary-raw) exchange. Expected proceeds are computed from market price; on match they flow into settlement·MCI (demo mock).",
+    "ex.item":"Item","ex.weight":"Qty(kg)","ex.list":"List for sale","ex.book":"Matched trades","ex.bookNote":"Quotes match against price moves. Proceeds are recognized as settlement revenue and raise the recovery rate.","ex.match":"Match & fill",
+    "ig.muni":"⑤ Municipal waste-mgmt link","ig.muniNote":"Sends discharge/treatment records to the local municipal waste system as a filing message and receives a receipt no. (demo mock).",
+    "ig.keco":"⑥ KECO circular-economy filing","ig.kecoNote":"Submits MCI·recovery results to the Korea Environment Corp. (KECO) resource-circulation spec and receives a receipt ID.",
+  }
+};
+function T(k){ const d=I18N[LANG]||I18N.ko; return (k in d)?d[k]:(I18N.ko[k]??k); }
+function itemName(it){ if(LANG!=="en") return it.name; const en={plastic:"Waste plastics",metal:"Scrap metal",sludge:"Inorganic sludge",wood:"Waste wood",oil:"Waste oil",paper:"Waste paper"}; return en[it.id]||it.name; }
+function methodName(m){ if(LANG!=="en") return m; return {재활용:"Recycle",소각:"Incinerate",매립:"Landfill"}[m]||m; }
+function applyI18n(){
+  document.querySelectorAll("[data-i18n]").forEach(el=>{ const k=el.dataset.i18n; if(k in (I18N[LANG]||{})||k in I18N.ko) el.innerHTML=T(k); });
+  document.getElementById("langToggle").textContent = LANG==="en" ? "한국어" : "EN";
+  document.documentElement.lang = LANG;
+  document.getElementById("viewTitle").textContent = viewTitle(CURRENT);
+}
+document.getElementById("langToggle").addEventListener("click",()=>{
+  LANG = LANG==="en" ? "ko" : "en"; G.lang=LANG; window.LANG=LANG; save();
+  rebuildSelects(); applyI18n(); render();
+});
+window.LANG = LANG;
+
+/* ============ site / role select ============ */
+const siteSel = document.getElementById("siteSel");
+const roleSel = document.getElementById("roleSel");
+function rebuildSelects(){
+  siteSel.innerHTML = SITES.map(s=>`<option value="${s.id}">${LANG==="en"?(s.nameEn||s.name):s.name}</option>`).join("");
+  siteSel.value = G.site;
+  roleSel.innerHTML = Object.keys(ROLES).map(k=>`<option value="${k}">${roleName(k)}</option>`).join("");
+  roleSel.value = G.role;
+  const opt = it=>`<option value="${it.id}">${itemName(it)}</option>`;
+  document.getElementById("dItem").innerHTML = ITEMS.map(i=>`<option value="${i.id}">${itemName(i)} · ${i.unit}${LANG==="en"?"KRW/kg":"원/kg"} · ${methodName(i.method)}</option>`).join("");
+  document.getElementById("dHauler").innerHTML = HAULERS.map(h=>`<option value="${h.id}">${LANG==="en"?(h.nameEn||h.name):h.name}</option>`).join("");
+  document.getElementById("recItem").innerHTML = ITEMS.map(opt).join("");
+  document.getElementById("rtItem").innerHTML = ITEMS.map(opt).join("");
+  document.getElementById("exItem").innerHTML = ITEMS.filter(i=>i.recyclable).map(opt).join("");
+}
+siteSel.addEventListener("change",()=>{ G.site=siteSel.value; audit("테넌트 전환", SITES.find(s=>s.id===G.site).name); save(); render(); });
+roleSel.addEventListener("change",()=>{ G.role=roleSel.value; audit("역할 전환", ROLES[G.role].name); save(); applyRoleNav(); go(CURRENT); });
+rebuildSelects();
+
+/* ============ 렌더 ============ */
+function render(){
+  applyRoleNav();
+  renderDashboard(); renderDischarge(); renderManifest(); renderSettle();
+  renderForecast(); renderRecommend(); renderVerify(); renderEsg();
+  renderIntegration(); renderPartner(); renderAudit(); renderTenant();
+  renderCircular(); renderLca(); renderRoute(); renderRisk(); renderExchange();
+}
+
+function quarterTon(){ return siteManifests().filter(m=>m.procWeight!=null).reduce((a,m)=>a+m.procWeight,0)/1000; }
+function recycRate(){
+  const done=siteManifests().filter(m=>m.procWeight!=null);
+  const tot=done.reduce((a,m)=>a+m.procWeight,0);
+  const rec=done.filter(m=>m.method==="재활용").reduce((a,m)=>a+m.procWeight,0);
+  return tot? rec/tot*100 : 0;
+}
+function anomalyCount(){ return siteManifests().filter(m=>m.procWeight!=null && !verifyManifest(m).ok).length; }
+
+function stageLabel(m){
+  if(m.settled) return "정산완료";
+  if(m.signed) return "인계완료";
+  if(m.stage==="weighed") return "계근완료";
+  return "배출등록";
+}
+
+function renderDashboard(){
+  const ms = siteManifests();
+  const due = ms.filter(m=>{ const d=dueDays(m); return m.signed && !m.allbaroSent && d!=null && d<=10; });
+  document.getElementById("kpiDue").innerHTML = due.length+'<small>건</small>';
+  document.getElementById("kpiDueSub").innerHTML = due.length? `최단 D-${Math.max(0,Math.min(...due.map(dueDays)))}` : "여유";
+  document.getElementById("kpiTon").innerHTML = quarterTon().toFixed(1)+'<small>톤</small>';
+  const rr = recycRate();
+  document.getElementById("kpiRecyc").innerHTML = rr.toFixed(1)+'<small>%</small>';
+  document.getElementById("kpiRecycSub").textContent = (rr>=86?"전국 평균 상회":"전국 86.0% 대비");
+  const an = anomalyCount();
+  document.getElementById("kpiAnom").innerHTML = an+'<small>건</small>';
+  document.getElementById("kpiAnomSub").textContent = an? "정산 보류 검토" : "이상 없음";
+  document.getElementById("dashRoleHint").textContent = "· "+ROLES[G.role].name+" 화면";
+
+  const rows = ms.filter(m=>m.stage!=="settled"||(!m.allbaroSent&&m.signed)).slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
+  let html = "<tr><th>인계번호</th><th>품목</th><th class=r>중량</th><th>상태</th><th>해야 할 일</th></tr>";
+  for(const m of rows.slice(0,8)){
+    const w = m.procWeight ?? m.carryWeight ?? m.expected;
+    let action,cls;
+    if(m.stage==="registered"){ action="계근 입력"; cls="mute"; }
+    else if(m.stage==="weighed"){ action="3자 서명"; cls="warn"; }
+    else if(m.signed&&!m.allbaroSent){ const d=dueDays(m); action=`올바로 전송 (D-${Math.max(0,d)})`; cls=d<=3?"danger":"warn"; }
+    else if(m.signed&&!m.settled){ action="정산"; cls="mute"; }
+    else { action="완료"; cls="ok"; }
+    html += `<tr><td>${m.id}</td><td>${m.itemName}</td><td class=r>${fmt(w)}kg</td><td><span class="pill ${cls}">${stageLabel(m)}</span></td><td>${action}</td></tr>`;
+  }
+  if(rows.length===0) html += '<tr><td colspan=5 class=muted>처리할 일이 없습니다.</td></tr>';
+  document.getElementById("todoTbl").innerHTML = html;
+  drawTonChart(); drawMixChart();
+}
+
+function renderDischarge(){
+  const ms = siteManifests();
+  const weighables = ms.filter(m=>m.stage==="registered"||m.stage==="weighed");
+  let w = "<tr><th>인계번호</th><th>품목</th><th class=r>예상</th><th class=r>운반계근</th><th class=r>처리계근</th><th>체인</th></tr>";
+  for(const m of weighables){
+    const c = chainCheck(m);
+    const chip = c? (c.ok?`<span class="pill ok">정상 ${(c.err*100).toFixed(1)}%</span>`:`<span class="pill danger">오차 ${(c.err*100).toFixed(1)}%</span>`) : '<span class="pill mute">미계근</span>';
+    w += `<tr><td>${m.id}</td><td>${m.itemName}</td><td class=r>${fmt(m.expected)}</td>
+      <td class=r><input data-w="carry" data-id="${m.id}" type="number" value="${m.carryWeight??""}" style="width:78px;padding:5px;border:1px solid var(--line);border-radius:7px;text-align:right"/></td>
+      <td class=r><input data-w="proc" data-id="${m.id}" type="number" value="${m.procWeight??""}" style="width:78px;padding:5px;border:1px solid var(--line);border-radius:7px;text-align:right"/></td>
+      <td>${chip}</td></tr>`;
+  }
+  if(weighables.length===0) w += '<tr><td colspan=6 class=muted>계근 대상이 없습니다.</td></tr>';
+  document.getElementById("weighTbl").innerHTML = w;
+  document.querySelectorAll('[data-w]').forEach(inp=>inp.addEventListener("change",e=>{
+    const m = G.manifests.find(x=>x.id===e.target.dataset.id);
+    const v = e.target.value===""?null:+e.target.value;
+    if(e.target.dataset.w==="carry") m.carryWeight=v; else m.procWeight=v;
+    if(m.carryWeight!=null && m.stage==="registered") m.stage="weighed";
+    audit("계근 입력", m.id); save(); render();
+  }));
+
+  let d = "<tr><th>인계번호</th><th>일자</th><th>품목</th><th>처리방법</th><th class=r>중량(kg)</th><th>처리사</th><th>상태</th></tr>";
+  for(const m of ms.slice().sort((a,b)=>new Date(b.date)-new Date(a.date))){
+    const wt = m.procWeight ?? m.carryWeight ?? m.expected;
+    d += `<tr><td>${m.id}</td><td>${m.date}</td><td>${m.itemName}</td><td>${m.method}</td><td class=r>${fmt(wt)}</td><td>${m.haulerName}</td><td><span class="pill ${m.settled?"ok":m.signed?"warn":"mute"}">${stageLabel(m)}</span></td></tr>`;
+  }
+  document.getElementById("dischargeTbl").innerHTML = d;
+}
+
+document.getElementById("dRegister").addEventListener("click",()=>{
+  if(!can("discharge.create")){ toast("배출 등록 권한이 없습니다"); return; }
+  const item = ITEMS.find(i=>i.id===document.getElementById("dItem").value);
+  const hauler = HAULERS.find(h=>h.id===document.getElementById("dHauler").value);
+  const we = +document.getElementById("dWeight").value;
+  if(!we||we<=0){ toast("배출중량을 입력하세요"); return; }
+  const unit = hauler.units[item.id] ?? item.unit;
+  const seq = "WB"+(250000+G.manifests.length+1);
+  G.manifests.push({
+    id:seq, site:curSite(), item:item.id, itemName:item.name, method:item.method, unit, billUnit:unit,
+    expected:we, carryWeight:null, procWeight:null, hauler:hauler.id, haulerName:hauler.name, carryFee:hauler.carry,
+    date: TODAY.toISOString().slice(0,10), stage:"registered",
+    signs:{emitter:false,driver:false,proc:false}, signed:false, signImg:null, settled:false, hold:false, allbaroSent:false, allbaroNo:null
+  });
+  audit("배출 등록", seq+" "+item.name);
+  save(); render(); toast("배출 등록 완료 · 계근 단계로 이동");
+});
+
+/* ---- IoT 계근 자동수신(mock) ---- */
+function iotPull(){
+  if(!can("weigh.iot")){ toast("계근 IoT 권한이 없습니다"); return; }
+  const targets = siteManifests().filter(m=>m.stage==="registered" || (m.stage==="weighed" && m.procWeight==null));
+  if(targets.length===0){ toast("IoT 수신 대상이 없습니다"); return; }
+  let cnt=0;
+  for(const m of targets){
+    const base = m.expected;
+    m.carryWeight = +(base*(1-Math.random()*0.018)).toFixed(0);
+    m.procWeight  = +(m.carryWeight*(1-Math.random()*0.012)).toFixed(0);
+    if(m.stage==="registered") m.stage="weighed";
+    G.iotLog.push({ t:nowT(), id:m.id, carry:m.carryWeight, proc:m.procWeight, dev:"TS-GW-"+(1+ (m.id.charCodeAt(4)%4)) });
+    cnt++;
+  }
+  audit("계근 IoT 수신", cnt+"건");
+  save(); render(); toast(cnt+"건 IoT 계근값 수신 · 체인 재검증");
+}
+document.getElementById("iotPull").addEventListener("click",iotPull);
+document.getElementById("iotPull2").addEventListener("click",iotPull);
+
+/* ============ 전자인계서 — 3자 순차 서명 ============ */
+function nextSigner(m){ for(const [k] of SIGN_ORDER){ if(!m.signs[k]) return k; } return null; }
+function renderManifest(){
+  const ms = siteManifests().filter(m=>["weighed","signed","settled"].includes(m.stage));
+  let h = "<tr><th>인계번호</th><th>품목</th><th class=r>처리중량</th><th>체인</th><th>3자 서명</th><th>올바로</th><th></th></tr>";
+  for(const m of ms){
+    const c = chainCheck(m);
+    const chip = c? (c.ok?`<span class="pill ok">정상</span>`:`<span class="pill danger">오차</span>`):'<span class="pill mute">-</span>';
+    const sg = SIGN_ORDER.map(([k,lab])=>`<span class="pill ${m.signs[k]?'ok':'mute'}">${lab[0]}</span>`).join(" ");
+    const d = dueDays(m);
+    const allb = m.allbaroSent? `<span class="pill ok">${m.allbaroNo||'전송'}</span>` : (m.signed? `<span class="pill ${d<=3?'danger':'warn'}">D-${Math.max(0,d)}</span>` : '<span class="pill mute">미발행</span>');
+    const next = nextSigner(m);
+    let btn;
+    if(next){
+      const lab = SIGN_ORDER.find(s=>s[0]===next)[1];
+      const allowed = can("manifest.sign."+next);
+      btn = `<button class="btn sm" data-sign="${m.id}" ${allowed?"":"disabled"} title="${allowed?'':'해당 역할만 서명'}">${lab} 서명</button>`;
+    } else btn = `<button class="btn ghost sm" data-pdf="${m.id}">인계서 PDF</button>`;
+    h += `<tr><td>${m.id}</td><td>${m.itemName}</td><td class=r>${m.procWeight?fmt(m.procWeight)+"kg":"-"}</td><td>${chip}</td><td>${sg}</td><td>${allb}</td><td>${btn}</td></tr>`;
+  }
+  if(ms.length===0) h += '<tr><td colspan=7 class=muted>계근 완료된 배출 건이 없습니다.</td></tr>';
+  document.getElementById("manifestTbl").innerHTML = h;
+  document.querySelectorAll("[data-sign]").forEach(b=>b.addEventListener("click",()=>openSign(b.dataset.sign)));
+  document.querySelectorAll("[data-pdf]").forEach(b=>b.addEventListener("click",()=>manifestPdf(b.dataset.pdf)));
+}
+
+let signCtx, signing=false, hasInk=false, signTargetId=null, signRole=null;
+function openSign(id){
+  const m = G.manifests.find(x=>x.id===id); signTargetId=id;
+  signRole = nextSigner(m);
+  if(!signRole){ return; }
+  if(!can("manifest.sign."+signRole)){ toast("이 단계는 해당 역할만 서명할 수 있습니다"); return; }
+  const lab = SIGN_ORDER.find(s=>s[0]===signRole)[1];
+  document.getElementById("signTitle").textContent = `전자인계서 서명 — ${lab}`;
+  document.getElementById("signSteps").innerHTML = SIGN_ORDER.map(([k,l])=>{
+    const cls = m.signs[k]?"done":(k===signRole?"cur":"");
+    return `<span class="step ${cls}">${m.signs[k]?"✓ ":""}${l}</span>`;
+  }).join("");
+  document.getElementById("signWho").textContent = `${lab} 서명을 입력하세요(마우스·터치). 3자 서명이 모두 완료되면 인계서가 발행됩니다.`;
+  document.getElementById("signDoc").innerHTML =
+    `<div class="ln"><span>인계번호</span><b>${m.id}</b></div>
+     <div class="ln"><span>품목 / 처리방법</span><b>${m.itemName} · ${m.method}</b></div>
+     <div class="ln"><span>처리중량</span><b>${fmt(m.procWeight??m.carryWeight)} kg</b></div>
+     <div class="ln"><span>운반·처리사</span><b>${m.haulerName}</b></div>
+     <div class="ln"><span>정산 예상</span><b>${won(settleAmount(m))}</b></div>`;
+  document.getElementById("signModal").classList.add("show");
+  setTimeout(initPad,30);
+}
+function initPad(){
+  const c = document.getElementById("signPad");
+  const r = c.getBoundingClientRect();
+  c.width = r.width*2; c.height = r.height*2;
+  signCtx = c.getContext("2d"); signCtx.scale(2,2); signCtx.lineWidth=2.2; signCtx.lineCap="round"; signCtx.strokeStyle="#15181d";
+  hasInk=false;
+  const pos = e=>{ const b=c.getBoundingClientRect(); const t=e.touches?e.touches[0]:e; return [t.clientX-b.left, t.clientY-b.top]; };
+  const down=e=>{ signing=true; const [x,y]=pos(e); signCtx.beginPath(); signCtx.moveTo(x,y); e.preventDefault(); };
+  const move=e=>{ if(!signing)return; const [x,y]=pos(e); signCtx.lineTo(x,y); signCtx.stroke(); hasInk=true; e.preventDefault(); };
+  const up=()=>{ signing=false; };
+  c.onmousedown=down; c.onmousemove=move; window.onmouseup=up;
+  c.ontouchstart=down; c.ontouchmove=move; c.ontouchend=up;
+}
+document.getElementById("signClear").addEventListener("click",()=>{ if(signCtx){signCtx.clearRect(0,0,9999,9999);hasInk=false;} });
+document.getElementById("signCancel").addEventListener("click",()=>document.getElementById("signModal").classList.remove("show"));
+document.getElementById("signConfirm").addEventListener("click",()=>{
+  const m = G.manifests.find(x=>x.id===signTargetId);
+  if(!hasInk){ signCtx.font="26px cursive"; signCtx.fillStyle="#15181d"; signCtx.fillText("서명",20,80); }
+  m.signs[signRole]=true;
+  if(signRole==="proc"||nextSigner(m)===null){ m.signImg = document.getElementById("signPad").toDataURL("image/png"); }
+  const lab = SIGN_ORDER.find(s=>s[0]===signRole)[1];
+  audit(lab+" 서명", m.id);
+  const remaining = nextSigner(m);
+  if(remaining===null){
+    m.signed=true; m.stage = m.settled?"settled":"signed";
+    audit("전자인계서 발행", m.id);
+    toast("3자 서명 완료 · 전자인계서 발행 · 올바로 D-10 시작");
+  } else {
+    toast(lab+" 서명 완료 · 다음: "+SIGN_ORDER.find(s=>s[0]===remaining)[1]+" 서명");
+  }
+  save(); document.getElementById("signModal").classList.remove("show"); render();
+});
+
+/* ---- jsPDF ---- */
+function pdfDoc(){ const { jsPDF } = window.jspdf; return new jsPDF({unit:"pt",format:"a4"}); }
+function pdfHeader(doc,title){
+  doc.setFillColor(10,125,75); doc.rect(0,0,595,60,"F");
+  doc.setTextColor(255,255,255); doc.setFontSize(16); doc.text("RECYCLO v3",40,32);
+  doc.setFontSize(10); doc.text(title,40,48); doc.setTextColor(20,24,29);
+}
+function manifestPdf(id){
+  const m=G.manifests.find(x=>x.id===id); const doc=pdfDoc();
+  pdfHeader(doc,"Waste Transfer Manifest (3-party e-sign)");
+  let y=92; doc.setFontSize(11);
+  const ln=(k,v)=>{ doc.text(k,40,y); doc.text(String(v),300,y); y+=22; };
+  ln("Manifest No.",m.id); ln("Date",m.date); ln("Site",SITES.find(s=>s.id===m.site).name);
+  ln("Item",m.itemName); ln("Method",m.method); ln("Process weight (kg)",fmt(m.procWeight??m.carryWeight));
+  ln("Hauler/Processor",m.haulerName); ln("Signs",`emitter ${m.signs.emitter?"O":"-"} / driver ${m.signs.driver?"O":"-"} / proc ${m.signs.proc?"O":"-"}`);
+  ln("Settle amount (KRW)",fmt(settleAmount(m)));
+  const d=dueDays(m); ln("ALLBARO deadline",d!=null?("D-"+Math.max(0,d)):"-");
+  if(m.allbaroNo) ln("ALLBARO receipt",m.allbaroNo);
+  if(m.signImg){ doc.text("Signature:",40,y+10); doc.addImage(m.signImg,"PNG",120,y-10,160,56); }
+  doc.save(`manifest_${m.id}.pdf`); toast("인계서 PDF 생성");
+}
+
+/* ============ 정산 ============ */
+function renderSettle(){
+  const ms = siteManifests().filter(m=>m.signed);
+  ms.forEach(m=>{ m.hold = (!verifyManifest(m).ok || highRisk(m)) && !m.settled; });
+  const pending = ms.filter(m=>!m.settled).reduce((a,m)=>a+settleAmount(m),0);
+  const done = ms.filter(m=>m.settled).reduce((a,m)=>a+settleAmount(m),0);
+  const hold = ms.filter(m=>m.hold).length;
+  document.getElementById("setPending").innerHTML = fmt(pending)+'<small>원</small>';
+  document.getElementById("setDone").innerHTML = fmt(done)+'<small>원</small>';
+  document.getElementById("setHold").innerHTML = hold+'<small>건</small>';
+  let h="<tr><th>인계번호</th><th>품목</th><th class=r>중량</th><th class=r>단가</th><th class=r>운반비</th><th class=r>정산액</th><th>검증</th><th>상태</th><th></th></tr>";
+  for(const m of ms){
+    const w=m.procWeight??m.carryWeight;
+    const v=verifyManifest(m);
+    const vchip = v.ok?'<span class="pill ok">정상</span>':`<span class="pill danger">${v.flags[0]}</span>`;
+    const canSettle = can("settle.confirm");
+    let act;
+    if(m.settled) act=`<button class="btn ghost sm" data-tax="${m.id}">계산서</button>`;
+    else if(m.hold) act=`<span class="pill warn">검증보류</span>`;
+    else act=`<button class="btn sm" data-settle="${m.id}" ${canSettle?"":"disabled"}>정산확정</button>`;
+    h += `<tr><td>${m.id}</td><td>${m.itemName}</td><td class=r>${fmt(w)}kg</td><td class=r>${m.billUnit??m.unit}</td><td class=r>${fmt(m.carryFee)}</td>
+      <td class=r><b>${fmt(settleAmount(m))}</b></td><td>${vchip}</td>
+      <td><span class="pill ${m.settled?"ok":m.hold?"warn":"mute"}">${m.settled?"완료":m.hold?"보류":"대기"}</span></td><td>${act}</td></tr>`;
+  }
+  if(ms.length===0) h += '<tr><td colspan=9 class=muted>인계 완료된 건이 없습니다.</td></tr>';
+  document.getElementById("settleTbl").innerHTML = h;
+  document.querySelectorAll("[data-settle]").forEach(b=>b.addEventListener("click",()=>{
+    const m=G.manifests.find(x=>x.id===b.dataset.settle);
+    if(!verifyManifest(m).ok){ toast(LANG==="en"?"Anomalous item cannot be settled":"검증 이상 건은 정산할 수 없습니다"); return; }
+    if(highRisk(m)){ toast(LANG==="en"?"High-risk item blocked (risk score)":"고위험 건은 정산이 차단됩니다(리스크 스코어)"); return; }
+    m.settled=true; m.stage="settled"; audit("정산 확정", m.id+" "+won(settleAmount(m))); save(); render(); toast(LANG==="en"?"Settled · tax invoice ready":"정산 확정 · 세금계산서 발행 가능");
+  }));
+  document.querySelectorAll("[data-tax]").forEach(b=>b.addEventListener("click",()=>taxPdf(b.dataset.tax)));
+}
+function taxPdf(id){
+  const m=G.manifests.find(x=>x.id===id); const doc=pdfDoc(); pdfHeader(doc,"Tax Invoice / Settlement");
+  let y=96; doc.setFontSize(11);
+  const supply=(m.procWeight??m.carryWeight)*(m.billUnit??m.unit)+m.carryFee;
+  const vat=Math.round(supply*0.1);
+  const ln=(k,v)=>{ doc.text(k,40,y); doc.text(String(v),320,y); y+=22; };
+  ln("Manifest No.",m.id); ln("Date",m.date); ln("Item",m.itemName);
+  ln("Weight x Unit (KRW)",fmt((m.procWeight??m.carryWeight)*(m.billUnit??m.unit)));
+  ln("Hauling fee (KRW)",fmt(m.carryFee)); ln("Supply value (KRW)",fmt(supply)); ln("VAT 10% (KRW)",fmt(vat));
+  doc.setFontSize(13); doc.text("TOTAL (KRW): "+fmt(supply+vat),40,y+10);
+  doc.save(`tax_${m.id}.pdf`); toast("세금계산서 PDF 생성");
+}
+
+/* ============ 예측 ============ */
+function renderForecast(){
+  const {keys,vals}=monthlySeries();
+  const f=forecast(vals);
+  document.getElementById("fcNext").innerHTML = fmt(f.next)+'<small>kg</small>';
+  document.getElementById("fcBand").textContent = "예측구간 ±"+fmt(f.band)+"kg";
+  document.getElementById("fcSlope").innerHTML = (f.slope>=0?"+":"")+fmt(f.slope)+'<small>kg/월</small>';
+  document.getElementById("fcSlopeDir").textContent = f.slope>0?"증가 추세":f.slope<0?"감소 추세":"보합";
+  document.getElementById("fcR2").textContent = f.r2.toFixed(2);
+
+  // 품목별 예측
+  const bars=[]; const rows=[];
+  let maxNext=1;
+  for(const it of ITEMS){
+    const s=monthlySeries(m=>m.item===it.id);
+    if(s.vals.length===0) continue;
+    const ff=forecast(s.vals);
+    maxNext=Math.max(maxNext,ff.next);
+    bars.push([it.name,ff]); rows.push([it,s,ff]);
+  }
+  document.getElementById("fcBars").innerHTML = bars.map(([nm,ff])=>
+    `<div class="bar-row"><span class="lab">${nm}</span><span class="bar-track"><span class="bar-fill" style="width:${(ff.next/maxNext*100).toFixed(0)}%"></span></span><span class="val">${fmt(ff.next)}kg</span></div>`
+  ).join("") || '<p class="muted">데이터가 부족합니다.</p>';
+
+  let t="<tr><th>품목</th><th class=r>관측 월수</th><th class=r>3개월 이동평균</th><th class=r>추세(kg/월)</th><th class=r>다음달 예측</th><th class=r>±구간</th></tr>";
+  for(const [it,s,ff] of rows){
+    t+=`<tr><td>${it.name}</td><td class=r>${s.vals.length}</td><td class=r>${fmt(ff.ma)}</td><td class=r>${ff.slope>=0?"+":""}${fmt(ff.slope)}</td><td class=r><b>${fmt(ff.next)}</b></td><td class=r>±${fmt(ff.band)}</td></tr>`;
+  }
+  document.getElementById("fcTbl").innerHTML=t;
+}
+
+/* ============ 추천 ============ */
+function runRecommend(){
+  const itemId=document.getElementById("recItem").value;
+  const weight=+document.getElementById("recWeight").value||1000;
+  const list=recommend(itemId,weight);
+  let h="<tr><th>순위</th><th>처리사</th><th class=r>단가</th><th class=r>예상비용</th><th class=r>거리</th><th class=r>재활용률</th><th class=r>신뢰도</th><th class=r>점수</th></tr>";
+  list.forEach((c,i)=>{
+    h+=`<tr><td>${i===0?'<span class="pill ok">추천</span>':"#"+(i+1)}</td><td>${c.h.name}</td><td class=r>${c.unit}</td><td class=r>${won(c.cost)}</td>
+      <td class=r>${c.h.dist}km</td><td class=r>${(c.sRec*100).toFixed(0)}%</td><td class=r>${(c.trust*100).toFixed(0)}%</td><td class=r><b>${c.score.toFixed(3)}</b></td></tr>`;
+  });
+  document.getElementById("recTbl").innerHTML=h;
+  const max=list[0].score||1;
+  document.getElementById("recBars").innerHTML = list.map((c,i)=>
+    `<div class="bar-row"><span class="lab">${i+1}. ${c.h.name.slice(0,6)}</span><span class="bar-track"><span class="bar-fill" style="width:${(c.score/max*100).toFixed(0)}%;background:${i===0?'#0a7d4b':'#9aa3af'}"></span></span><span class="val">${c.score.toFixed(3)}</span></div>`
+  ).join("");
+}
+function renderRecommend(){ if(document.getElementById("recTbl").innerHTML==="") runRecommend(); }
+document.getElementById("recRun").addEventListener("click",()=>{ runRecommend(); toast("가중 점수 추천 계산 완료"); });
+
+/* ============ 검증 ============ */
+function renderVerify(){
+  const ms=siteManifests().filter(m=>m.procWeight!=null);
+  let bad=0;
+  let h="<tr><th>인계번호</th><th>품목</th><th class=r>처리중량</th><th class=r>청구단가</th><th>검증 결과</th><th>정산</th></tr>";
+  for(const m of ms){
+    const v=verifyManifest(m);
+    if(!v.ok) bad++;
+    const chip = v.ok?'<span class="pill ok">정상</span>':v.flags.map(f=>`<span class="pill danger">${f}</span>`).join(" ");
+    const set = m.settled?'<span class="pill ok">정산완료</span>':(!v.ok?'<span class="pill warn">보류</span>':'<span class="pill mute">가능</span>');
+    h+=`<tr><td>${m.id}</td><td>${m.itemName}</td><td class=r>${fmt(m.procWeight)}kg</td><td class=r>${m.billUnit??m.unit}${(m.billUnit&&m.billUnit!==m.unit)?` <span class="pill danger">≠${m.unit}</span>`:""}</td><td>${chip}</td><td>${set}</td></tr>`;
+  }
+  if(ms.length===0) h+='<tr><td colspan=6 class=muted>검증 대상이 없습니다.</td></tr>';
+  document.getElementById("verTbl").innerHTML=h;
+  document.getElementById("verSummary").textContent = `대상 ${ms.length}건 · 이상 ${bad}건 (체인 ±${EPS*100}% · ${SIGMA_K}σ 이상치 · 단가 ±10%)`;
+}
+document.getElementById("verRun").addEventListener("click",()=>{ audit("정산 재검증",""); save(); render(); toast("전체 재검증 완료"); });
+
+/* ============ ESG ============ */
+function methodAgg(){
+  const done=siteManifests().filter(m=>m.procWeight!=null);
+  const agg={}; let total=0,co2=0;
+  for(const m of done){ agg[m.method]=(agg[m.method]||0)+m.procWeight; total+=m.procWeight; co2+=m.procWeight*(CO2[m.method]||0); }
+  return { agg,total,co2 };
+}
+function renderEsg(){
+  const {agg,total,co2}=methodAgg();
+  document.getElementById("esgTotal").innerHTML=fmt(total)+'<small>kg</small>';
+  const rec=(agg["재활용"]||0),land=(agg["매립"]||0);
+  document.getElementById("esgRecyc").innerHTML=(total?(rec/total*100):0).toFixed(1)+'<small>%</small>';
+  document.getElementById("esgLand").innerHTML=(total?(land/total*100):0).toFixed(1)+'<small>%</small>';
+  document.getElementById("esgco2").innerHTML=fmt(co2)+'<small>kg</small>';
+  let h="<tr><th>처리방법</th><th class=r>처리량(kg)</th><th class=r>비중</th><th class=r>탄소계수</th><th class=r>CO₂e(kg)</th></tr>";
+  for(const k of ["재활용","소각","매립"]){ const v=agg[k]||0; h+=`<tr><td>${k}</td><td class=r>${fmt(v)}</td><td class=r>${total?(v/total*100).toFixed(1):0}%</td><td class=r>${CO2[k]}</td><td class=r>${fmt(v*(CO2[k]||0))}</td></tr>`; }
+  document.getElementById("esgTbl").innerHTML=h;
+  const log=(G.carbonLog||[]).filter(l=>l.site===curSite());
+  document.getElementById("esgSubmitLog").innerHTML = log.length
+    ? log.slice().reverse().map(l=>`<div class="ln"><span>${l.t} · ${l.portal}</span><b>접수 ${l.rid}</b></div>`).join("")
+    : "아직 제출 이력이 없습니다.";
+}
+document.getElementById("esgPdf").addEventListener("click",()=>{
+  const {agg,total,co2}=methodAgg(); const doc=pdfDoc(); pdfHeader(doc,"ESG / Circularity Report");
+  let y=96; doc.setFontSize(11);
+  doc.text("Site: "+SITES.find(s=>s.id===curSite()).name,40,y); y+=20;
+  doc.text("Period: ~ "+TODAY.toISOString().slice(0,10),40,y); y+=26;
+  doc.setFontSize(12); doc.text("Treated total: "+fmt(total)+" kg",40,y); y+=20;
+  doc.text("Recycling rate: "+(total?(((agg["재활용"]||0)/total)*100).toFixed(1):0)+" % (national 86.0%)",40,y); y+=20;
+  doc.text("Estimated CO2e: "+fmt(co2)+" kg",40,y); y+=26;
+  doc.setFontSize(11);
+  for(const k of ["재활용","소각","매립"]){ const v=agg[k]||0; doc.text(`- ${k}: ${fmt(v)} kg (${total?(v/total*100).toFixed(1):0}%)`,40,y); y+=18; }
+  doc.save("esg_report.pdf"); toast("ESG 리포트 PDF 생성");
+});
+function submitCarbon(portal){
+  if(!can("esg.submit")){ toast("ESG 제출 권한이 없습니다"); return; }
+  const {total,co2}=methodAgg();
+  const rid = "ESG-"+TODAY.toISOString().slice(0,10).replace(/-/g,"")+"-"+Math.floor(1000+Math.random()*9000);
+  G.carbonLog.push({ site:curSite(), t:nowT(), portal, rid, total:Math.round(total), co2:Math.round(co2) });
+  audit("탄소 리포트 제출", portal+" "+rid);
+  save(); render();
+  const box=document.getElementById("carbonLog");
+  if(box){ box.innerHTML = (G.carbonLog||[]).filter(l=>l.site===curSite()).slice().reverse().map(l=>
+    `<span class="t">[${l.t}]</span> ${l.portal} ← 제출\n  total=${fmt(l.total)}kg co2e=${fmt(l.co2)}kg\n  → 접수ID <span class="w">${l.rid}</span>`).join("\n\n"); }
+  toast("탄소 리포트 제출(mock) · 접수 "+rid);
+}
+document.getElementById("esgSubmit").addEventListener("click",()=>submitCarbon("원청 ESG 포털"));
+document.getElementById("carbonSubmit").addEventListener("click",()=>submitCarbon("KOSHA 온실가스 포털"));
+
+/* ============ 연동 ============ */
+function renderIntegration(){
+  const alog=(G.allbaroLog||[]).filter(l=>l.site===curSite());
+  document.getElementById("allbaroLog").innerHTML = alog.length
+    ? alog.slice().reverse().map(l=>`<span class="t">[${l.t}]</span> POST /allbaro/manifest ${l.id}\n  item=${l.item} weight=${l.weight}kg\n  → 200 OK 접수번호 <span class="w">${l.no}</span>`).join("\n\n")
+    : "대기 중…";
+  const ilog=(G.iotLog||[]).filter((_,i)=>true).slice(-12);
+  document.getElementById("iotLog").innerHTML = (G.iotLog||[]).length
+    ? G.iotLog.slice().reverse().slice(0,12).map(l=>`<span class="t">[${l.t}]</span> ${l.dev} → ${l.id}\n  carry=${fmt(l.carry)}kg proc=${fmt(l.proc)}kg`).join("\n\n")
+    : "대기 중…";
+  const clog=(G.carbonLog||[]).filter(l=>l.site===curSite());
+  document.getElementById("carbonLog").innerHTML = clog.length
+    ? clog.slice().reverse().map(l=>`<span class="t">[${l.t}]</span> ${l.portal} ← 제출\n  total=${fmt(l.total)}kg co2e=${fmt(l.co2)}kg\n  → 접수ID <span class="w">${l.rid}</span>`).join("\n\n")
+    : "대기 중…";
+}
+document.getElementById("allbaroExport").addEventListener("click",()=>{
+  if(!can("integration.allbaro")){ toast("올바로 전송 권한이 없습니다"); return; }
+  const targets=siteManifests().filter(m=>m.signed && !m.allbaroSent);
+  if(targets.length===0){ toast("전송할 발행 인계서가 없습니다"); return; }
+  for(const m of targets){
+    m.allbaroSent=true;
+    m.allbaroNo="ALB-"+TODAY.toISOString().slice(2,10).replace(/-/g,"")+"-"+Math.floor(100+Math.random()*900);
+    G.allbaroLog.push({ site:curSite(), t:nowT(), id:m.id, item:m.itemName, weight:fmt(m.procWeight??m.carryWeight), no:m.allbaroNo });
+  }
+  audit("올바로 신고 전송", targets.length+"건");
+  save(); render(); toast(targets.length+"건 올바로 신고 전송(mock)");
+});
+function downloadCsv(name, rows){
+  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const blob=new Blob(["﻿"+csv],{type:"text/csv"}); const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url);
+}
+document.getElementById("csvOut").addEventListener("click",()=>{
+  const rows=[["인계번호","일자","품목","처리방법","처리중량kg","정산액","상태"]];
+  siteManifests().forEach(m=>rows.push([m.id,m.date,m.itemName,m.method,m.procWeight??m.carryWeight??"",settleAmount(m),stageLabel(m)]));
+  downloadCsv("manifests.csv",rows); document.getElementById("csvLog").textContent="인계내역 CSV 내보냄 ("+(rows.length-1)+"행)"; audit("인계내역 CSV 내보내기","");
+});
+document.getElementById("fbOut").addEventListener("click",()=>{
+  if(!can("settle.confirm")){ toast("정산 권한이 없습니다"); return; }
+  const ms=siteManifests().filter(m=>m.settled);
+  if(ms.length===0){ toast("정산 완료 건이 없습니다"); return; }
+  const rows=[["은행","계좌번호","예금주","이체금액","적요"]];
+  ms.forEach(m=>rows.push(["기업은행","<TODO 계좌>",m.haulerName,settleAmount(m),"정산 "+m.id]));
+  downloadCsv("firmbanking_request.csv",rows);
+  document.getElementById("csvLog").textContent="펌뱅킹 이체요청 CSV 내보냄 ("+(rows.length-1)+"건)"; audit("펌뱅킹 이체요청 CSV", ms.length+"건");
+});
+document.getElementById("fbIn").addEventListener("change",e=>{
+  const f=e.target.files[0]; if(!f)return; const rd=new FileReader();
+  rd.onload=()=>{
+    const lines=rd.result.split(/\r?\n/).filter(Boolean); let updated=0;
+    // 이체결과 CSV: 적요에 "정산 WBxxxxx" 포함 → 해당 건 정산완료 처리
+    for(let i=1;i<lines.length;i++){
+      const c=lines[i].split(",").map(s=>s.replace(/^"|"$/g,"").trim());
+      const memo=c.find(x=>/WB\d+/.test(x))||"";
+      const idm=memo.match(/WB\d+/); if(!idm)continue;
+      const m=G.manifests.find(x=>x.id===idm[0]);
+      if(m && !m.settled && !m.hold){ m.settled=true; m.stage="settled"; updated++; }
+    }
+    audit("펌뱅킹 이체결과 반영", updated+"건");
+    save(); render(); document.getElementById("csvLog").textContent=`이체결과 CSV 반영 · ${updated}건 정산완료`; toast(updated+"건 정산 반영");
+  };
+  rd.readAsText(f);
+});
+
+/* ============ 운반·처리 콘솔 ============ */
+function renderPartner(){
+  const role=G.role;
+  document.getElementById("partnerTitle").textContent =
+    role==="driver"?"운반기사 콘솔": role==="proc"?"처리장 콘솔":"운반·처리 콘솔(관리자 뷰)";
+  // 역할별 작업 단계: driver=운반 서명 대기, proc=처리 서명 대기
+  const ms=siteManifests().filter(m=>["weighed","signed","settled"].includes(m.stage));
+  let target;
+  if(role==="driver") target=ms.filter(m=>!m.signs.driver);
+  else if(role==="proc") target=ms.filter(m=>!m.signs.proc);
+  else target=ms.filter(m=>nextSigner(m)!==null);
+  document.getElementById("pWait").innerHTML=target.length+'<small>건</small>';
+  document.getElementById("pToday").innerHTML=ms.filter(m=>m.date===TODAY.toISOString().slice(0,10)).length+'<small>건</small>';
+  document.getElementById("pSign").innerHTML=ms.filter(m=>nextSigner(m)!==null).length+'<small>건</small>';
+  let h="<tr><th>인계번호</th><th>품목</th><th class=r>처리중량</th><th>다음 서명자</th><th>작업</th></tr>";
+  for(const m of target){
+    const next=nextSigner(m);
+    const lab=next?SIGN_ORDER.find(s=>s[0]===next)[1]:"-";
+    const mine = role==="admin" || (next && can("manifest.sign."+next));
+    const btn = next? `<button class="btn sm" data-sign="${m.id}" ${mine?"":"disabled"}>${lab} 서명</button>` : '<span class="pill ok">완료</span>';
+    h+=`<tr><td>${m.id}</td><td>${m.itemName}</td><td class=r>${m.procWeight?fmt(m.procWeight)+"kg":"-"}</td><td>${lab}</td><td>${btn}</td></tr>`;
+  }
+  if(target.length===0) h+='<tr><td colspan=5 class=muted>배정된 작업이 없습니다.</td></tr>';
+  document.getElementById("partnerTbl").innerHTML=h;
+  document.querySelectorAll("#partnerTbl [data-sign]").forEach(b=>b.addEventListener("click",()=>openSign(b.dataset.sign)));
+}
+
+/* ============ 감사로그 ============ */
+function renderAudit(){
+  const log=G.audit.filter(l=>l.site===curSite()).slice().reverse();
+  document.getElementById("auditCount").textContent = log.length+"건 기록 (이 사업장)";
+  let h="<tr><th>시각</th><th>역할</th><th>행위</th><th>대상</th></tr>";
+  for(const l of log.slice(0,60)){
+    h+=`<tr><td>${new Date(l.t).toLocaleString("ko-KR",{hour12:false})}</td><td><span class="pill info">${l.role}</span></td><td>${l.action}</td><td>${l.target}</td></tr>`;
+  }
+  if(log.length===0) h+='<tr><td colspan=4 class=muted>아직 기록이 없습니다. 작업을 수행해 보세요.</td></tr>';
+  document.getElementById("auditTbl").innerHTML=h;
+}
+document.getElementById("auditCsv").addEventListener("click",()=>{
+  const rows=[["시각","사업장","역할","행위","대상"]];
+  G.audit.forEach(l=>rows.push([l.t,SITES.find(s=>s.id===l.site)?.name||l.site,l.role,l.action,l.target]));
+  downloadCsv("audit_log.csv",rows); toast("감사로그 CSV 내보냄");
+});
+
+/* ============ 테넌트 / RBAC ============ */
+function renderTenant(){
+  let h="<tr><th>사업장(테넌트)</th><th class=r>인계 건수</th><th class=r>처리량(kg)</th><th class=r>재활용률</th><th class=r>미정산</th><th>현재</th></tr>";
+  for(const s of SITES){
+    const ms=G.manifests.filter(m=>m.site===s.id);
+    const done=ms.filter(m=>m.procWeight!=null);
+    const tot=done.reduce((a,m)=>a+m.procWeight,0);
+    const rec=done.filter(m=>m.method==="재활용").reduce((a,m)=>a+m.procWeight,0);
+    const unpaid=ms.filter(m=>m.signed&&!m.settled).reduce((a,m)=>a+settleAmount(m),0);
+    h+=`<tr><td>${s.name}</td><td class=r>${ms.length}</td><td class=r>${fmt(tot)}</td><td class=r>${tot?(rec/tot*100).toFixed(1):0}%</td><td class=r>${won(unpaid)}</td><td>${s.id===curSite()?'<span class="pill ok">선택</span>':""}</td></tr>`;
+  }
+  document.getElementById("tenantTbl").innerHTML=h;
+
+  const perms=Object.keys(PERM_LABELS);
+  let r="<tr><th>역할 \\ 권한</th>"+perms.map(p=>`<th>${PERM_LABELS[p]}</th>`).join("")+"</tr>";
+  for(const [k,v] of Object.entries(ROLES)){
+    r+=`<tr><td><b>${v.name}</b>${k===curRole()?' <span class="pill info">현재</span>':""}</td>`+
+      perms.map(p=>{ const ok=v.perms.includes("*")||v.perms.includes(p); return `<td>${ok?'<span class="pill ok">✓</span>':'<span class="pill mute">·</span>'}</td>`; }).join("")+"</tr>";
+  }
+  document.getElementById("rbacTbl").innerHTML=r;
+}
+
+/* ===================================================================== */
+/* ====================== v3 — 고급 알고리즘 모듈 ====================== */
+/* ===================================================================== */
+
+/* ---- LCA 전과정 탄소 정밀 산정 (단계별 + 운송거리 + 재활용 크레딧) ---- */
+function lcaStages(m){
+  const w = m.procWeight ?? m.carryWeight ?? m.expected;
+  const meth = m.method;
+  const dist = (HAULERS.find(h=>h.id===m.hauler)?.dist ?? 12);
+  const collect  = w * (LCA.collect[meth]  ?? 0.012);
+  const transport= w * dist * LCA.truck;
+  const process  = w * (LCA.process[meth]  ?? 0.04);
+  const disposal = w * (LCA.disposal[meth] ?? 0.2);
+  const credit   = (meth==="재활용") ? -(w * (LCA.credit[m.item] ?? 0.5)) : 0;
+  const gross = collect+transport+process+disposal;
+  return { w, collect, transport, process, disposal, credit, gross, net: gross+credit };
+}
+function lcaAgg(){
+  const ms = siteManifests().filter(m=>m.procWeight!=null);
+  const t = { collect:0, transport:0, process:0, disposal:0, credit:0, gross:0, net:0, w:0 };
+  for(const m of ms){ const s=lcaStages(m); for(const k in t) t[k]+=s[k]; }
+  return { t, n:ms.length };
+}
+
+/* ---- 순환경제 지표: MCI (EMF 기반 단순화 [추정]) ---- */
+function siteMci(siteId){
+  const ms = G.manifests.filter(m=>m.site===siteId && m.procWeight!=null);
+  const tot = ms.reduce((a,m)=>a+m.procWeight,0);
+  if(tot===0) return { mci:0, lfi:0, recovery:0, virgin:0, tot:0 };
+  // 회수가치: 재활용=0.9, 소각(에너지회수)=0.25, 매립=0
+  const recv = { 재활용:0.9, 소각:0.25, 매립:0.0 };
+  let recovered=0, landfill=0;
+  for(const m of ms){ recovered += m.procWeight*(recv[m.method]??0); if(m.method==="매립") landfill+=m.procWeight; }
+  // + 거래소 매각(유가물)은 100% 재자원화로 가산
+  const sold = (G.exchange||[]).filter(e=>e.site===siteId && e.status==="filled").reduce((a,e)=>a+e.weight,0);
+  recovered = Math.min(tot, recovered + sold*0.9);
+  const recovery = recovered/tot;                 // 재자원화율(0~1)
+  const virginShare = 1 - recovery;               // 신재 투입 비중(단순화)
+  const landfillShare = landfill/tot;
+  const lfi = (virginShare + landfillShare)/2;     // 선형흐름지표
+  const fx = 0.9;                                   // 사용강도 보정 [추정]
+  const mci = Math.max(0, Math.min(1, 1 - lfi*fx));
+  const virgin = recovered/1000;                   // 신재 대체량(톤) 추정
+  return { mci, lfi, recovery, virgin, tot };
+}
+function quarterlyMci(){
+  // 분기별 MCI 추세 — 월별 method 비중으로 근사 후 forecast
+  const ms = siteManifests().filter(m=>m.procWeight!=null);
+  const by={};
+  for(const m of ms){ const q=m.date.slice(0,7); (by[q]=by[q]||[]).push(m); }
+  const keys=Object.keys(by).sort();
+  const recv={재활용:0.9,소각:0.25,매립:0.0};
+  const vals=keys.map(k=>{ const g=by[k]; const tot=g.reduce((a,m)=>a+m.procWeight,0);
+    const rec=g.reduce((a,m)=>a+m.procWeight*(recv[m.method]??0),0); const land=g.filter(m=>m.method==="매립").reduce((a,m)=>a+m.procWeight,0);
+    const lfi=((1-rec/tot)+(land/tot))/2; return Math.max(0,1-lfi*0.9); });
+  return { keys, vals };
+}
+function renderCircular(){
+  const c = siteMci(curSite());
+  document.getElementById("ceMci").textContent = c.mci.toFixed(3);
+  document.getElementById("ceReuse").innerHTML = (c.recovery*100).toFixed(1)+'<small>%</small>';
+  document.getElementById("ceVirgin").innerHTML = c.virgin.toFixed(1)+'<small>t</small>';
+  const q = quarterlyMci(); const f = forecast(q.vals.map(v=>v*1000));
+  const nextMci = q.vals.length? Math.max(0,Math.min(1, f.next/1000)) : c.mci;
+  document.getElementById("ceNext").textContent = nextMci.toFixed(3);
+  // 처리방법별 회수가치 표
+  const recv={재활용:0.9,소각:0.25,매립:0.0};
+  const agg=methodAgg();
+  let h=`<tr><th>${LANG==="en"?"Method":"처리방법"}</th><th class=r>${LANG==="en"?"Weight(kg)":"처리량(kg)"}</th><th class=r>${LANG==="en"?"Recovery val.":"회수가치"}</th><th class=r>${LANG==="en"?"Recovered(kg)":"회수량(kg)"}</th></tr>`;
+  for(const k of ["재활용","소각","매립"]){ const v=agg.agg[k]||0; h+=`<tr><td>${methodName(k)}</td><td class=r>${fmt(v)}</td><td class=r>${recv[k].toFixed(2)}</td><td class=r>${fmt(v*recv[k])}</td></tr>`; }
+  document.getElementById("ceTbl").innerHTML=h;
+  // 사업장별 MCI 막대
+  let max=0.001; const bars=SITES.map(s=>{ const mc=siteMci(s.id).mci; max=Math.max(max,mc); return [s,mc]; });
+  document.getElementById("ceBars").innerHTML = bars.map(([s,mc])=>
+    `<div class="bar-row"><span class="lab">${(LANG==="en"?(s.nameEn||s.name):s.name).slice(0,8)}</span><span class="bar-track"><span class="bar-fill" style="width:${(mc/1*100).toFixed(0)}%;background:${s.id===curSite()?'#0a7d4b':'#9aa3af'}"></span></span><span class="val">${mc.toFixed(3)}</span></div>`
+  ).join("");
+  drawCeChart(q, nextMci);
+}
+function drawCeChart(q, nextMci){
+  const c=document.getElementById("ceChart"); if(!c) return; const r=c.getBoundingClientRect(); if(r.width<2) return;
+  c.width=r.width*2; c.height=180*2; const ctx=c.getContext("2d"); ctx.scale(2,2);
+  const W=r.width,H=180; ctx.clearRect(0,0,W,H);
+  const data=[...q.vals, nextMci]; const labels=[...q.keys.map(k=>k.slice(5)), T("ce.legPred")];
+  const isF=data.map((_,i)=>i===data.length-1);
+  const pad=28, gap=(W-pad*2)/Math.max(1,data.length), bw=gap*0.5; const max=1;
+  ctx.strokeStyle="#e7e9ee"; ctx.beginPath(); ctx.moveTo(pad,H-22); ctx.lineTo(W-8,H-22); ctx.stroke();
+  data.forEach((v,i)=>{ const x=pad+gap*i+gap*0.25, hh=(v/max)*(H-50);
+    ctx.fillStyle=isF[i]?"#1463ff":"#0a7d4b"; ctx.fillRect(x,H-22-hh,bw,hh);
+    ctx.fillStyle="#5b6470"; ctx.font="9px sans-serif"; ctx.textAlign="center"; ctx.fillText(labels[i]||"",x+bw/2,H-8);
+  });
+}
+function renderLca(){
+  const {t}=lcaAgg();
+  document.getElementById("lcaTotal").innerHTML=(t.gross/1000).toFixed(2)+'<small>t</small>';
+  document.getElementById("lcaTrans").innerHTML=fmt(t.transport)+'<small>kg</small>';
+  document.getElementById("lcaCredit").innerHTML=fmt(t.credit)+'<small>kg</small>';
+  document.getElementById("lcaNet").innerHTML=(t.net/1000).toFixed(2)+'<small>t</small>';
+  let h=`<tr><th>${LANG==="en"?"Stage":"단계"}</th><th class=r>CO₂e(kg)</th><th class=r>${LANG==="en"?"Share":"비중"}</th></tr>`;
+  const rows=[["수거 (collection)",t.collect],["운송 (transport)",t.transport],["중간처리 (processing)",t.process],["최종처분 (disposal)",t.disposal],["재활용 크레딧 (credit)",t.credit]];
+  const enS={"수거 (collection)":"Collection","운송 (transport)":"Transport","중간처리 (processing)":"Processing","최종처분 (disposal)":"Final disposal","재활용 크레딧 (credit)":"Recycling credit"};
+  for(const [k,v] of rows){ const lab=LANG==="en"?enS[k]:k; h+=`<tr><td>${lab}</td><td class=r>${fmt(v)}</td><td class=r>${t.gross?(v/t.gross*100).toFixed(1):0}%</td></tr>`; }
+  h+=`<tr><td><b>${LANG==="en"?"Net":"순배출"}</b></td><td class=r><b>${fmt(t.net)}</b></td><td class=r>—</td></tr>`;
+  document.getElementById("lcaTbl").innerHTML=h;
+  // 품목별 탄소강도 (kg CO2e/kg)
+  let max=0.001; const bars=[];
+  for(const it of ITEMS){ const ms=siteManifests().filter(m=>m.item===it.id && m.procWeight!=null);
+    if(ms.length===0) continue; let g=0,w=0; for(const m of ms){ const s=lcaStages(m); g+=s.net; w+=s.w; }
+    const inten = w? g/w : 0; max=Math.max(max,Math.abs(inten)); bars.push([it,inten]); }
+  document.getElementById("lcaBars").innerHTML = bars.map(([it,iv])=>
+    `<div class="bar-row"><span class="lab">${itemName(it).slice(0,8)}</span><span class="bar-track"><span class="bar-fill" style="width:${(Math.abs(iv)/max*100).toFixed(0)}%;background:${iv<0?'#0a7d4b':'#b4540a'}"></span></span><span class="val">${iv.toFixed(3)}</span></div>`
+  ).join("") || `<p class="muted">${LANG==="en"?"Insufficient data.":"데이터가 부족합니다."}</p>`;
+  const log=(G.kecoLog||[]).filter(l=>l.site===curSite());
+  document.getElementById("lcaSubmitLog").innerHTML = log.length
+    ? log.slice().reverse().map(l=>`<div class="ln"><span>${l.t} · KECO</span><b>${LANG==="en"?"receipt":"접수"} ${l.rid}</b></div>`).join("")
+    : T("lca.noLog");
+}
+
+/* ---- 처리경로 최적화 (비용·탄소 가중 + 파레토) ---- */
+function routeCandidates(itemId, weight){
+  const it=ITEMS.find(i=>i.id===itemId);
+  const methods = it.recyclable? ["재활용","소각","매립"] : [it.method, "소각", "매립"].filter((v,i,a)=>a.indexOf(v)===i);
+  const cands=[];
+  for(const h of HAULERS){ for(const meth of methods){
+    const unit=h.units[itemId]??100;
+    const cost = weight*unit + h.carry;
+    // 탄소: 단계별 계수로 산정
+    const collect=weight*(LCA.collect[meth]??0.012), transport=weight*h.dist*LCA.truck,
+          process=weight*(LCA.process[meth]??0.04), disposal=weight*(LCA.disposal[meth]??0.2),
+          credit=(meth==="재활용")?-(weight*(LCA.credit[itemId]??0.5)):0;
+    const carbon = collect+transport+process+disposal+credit;
+    cands.push({ h, meth, cost, carbon });
+  }}
+  return cands;
+}
+function optimizeRoute(itemId, weight, wCarbon){
+  const cands=routeCandidates(itemId,weight);
+  const costs=cands.map(c=>c.cost), cmin=Math.min(...costs), cmax=Math.max(...costs);
+  const carbs=cands.map(c=>c.carbon), gmin=Math.min(...carbs), gmax=Math.max(...carbs);
+  const norm=(v,lo,hi)=> hi===lo?0:(v-lo)/(hi-lo);
+  cands.forEach(c=>{ c.nCost=norm(c.cost,cmin,cmax); c.nCarbon=norm(c.carbon,gmin,gmax);
+    c.obj = (1-wCarbon)*c.nCost + wCarbon*c.nCarbon; });
+  // 파레토 최적해(비용·탄소 모두에서 지배받지 않는 해)
+  cands.forEach(c=>{ c.pareto = !cands.some(o=> o!==c && o.cost<=c.cost && o.carbon<=c.carbon && (o.cost<c.cost||o.carbon<c.carbon)); });
+  cands.sort((a,b)=>a.obj-b.obj);
+  return { cands, cmax, gmax };
+}
+function runRoute(){
+  const itemId=document.getElementById("rtItem").value;
+  const weight=+document.getElementById("rtWeight").value||1000;
+  const wc=(+document.getElementById("rtW").value)/100;
+  document.getElementById("rtWLab").textContent=wc.toFixed(2);
+  const {cands,gmax}=optimizeRoute(itemId,weight,wc);
+  const best=cands[0]; const paretoN=cands.filter(c=>c.pareto).length;
+  const baseCarbon=gmax;
+  document.getElementById("rtBest").textContent = `${LANG==="en"?(best.h.nameEn||best.h.name):best.h.name} · ${methodName(best.meth)}`;
+  document.getElementById("rtBestSub").textContent = `${won(best.cost)} · ${fmt(best.carbon)}kg CO₂e`;
+  const save = baseCarbon>0? ((baseCarbon-best.carbon)/Math.abs(baseCarbon)*100) : 0;
+  document.getElementById("rtSave").innerHTML = (save>=0?"":"")+save.toFixed(0)+'<small>%</small>';
+  document.getElementById("rtPar").innerHTML = paretoN+'<small>'+(LANG==="en"?"":"개")+'</small>';
+  let h=`<tr><th>${LANG==="en"?"Rank":"순위"}</th><th>${LANG==="en"?"Processor":"처리사"}</th><th>${LANG==="en"?"Method":"방법"}</th><th class=r>${LANG==="en"?"Cost":"비용"}</th><th class=r>CO₂e(kg)</th><th class=r>${LANG==="en"?"Objective":"목적값"}</th><th>${LANG==="en"?"Pareto":"파레토"}</th></tr>`;
+  cands.forEach((c,i)=>{ h+=`<tr><td>${i===0?'<span class="pill ok">'+(LANG==="en"?"BEST":"최적")+'</span>':"#"+(i+1)}</td><td>${LANG==="en"?(c.h.nameEn||c.h.name):c.h.name}</td><td>${methodName(c.meth)}</td><td class=r>${won(c.cost)}</td><td class=r>${fmt(c.carbon)}</td><td class=r><b>${c.obj.toFixed(3)}</b></td><td>${c.pareto?'<span class="pill info">✓</span>':'<span class="pill mute">·</span>'}</td></tr>`; });
+  document.getElementById("rtTbl").innerHTML=h;
+}
+function renderRoute(){ if(document.getElementById("rtTbl").innerHTML==="") runRoute(); }
+
+/* ---- 부정 정산 리스크 스코어 고도화 (다요인 가중) ---- */
+function benfordFit(){
+  // 정산액 1자리 분포 vs Benford 기대분포 → 적합도(1 - 평균절대편차)
+  const exp=[0,.301,.176,.125,.097,.079,.067,.058,.051,.046];
+  const ms=siteManifests().filter(m=>m.procWeight!=null);
+  if(ms.length<4) return 0.85;
+  const cnt=Array(10).fill(0); let n=0;
+  for(const m of ms){ const v=settleAmount(m); const d=+String(Math.round(v)).replace(/^0+/,"")[0]||0; if(d>=1){cnt[d]++;n++;} }
+  if(n===0) return 0.85;
+  let mad=0; for(let d=1; d<=9; d++) mad+=Math.abs(cnt[d]/n - exp[d]);
+  return Math.max(0, 1 - mad/2);
+}
+function riskScore(m){
+  const factors=[]; let score=0;
+  const c=chainCheck(m);
+  if(c){ const f=Math.min(1, c.err/EPS); const s=f*25; if(c.err>EPS*0.6){ score+=s; factors.push(`${LANG==="en"?"chain":"체인"} ${(c.err*100).toFixed(1)}%`);} }
+  const st=itemStats(m.item);
+  if(st && m.procWeight!=null){ const z=Math.abs(m.procWeight-st.mean)/st.sd; if(z>=1){ const s=Math.min(1,z/4)*30; score+=s; if(z>=SIGMA_K) factors.push(`z=${z.toFixed(1)}σ`); } }
+  if(m.billUnit!=null && m.unit){ const diff=Math.abs(m.billUnit-m.unit)/m.unit; if(diff>=0.1){ score+=Math.min(1,diff/0.5)*30; factors.push(`${LANG==="en"?"unit":"단가"} ${((m.billUnit-m.unit)/m.unit*100).toFixed(0)}%`);} }
+  // 처리사 이상이력
+  const hms=G.manifests.filter(x=>x.hauler===m.hauler && x.procWeight!=null);
+  const bad=hms.filter(x=>!verifyManifest(x).ok).length; const hist=hms.length? bad/hms.length:0;
+  if(hist>0){ score+=hist*15; if(hist>=0.25) factors.push(`${LANG==="en"?"hauler hist":"처리사이력"} ${(hist*100).toFixed(0)}%`); }
+  score=Math.min(100, Math.round(score));
+  const level = score>=60?"high": score>=30?"mid":"low";
+  return { score, level, factors };
+}
+function renderRisk(){
+  const ms=siteManifests().filter(m=>m.procWeight!=null).map(m=>({m, r:riskScore(m)}));
+  const high=ms.filter(x=>x.r.level==="high"), mid=ms.filter(x=>x.r.level==="mid");
+  const exposure=high.reduce((a,x)=>a+settleAmount(x.m),0);
+  document.getElementById("rkHigh").innerHTML=high.length+'<small>'+(LANG==="en"?"":"건")+'</small>';
+  document.getElementById("rkMid").innerHTML=mid.length+'<small>'+(LANG==="en"?"":"건")+'</small>';
+  document.getElementById("rkBenf").innerHTML=(benfordFit()*100).toFixed(0)+'<small>%</small>';
+  document.getElementById("rkExp").textContent=won(exposure);
+  document.getElementById("rkSummary").textContent = `${LANG==="en"?"Targets":"대상"} ${ms.length} · ${LANG==="en"?"high":"고위험"} ${high.length} · ${LANG==="en"?"mid":"중위험"} ${mid.length}`;
+  ms.sort((a,b)=>b.r.score-a.r.score);
+  let h=`<tr><th>${LANG==="en"?"Manifest":"인계번호"}</th><th>${LANG==="en"?"Item":"품목"}</th><th class=r>${LANG==="en"?"Score":"리스크"}</th><th>${LANG==="en"?"Level":"등급"}</th><th>${LANG==="en"?"Factors":"요인"}</th><th>${LANG==="en"?"Action":"조치"}</th></tr>`;
+  for(const {m,r} of ms){
+    const lv = r.level==="high"?'<span class="pill danger">'+(LANG==="en"?"HIGH":"고위험")+'</span>': r.level==="mid"?'<span class="pill warn">'+(LANG==="en"?"MID":"중위험")+'</span>':'<span class="pill ok">'+(LANG==="en"?"LOW":"저위험")+'</span>';
+    const act = r.level==="high"? '<span class="pill danger">'+(LANG==="en"?"BLOCK settle/ALLBARO":"정산·전송 차단")+'</span>' : r.level==="mid"? '<span class="pill warn">'+(LANG==="en"?"review":"검토")+'</span>' : '<span class="pill mute">-</span>';
+    h+=`<tr><td>${m.id}</td><td>${LANG==="en"?itemName(ITEMS.find(i=>i.id===m.item)):m.itemName}</td><td class=r><b>${r.score}</b></td><td>${lv}</td><td>${r.factors.map(f=>`<span class="pill mute">${f}</span>`).join(" ")||"-"}</td><td>${act}</td></tr>`;
+  }
+  if(ms.length===0) h+=`<tr><td colspan=6 class=muted>${LANG==="en"?"No targets.":"대상이 없습니다."}</td></tr>`;
+  document.getElementById("rkTbl").innerHTML=h;
+}
+// 고위험 게이트 — 정산/올바로에서 참조
+function highRisk(m){ return riskScore(m).level==="high"; }
+
+/* ---- 유가물 거래소 (mock) ---- */
+function renderExchange(){
+  const ex=(G.exchange||[]).filter(e=>e.site===curSite());
+  let h=`<tr><th>${LANG==="en"?"Item":"품목"}</th><th class=r>${LANG==="en"?"Qty(kg)":"수량(kg)"}</th><th class=r>${LANG==="en"?"Price":"시세"}</th><th class=r>${LANG==="en"?"Proceeds":"예상대금"}</th><th>${LANG==="en"?"Status":"상태"}</th></tr>`;
+  for(const e of ex.slice().reverse()){
+    const it=ITEMS.find(i=>i.id===e.item);
+    const stat = e.status==="filled"?'<span class="pill ok">'+(LANG==="en"?"FILLED":"체결")+'</span>':'<span class="pill warn">'+(LANG==="en"?"LISTED":"호가")+'</span>';
+    h+=`<tr><td>${itemName(it)}</td><td class=r>${fmt(e.weight)}</td><td class=r>${e.price}</td><td class=r>${won(e.weight*(e.fillPrice||e.price))}</td><td>${stat}</td></tr>`;
+  }
+  if(ex.length===0) h+=`<tr><td colspan=5 class=muted>${LANG==="en"?"No listings.":"등록된 호가가 없습니다."}</td></tr>`;
+  document.getElementById("exQuoteTbl").innerHTML=h;
+  const log=(G.exLog||[]).filter(l=>l.site===curSite());
+  document.getElementById("exLog").innerHTML = log.length
+    ? log.slice().reverse().slice(0,12).map(l=>`<span class="t">[${l.t}]</span> ${l.msg}`).join("\n\n")
+    : "대기 중…";
+}
+
+/* ============ 차트 ============ */
+function drawTonChart(){
+  const c=document.getElementById("chartTon"); const r=c.getBoundingClientRect();
+  if(r.width<2) return;
+  c.width=r.width*2; c.height=180*2; const ctx=c.getContext("2d"); ctx.scale(2,2);
+  const W=r.width,H=180; ctx.clearRect(0,0,W,H);
+  const {keys,vals}=monthlySeries();
+  const f=forecast(vals);
+  const data = vals.length?[...vals, f.next]:[0];
+  const labels = vals.length?[...keys.map(k=>k.slice(5)),"예측"]:[""];
+  const isF = data.map((_,i)=>i===data.length-1 && vals.length>0);
+  const max=Math.max(...data,1); const pad=28, gap=(W-pad*2)/data.length, bw=gap*0.55;
+  ctx.strokeStyle="#e7e9ee"; ctx.beginPath(); ctx.moveTo(pad,H-22); ctx.lineTo(W-8,H-22); ctx.stroke();
+  data.forEach((v,i)=>{
+    const x=pad+gap*i+gap*0.22, h=(v/max)*(H-50);
+    ctx.fillStyle=isF[i]?"#1463ff":"#0a7d4b"; ctx.fillRect(x,H-22-h,bw,h);
+    if(isF[i] && f.band>0){ // 예측구간 캡
+      const bh=(f.band/max)*(H-50);
+      ctx.strokeStyle="#1463ff"; ctx.lineWidth=1.4; ctx.beginPath();
+      ctx.moveTo(x+bw/2,H-22-h-bh); ctx.lineTo(x+bw/2,H-22-h+Math.min(bh,h)); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x+bw/2-5,H-22-h-bh); ctx.lineTo(x+bw/2+5,H-22-h-bh); ctx.stroke();
+      ctx.lineWidth=1;
+    }
+    ctx.fillStyle="#5b6470"; ctx.font="9px sans-serif"; ctx.textAlign="center";
+    ctx.fillText(labels[i]||"", x+bw/2, H-8);
+  });
+}
+function drawMixChart(){
+  const c=document.getElementById("chartMix"); const r=c.getBoundingClientRect();
+  if(r.width<2) return;
+  c.width=r.width*2; c.height=180*2; const ctx=c.getContext("2d"); ctx.scale(2,2);
+  const W=r.width,H=180; ctx.clearRect(0,0,W,H);
+  const {agg,total}=methodAgg();
+  const order=[["재활용","#0a7d4b"],["소각","#6b7280"],["매립","#1f2933"]];
+  const cx=W/2,cy=H/2-6,rad=Math.min(W,H)/2-30; let a=-Math.PI/2;
+  if(total===0){ ctx.fillStyle="#e7e9ee"; ctx.beginPath(); ctx.arc(cx,cy,rad,0,7); ctx.fill(); return; }
+  for(const [k,col] of order){
+    const v=(agg[k]||0)/total; if(v<=0)continue;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.fillStyle=col;
+    ctx.arc(cx,cy,rad,a,a+v*2*Math.PI); ctx.closePath(); ctx.fill(); a+=v*2*Math.PI;
+  }
+  ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(cx,cy,rad*0.55,0,7); ctx.fill();
+  ctx.fillStyle="#15181d"; ctx.font="bold 16px sans-serif"; ctx.textAlign="center";
+  ctx.fillText(((agg["재활용"]||0)/total*100).toFixed(0)+"%",cx,cy+2);
+  ctx.fillStyle="#5b6470"; ctx.font="10px sans-serif"; ctx.fillText("재활용",cx,cy+18);
+}
+
+/* ============ v3 이벤트 핸들러 ============ */
+document.getElementById("rtRun").addEventListener("click",()=>{ runRoute(); audit("처리경로 최적화",""); toast(LANG==="en"?"Route optimized":"경로 최적화 완료"); });
+document.getElementById("rtW").addEventListener("input",()=>{ runRoute(); });
+document.getElementById("rkRun").addEventListener("click",()=>{ render(); audit("부정 리스크 재계산",""); toast(LANG==="en"?"Risk recomputed":"리스크 재계산 완료"); });
+
+// LCA PDF + 환경공단 제출
+document.getElementById("lcaPdf").addEventListener("click",()=>{
+  const {t,n}=lcaAgg(); const doc=pdfDoc(); pdfHeader(doc,"Life-Cycle Assessment (LCA) Report");
+  let y=96; doc.setFontSize(11);
+  doc.text("Site: "+SITES.find(s=>s.id===curSite()).nameEn,40,y); y+=20;
+  doc.text("Manifests analyzed: "+n,40,y); y+=26;
+  const ln=(k,v)=>{ doc.text(k,40,y); doc.text(String(v),320,y); y+=18; };
+  ln("Collection (kg CO2e)",fmt(t.collect)); ln("Transport (kg CO2e)",fmt(t.transport));
+  ln("Processing (kg CO2e)",fmt(t.process)); ln("Final disposal (kg CO2e)",fmt(t.disposal));
+  ln("Recycling credit (kg CO2e)",fmt(t.credit));
+  doc.setFontSize(13); doc.text("Net CO2e (kg): "+fmt(t.net),40,y+10);
+  doc.save("lca_report.pdf"); toast(LANG==="en"?"LCA PDF generated":"LCA 리포트 PDF 생성");
+});
+function submitKeco(){
+  if(!can("esg.submit")){ toast(T("noPerm")); return; }
+  const c=siteMci(curSite()); const {t}=lcaAgg();
+  const rid="KECO-"+TODAY.toISOString().slice(0,10).replace(/-/g,"")+"-"+Math.floor(1000+Math.random()*9000);
+  G.kecoLog.push({ site:curSite(), t:nowT(), rid, mci:+c.mci.toFixed(3), net:Math.round(t.net) });
+  audit("환경공단 실적 제출", rid);
+  save(); render();
+  toast((LANG==="en"?"KECO submitted · receipt ":"환경공단 제출 · 접수 ")+rid);
+}
+document.getElementById("lcaSubmit").addEventListener("click",submitKeco);
+document.getElementById("kecoSend").addEventListener("click",()=>{
+  submitKeco();
+  const box=document.getElementById("kecoLog");
+  if(box) box.innerHTML = (G.kecoLog||[]).filter(l=>l.site===curSite()).slice().reverse().map(l=>
+    `<span class="t">[${l.t}]</span> POST /keco/circular-economy\n  mci=${l.mci} net_co2e=${fmt(l.net)}kg\n  → 200 OK ${LANG==="en"?"receipt":"접수ID"} <span class="w">${l.rid}</span>`).join("\n\n");
+});
+// 지자체 폐기물관리 연동
+document.getElementById("muniSend").addEventListener("click",()=>{
+  if(!can("integration.allbaro")){ toast(T("noPerm")); return; }
+  const targets=siteManifests().filter(m=>m.signed);
+  if(targets.length===0){ toast(LANG==="en"?"No issued manifests":"신고할 인계 건이 없습니다"); return; }
+  const no="MUNI-"+TODAY.toISOString().slice(2,10).replace(/-/g,"")+"-"+Math.floor(100+Math.random()*900);
+  G.muniLog.push({ site:curSite(), t:nowT(), no, cnt:targets.length, ton:(targets.reduce((a,m)=>a+(m.procWeight||0),0)/1000).toFixed(1) });
+  audit("지자체 실적 신고", no+" "+targets.length+"건");
+  save();
+  document.getElementById("muniLog").innerHTML = (G.muniLog||[]).filter(l=>l.site===curSite()).slice().reverse().map(l=>
+    `<span class="t">[${l.t}]</span> POST /municipal/waste-report\n  count=${l.cnt} total=${l.ton}t\n  → 200 OK ${LANG==="en"?"receipt":"접수번호"} <span class="w">${l.no}</span>`).join("\n\n");
+  toast((LANG==="en"?"Municipal filing sent ":"지자체 실적 신고 ")+no);
+});
+// 유가물 거래소
+document.getElementById("exList").addEventListener("click",()=>{
+  if(!can("exchange.trade")){ toast(T("noPerm")); return; }
+  const itemId=document.getElementById("exItem").value; const w=+document.getElementById("exWeight").value||0;
+  if(w<=0){ toast(LANG==="en"?"Enter quantity":"수량을 입력하세요"); return; }
+  const price=SCRAP_PRICE[itemId]||0;
+  G.exchange.push({ site:curSite(), item:itemId, weight:w, price, status:"listed", t:nowT() });
+  G.exLog.push({ site:curSite(), t:nowT(), msg:`LIST ${itemName(ITEMS.find(i=>i.id===itemId))} ${fmt(w)}kg @${price} → ${LANG==="en"?"est.":"예상"} ${won(w*price)}` });
+  audit("유가물 매도 등록", itemId+" "+fmt(w)+"kg");
+  save(); render(); toast(LANG==="en"?"Listed on exchange":"거래소 매도 등록");
+});
+document.getElementById("exMatch").addEventListener("click",()=>{
+  if(!can("exchange.trade")){ toast(T("noPerm")); return; }
+  const open=(G.exchange||[]).filter(e=>e.site===curSite() && e.status==="listed");
+  if(open.length===0){ toast(LANG==="en"?"No open quotes":"체결할 호가가 없습니다"); return; }
+  let cnt=0;
+  for(const e of open){ const drift=1+(Math.random()*0.16-0.05); e.fillPrice=Math.round(e.price*drift); e.status="filled";
+    G.exLog.push({ site:curSite(), t:nowT(), msg:`FILL ${itemName(ITEMS.find(i=>i.id===e.item))} ${fmt(e.weight)}kg @${e.fillPrice} → ${won(e.weight*e.fillPrice)}` }); cnt++; }
+  audit("유가물 거래 체결", cnt+"건");
+  save(); render(); toast((LANG==="en"?"Matched ":"체결 ")+cnt+(LANG==="en"?"":"건"));
+});
+
+/* reset */
+document.getElementById("resetBtn").addEventListener("click",()=>{
+  localStorage.removeItem(KEY); G=seed(); LANG=G.lang; rebuildSelects(); applyI18n(); applyRoleNav(); go("dashboard"); toast(LANG==="en"?"Demo reset":"데모 데이터 초기화");
+});
+
+window.addEventListener("resize",()=>{ drawTonChart(); drawMixChart(); if(typeof renderCircular==="function" && CURRENT==="circular") renderCircular(); });
+applyI18n();
+applyRoleNav();
+render();
+</script>
+</body>
+</html>
