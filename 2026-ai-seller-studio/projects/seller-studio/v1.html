@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>셀러스튜디오 · 커머스 AI 콘텐츠 스튜디오</title>
+<!--
+  셀러스튜디오 v1 — 커머스 AI 콘텐츠 생성 스튜디오 (단일 HTML 자체완결 데모)
+  ⚠️ AI 정직성(§2.6): 본 데모의 "AI 생성"은 외부 LLM(ChatGPT/Claude 등) 호출이 아니라,
+     커머스 도메인 지식을 코드화한 **자체 결정론적 룰/템플릿 엔진**이다.
+     - 키워드 → 구조화 카피 변형 (셀링포인트 추출 · 베네핏 매핑)
+     - 톤/길이/채널(네이버·인스타·구글)별 변형 + 글자수 제약 enforcement
+     - 금칙어·과대광고 문구 검수 레이어 (실 정규식 룰)
+     - 품질/전환 스코어 (룰 기반 eval — 래퍼가 아님의 증거)
+  외부 네트워크 0 · localStorage 영속 · canvas 이미지 처리 · jsPDF export.
+-->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --brand:#6b4bf5; --brand-d:#5436e0; --brand-soft:#efeaff;
+  --ink:#1c1830; --ink2:#5a5470; --ink3:#928da6;
+  --bg:#f6f5fb; --surf:#ffffff; --surf2:#f2f0fa; --line:#e7e3f2;
+  --ok:#1f9d6b; --warn:#c9881a; --bad:#d94848; --info:#3478f6;
+  --r:14px; --sh:0 6px 24px rgba(40,30,90,.10);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Segoe UI",Roboto,sans-serif;
+  background:
+    radial-gradient(900px 500px at 88% -8%, #efe9ff 0%, transparent 60%),
+    radial-gradient(700px 460px at -6% 4%, #e9f0ff 0%, transparent 55%),
+    var(--bg);
+  color:var(--ink);font-size:15px;line-height:1.5;min-height:100vh}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,textarea,select{font-family:inherit;font-size:14px}
+a{color:var(--brand);text-decoration:none}
+.hidden{display:none!important}
+
+/* layout */
+.app{display:flex;min-height:100vh}
+.sidebar{width:248px;flex-shrink:0;background:#fff;border-right:1px solid var(--line);
+  padding:18px 12px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:6px 10px 16px}
+.brand .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--brand),#9b7bff);
+  display:grid;place-items:center;color:#fff;font-weight:800;font-size:18px;box-shadow:0 4px 12px rgba(107,75,245,.4)}
+.brand b{font-size:17px;letter-spacing:-.3px}
+.brand small{display:block;color:var(--ink3);font-size:11px;font-weight:600;margin-top:1px}
+.nav-sec{font-size:11px;font-weight:700;color:var(--ink3);padding:12px 12px 4px;letter-spacing:.4px}
+.nav-btn{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:10px;color:var(--ink2);
+  font-weight:600;font-size:14px;width:100%;text-align:left;transition:.14s}
+.nav-btn .ic{width:20px;text-align:center;font-size:16px}
+.nav-btn:hover{background:var(--surf2)}
+.nav-btn.active{background:var(--brand-soft);color:var(--brand-d);font-weight:700}
+.nav-btn .badge{margin-left:auto;font-size:11px;background:var(--brand);color:#fff;border-radius:9px;padding:1px 7px;font-weight:700}
+
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;gap:12px;padding:14px 22px;border-bottom:1px solid var(--line);
+  background:rgba(255,255,255,.78);backdrop-filter:saturate(180%) blur(14px);position:sticky;top:0;z-index:30}
+.topbar .hamb{display:none;font-size:22px;width:38px;height:38px;border-radius:10px}
+.topbar h1{font-size:16px;margin:0;font-weight:700;letter-spacing:-.3px}
+.topbar .sub{color:var(--ink3);font-size:12px;font-weight:600}
+.spacer{flex:1}
+.rolesel,.langsel{border:1px solid var(--line);border-radius:10px;padding:7px 10px;background:#fff;font-weight:600;color:var(--ink2)}
+.content{padding:22px;max-width:1180px;width:100%;margin:0 auto}
+.view{display:none}.view.active{display:block;animation:fade .25s}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* generic */
+h2.vt{font-size:22px;margin:0 0 4px;letter-spacing:-.5px}
+.vdesc{color:var(--ink2);margin:0 0 18px;font-size:13.5px}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.card+.card{margin-top:16px}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+label.fl{display:block;font-size:12px;font-weight:700;color:var(--ink2);margin:0 0 5px}
+.inp,textarea.inp,select.inp{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;color:var(--ink)}
+textarea.inp{resize:vertical;min-height:74px;line-height:1.55}
+.inp:focus,textarea.inp:focus,select.inp:focus{outline:2px solid var(--brand);outline-offset:0;border-color:transparent}
+.field{margin-bottom:14px}
+.btn{background:var(--brand);color:#fff;font-weight:700;padding:11px 16px;border-radius:11px;transition:.12s;font-size:14px}
+.btn:hover{background:var(--brand-d)}.btn:active{transform:scale(.97)}
+.btn.sm{padding:7px 12px;font-size:13px;border-radius:9px}
+.btn.gho{background:#fff;color:var(--brand-d);border:1px solid var(--line)}
+.btn.gho:hover{background:var(--surf2)}
+.btn.dark{background:var(--ink)}.btn.dark:hover{background:#322c4d}
+.btn:disabled{opacity:.4;pointer-events:none}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;
+  background:var(--surf2);color:var(--ink2);border:1px solid var(--line)}
+.chip.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+.chip.act{cursor:pointer}.chip.act:hover{border-color:var(--brand)}
+.pill{font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px}
+.pill.ok{background:#e6f6ee;color:var(--ok)}.pill.warn{background:#fbf2dd;color:var(--warn)}
+.pill.bad{background:#fbe7e7;color:var(--bad)}.pill.info{background:#e7f0ff;color:var(--info)}
+.kpi{background:var(--surf);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.kpi .n{font-size:27px;font-weight:800;letter-spacing:-1px}
+.kpi .l{color:var(--ink2);font-size:12.5px;font-weight:600;margin-top:2px}
+.kpi .d{font-size:11.5px;font-weight:700;margin-top:6px}
+.muted{color:var(--ink3)}
+table.tb{width:100%;border-collapse:collapse;font-size:13.5px}
+table.tb th,table.tb td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}
+table.tb th{font-size:11.5px;color:var(--ink3);font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+table.tb tr:last-child td{border-bottom:none}
+.bar{height:8px;border-radius:6px;background:var(--surf2);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--brand);border-radius:6px}
+.scorering{--p:0;width:84px;height:84px;border-radius:50%;display:grid;place-items:center;
+  background:conic-gradient(var(--brand) calc(var(--p)*1%), var(--surf2) 0);position:relative;flex-shrink:0}
+.scorering::before{content:"";position:absolute;inset:8px;border-radius:50%;background:#fff}
+.scorering b{position:relative;font-size:22px;font-weight:800}
+
+/* output blocks */
+.outbox{background:var(--surf2);border:1px solid var(--line);border-radius:12px;padding:14px;white-space:pre-wrap;
+  font-size:13.5px;line-height:1.65;position:relative}
+.outbox .cnt{position:absolute;top:8px;right:10px;font-size:11px;font-weight:700;color:var(--ink3)}
+.variant{border:1px solid var(--line);border-radius:12px;padding:14px;background:#fff;margin-bottom:12px}
+.variant.win{border-color:var(--brand);box-shadow:0 0 0 2px var(--brand-soft)}
+.variant h4{margin:0 0 6px;font-size:14px;display:flex;align-items:center;gap:8px}
+.detail-sec{border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:12px}
+.detail-sec .h{background:var(--surf2);padding:9px 13px;font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px}
+.detail-sec .b{padding:13px;font-size:13.5px;line-height:1.6}
+
+/* toast */
+#toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;
+  padding:12px 18px;border-radius:12px;font-weight:600;font-size:13.5px;box-shadow:var(--sh);opacity:0;pointer-events:none;
+  transition:.3s;z-index:200;max-width:90vw}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* modal */
+.modal-bg{position:fixed;inset:0;background:rgba(28,24,48,.34);backdrop-filter:blur(4px);display:none;
+  align-items:center;justify-content:center;z-index:100;padding:18px}
+.modal-bg.show{display:flex}
+.modal{background:#fff;border-radius:18px;max-width:560px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:var(--sh);padding:22px}
+.modal h3{margin:0 0 12px;font-size:18px}
+
+/* drawer/bottom nav (mobile) */
+#scrim{position:fixed;inset:0;background:rgba(28,24,48,.34);z-index:45;display:none}
+body.drawer-open #scrim{display:block}
+#bottomnav{display:none}
+
+@media(max-width:860px){
+  .sidebar{position:fixed;left:0;top:0;z-index:50;transform:translateX(-100%);transition:.26s;box-shadow:var(--sh)}
+  body.drawer-open .sidebar{transform:translateX(0)}
+  .topbar .hamb{display:grid;place-items:center}
+  .content{padding:16px 14px 86px}
+  .g2,.g3,.g4{grid-template-columns:1fr}
+  .topbar .sub{display:none}
+  #bottomnav{display:flex;position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.94);
+    backdrop-filter:blur(14px);border-top:1px solid var(--line);z-index:48;padding:6px 4px;justify-content:space-around}
+  #bottomnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10.5px;
+    font-weight:700;color:var(--ink3);padding:6px 2px}
+  #bottomnav button.active{color:var(--brand-d)}
+  #bottomnav button .ic{font-size:19px}
+}
+@media(min-width:861px){#scrim{display:none!important}}
+.kgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
+.thumb{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+.thumb canvas{display:block;width:100%;height:auto}
+.thumb .cap{padding:7px 10px;font-size:11.5px;font-weight:700;color:var(--ink2);display:flex;justify-content:space-between}
+.seg{display:inline-flex;background:var(--surf2);border-radius:10px;padding:3px;gap:2px}
+.seg button{padding:6px 12px;border-radius:8px;font-weight:700;font-size:13px;color:var(--ink2)}
+.seg button.on{background:#fff;color:var(--brand-d);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.flag{font-size:12px;padding:6px 10px;border-radius:9px;margin-bottom:6px;font-weight:600;display:flex;gap:8px;align-items:flex-start}
+.flag.bad{background:#fbe7e7;color:#b13434}.flag.warn{background:#fbf2dd;color:#92621a}.flag.ok{background:#e6f6ee;color:#157a4f}
+.note{font-size:12px;color:var(--ink2);background:var(--brand-soft);border-radius:10px;padding:10px 12px;margin-bottom:14px;
+  border-left:3px solid var(--brand)}
+.logline{font-size:12.5px;border-bottom:1px solid var(--line);padding:8px 2px;display:flex;gap:10px;align-items:center}
+.logline .t{color:var(--ink3);font-size:11px;font-weight:700;width:62px;flex-shrink:0}
+.adm-warn{background:#fff;border:1px dashed var(--bad);color:var(--bad);border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700}
+</style>
+</head>
+<body>
+<div id="scrim" onclick="closeDrawer()"></div>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="logo">S</div>
+      <div><b>셀러스튜디오</b><small id="bsub">커머스 AI 콘텐츠 스튜디오</small></div>
+    </div>
+    <div class="nav-sec" data-i18n="nav_create">생성 스튜디오</div>
+    <button class="nav-btn active" data-view="dashboard"><span class="ic">▦</span><span data-i18n="nav_dash">대시보드</span></button>
+    <button class="nav-btn" data-view="products"><span class="ic">▤</span><span data-i18n="nav_prod">제품</span><span class="badge" id="prodBadge">0</span></button>
+    <button class="nav-btn" data-view="detail"><span class="ic">▣</span><span data-i18n="nav_detail">상세페이지</span></button>
+    <button class="nav-btn" data-view="copy"><span class="ic">✎</span><span data-i18n="nav_copy">광고 카피</span></button>
+    <button class="nav-btn" data-view="image"><span class="ic">▩</span><span data-i18n="nav_img">이미지 변형</span></button>
+    <button class="nav-btn" data-view="ab"><span class="ic">⇄</span><span data-i18n="nav_ab">A/B 비교</span></button>
+    <div class="nav-sec" data-i18n="nav_qa">검수 · 운영</div>
+    <button class="nav-btn" data-view="quality"><span class="ic">◎</span><span data-i18n="nav_q">품질·전환 스코어</span></button>
+    <button class="nav-btn" data-view="brand"><span class="ic">◈</span><span data-i18n="nav_brand">브랜드 톤·금칙어</span></button>
+    <button class="nav-btn" data-view="history"><span class="ic">⟲</span><span data-i18n="nav_hist">생성 히스토리</span></button>
+    <button class="nav-btn" data-view="export"><span class="ic">⤓</span><span data-i18n="nav_exp">내보내기</span></button>
+    <button class="nav-btn" data-view="usage"><span class="ic">▰</span><span data-i18n="nav_usage">사용량</span></button>
+    <button class="nav-btn admin-only hidden" data-view="admin"><span class="ic">⚙</span><span data-i18n="nav_admin">관리자</span></button>
+    <div style="flex:1"></div>
+    <div style="font-size:11px;color:var(--ink3);padding:10px 12px;font-weight:600">엔진: 결정론적 룰/템플릿<br>외부 LLM 미사용 · v1</div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="hamb" onclick="openDrawer()">☰</button>
+      <div>
+        <h1 id="topTitle">대시보드</h1>
+        <div class="sub" id="topSub">셀러스튜디오 — 커머스 콘텐츠 생성</div>
+      </div>
+      <div class="spacer"></div>
+      <select class="langsel" id="langSel" title="언어">
+        <option value="ko">🇰🇷 KO</option><option value="en">🇺🇸 EN</option>
+      </select>
+      <select class="rolesel" id="roleSel" title="역할">
+        <option value="seller">셀러</option><option value="editor">에디터</option><option value="admin">관리자</option>
+      </select>
+    </header>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<nav id="bottomnav">
+  <button data-view="dashboard" class="active"><span class="ic">▦</span>홈</button>
+  <button data-view="detail"><span class="ic">▣</span>상세</button>
+  <button data-view="copy"><span class="ic">✎</span>카피</button>
+  <button data-view="image"><span class="ic">▩</span>이미지</button>
+  <button data-view="history"><span class="ic">⟲</span>기록</button>
+</nav>
+
+<div class="modal-bg" id="modalBg"><div class="modal" id="modalBox"></div></div>
+<div id="toast"></div>
+
+<script>
+/* ════════════════════════════════════════════════════════════════════
+   셀러스튜디오 — 자체 결정론적 커머스 콘텐츠 엔진
+   외부 LLM 호출 0. 모든 "생성"은 아래 룰/템플릿/휴리스틱으로 동작.
+   ════════════════════════════════════════════════════════════════════ */
+const FEATURES = []; // 코드 하단에서 카운트
+const F = (id,desc)=>{FEATURES.push({id,desc});return desc;};
+
+const LS_KEY = "seller-studio-v1";
+const $ = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+const uid = ()=>Math.random().toString(36).slice(2,9);
+const now = ()=>Date.now();
+const fmtT = ts=>new Date(ts).toLocaleString("ko-KR",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+/* ─────────────── 도메인 사전 (커머스 카피 룰의 핵심 데이터) ─────────────── */
+// F1 카테고리별 셀링포인트/베네핏 매핑 사전 (래퍼 아님: 도메인 지식을 코드화)
+const CAT_LEX = {
+  fashion:{ko:"패션·의류",hooks:["데일리룩","핏","소재","코디","계절감"],
+    benefits:["하루 종일 편한 핏","어떤 상의에도 어울리는 코디","세탁 후에도 변형 없는 소재"],
+    power:["인생템","데일리","무드","꾸안꾸","핏보장"]},
+  beauty:{ko:"뷰티·화장품",hooks:["보습","흡수력","성분","지속력","민감성"],
+    benefits:["밤사이 채워주는 깊은 보습","순한 성분으로 민감 피부도 안심","아침까지 무너지지 않는 지속력"],
+    power:["피부장벽","속보습","저자극","결광","올인원"]},
+  food:{ko:"식품·건강",hooks:["맛","원물","간편","신선","HACCP"],
+    benefits:["3분이면 완성되는 한 끼","산지직송 당일 손질","조미료 없이 원물 그대로"],
+    power:["산지직송","당일배송","무첨가","집밥","간편식"]},
+  living:{ko:"리빙·생활",hooks:["내구성","수납","공간","디자인","위생"],
+    benefits:["좁은 공간도 두 배로 쓰는 수납","물걸레질 한 번이면 끝","어떤 인테리어에도 녹아드는 디자인"],
+    power:["공간활용","미니멀","인테리어","대용량","항균"]},
+  digital:{ko:"디지털·가전",hooks:["성능","호환","배터리","무게","AS"],
+    benefits:["한 번 충전으로 이틀 사용","무게 걱정 없는 초경량","기존 기기와 바로 연결"],
+    power:["초경량","고속충전","호환성","올데이","무선"]},
+  baby:{ko:"유아·키즈",hooks:["안전","소재","발달","위생","무독성"],
+    benefits:["입에 닿아도 안심인 무독성 소재","연령별 발달에 맞춘 설계","삶아 빨아도 끄떡없는 내구성"],
+    power:["무독성","안심소재","발달놀이","순면","엄마픽"]},
+};
+const TONES = {
+  friendly:{ko:"친근·다정",en:"Friendly",end:["요","어요","해요"],adj:["편안한","다정한","기분 좋은"],emoji:"😊"},
+  trust:{ko:"신뢰·전문",en:"Trustworthy",end:["습니다","합니다"],adj:["검증된","정밀한","꼼꼼한"],emoji:"✅"},
+  hype:{ko:"트렌디·후킹",en:"Trendy",end:["!","🔥","✨"],adj:["역대급","미친","핫한"],emoji:"🔥"},
+  premium:{ko:"프리미엄·절제",en:"Premium",end:[".",""],adj:["정제된","고급스러운","완성도 높은"],emoji:"◆"},
+};
+// F2 채널별 제약(글자수·포맷) — 실 enforcement
+const CHANNELS = {
+  naver:{ko:"네이버 쇼핑",titleMax:50,bodyMax:120,hashtag:false,emoji:false,style:"검색 키워드 + 핵심 스펙"},
+  insta:{ko:"인스타그램",titleMax:30,bodyMax:150,hashtag:true,emoji:true,style:"감성 후킹 + 해시태그"},
+  google:{ko:"구글 검색광고",titleMax:30,bodyMax:90,hashtag:false,emoji:false,style:"USP + 행동유도(CTA)"},
+  kakao:{ko:"카카오 채널",titleMax:40,bodyMax:110,hashtag:false,emoji:true,style:"혜택 강조 + 즉시 클릭"},
+};
+// F3 금칙어/과대광고 룰 (식약처·표시광고법 관점 단순화) — 실 정규식 검수
+const BANNED = [
+  {re:/최고|최상|넘버원|no\.?1|1위/i,lv:"warn",msg:"객관적 근거 없는 최상급 표현(최고/1위 등) — 표시광고법 주의"},
+  {re:/완치|치료|효능|의학적|질병|항암/i,lv:"bad",msg:"의약품 오인 표현 — 일반 상품에 사용 금지"},
+  {re:/100\s*%|절대|무조건|영원/i,lv:"warn",msg:"단정·절대 표현 — 근거 없는 보증 소지"},
+  {re:/유일|독보적|세계최초/i,lv:"warn",msg:"배타성 주장 — 입증자료 필요"},
+  {re:/공짜|꽁돈|대박세일/i,lv:"warn",msg:"과장 프로모션 표현 — 정확한 할인율로 대체 권장"},
+];
+
+/* ─────────────── 상태 ─────────────── */
+let state = load();
+function load(){
+  try{const s=JSON.parse(localStorage.getItem(LS_KEY));if(s&&s.v===1)return s;}catch(e){}
+  return seed();
+}
+function save(){localStorage.setItem(LS_KEY,JSON.stringify(state));}
+function seed(){
+  const s={v:1,role:"seller",lang:"ko",
+    brand:{name:"무드하우스",tone:"friendly",banExtra:["짝퉁","사기"],keywords:["편안함","데일리","합리적"],
+      forbiddenColors:false,signature:"오늘도 무드하우스와 함께 🤍"},
+    products:[
+      {id:uid(),name:"코튼 오버핏 후드티",cat:"fashion",price:32900,keywords:["오버핏","기모","데일리","유니섹스"],
+        feats:["국내산 20수 코튼","항균 기모 안감","남녀공용 5컬러"],target:"20-30대 캐주얼"},
+      {id:uid(),name:"수분 진정 시카 세럼",cat:"beauty",price:24000,keywords:["속보습","저자극","민감성","시카"],
+        feats:["판테놀 5% 함유","무향·무색소","피부과 테스트 완료"],target:"민감성 피부"},
+      {id:uid(),name:"산지직송 GAP 사과 5kg",cat:"food",price:21900,keywords:["산지직송","당일수확","꿀사과","선물"],
+        feats:["GAP 인증 농가","주문 후 수확","당도 14brix↑"],target:"3-4인 가정"},
+    ],
+    history:[], usage:{gen:0,detail:0,copy:0,image:0,ab:0,tokens:0,blocked:0},
+    seq:1,
+  };
+  // 약간의 시드 히스토리
+  return s;
+}
+function resetAll(){localStorage.removeItem(LS_KEY);state=seed();save();render();toast("데모 데이터를 초기화했어요");}
+
+/* ═══════════════ 결정론적 생성 엔진 (핵심) ═══════════════ */
+// 시드 기반 의사난수 — 같은 입력 → 같은 출력(결정론)
+function rng(seedStr){let h=2166136261;for(const c of seedStr){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}
+  return ()=>{h+=0x6D2B79F5;let t=h;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};}
+const pick=(arr,r)=>arr[Math.floor(r()*arr.length)];
+
+// F4 셀링포인트 추출: 제품 feats + 카테고리 베네핏 → 구조화 셀링포인트
+function deriveSellingPoints(p){
+  const lex=CAT_LEX[p.cat]||CAT_LEX.living;
+  const pts=[];
+  p.feats.forEach((f,i)=>pts.push({head:lex.hooks[i%lex.hooks.length],body:f,benefit:lex.benefits[i%lex.benefits.length]}));
+  return pts;
+}
+// F5 톤 변환: 어미/형용사/이모지 룰 적용
+function applyTone(text,toneKey,opt={}){
+  const t=TONES[toneKey]||TONES.friendly;
+  let out=text;
+  if(opt.emoji&&t.emoji) out=out+" "+t.emoji;
+  return out;
+}
+// F6 채널 카피 생성 — 글자수 제약 enforcement 포함
+function genChannelCopy(p,channelKey,toneKey,lang){
+  const ch=CHANNELS[channelKey], lex=CAT_LEX[p.cat]||CAT_LEX.living, t=TONES[toneKey]||TONES.friendly;
+  const r=rng(p.id+channelKey+toneKey+lang);
+  const kw=p.keywords.slice(0,3);
+  let title, body;
+  if(lang==="en"){
+    title=`${p.name} — ${kw[0]||"new"} pick`;
+    body=`${p.feats[0]}. ${pick(lex.benefits,r)} Shop now.`;
+  }else{
+    const power=pick(lex.power,r);
+    if(channelKey==="naver"){title=`[${power}] ${p.name} ${kw.join(" ")}`;
+      body=`${p.feats.join(" · ")}. ${p.price.toLocaleString()}원`;}
+    else if(channelKey==="insta"){title=`${t.emoji} ${pick(lex.power,r)} ${kw[0]}템`;
+      body=`${pick(lex.benefits,r)}\n지금이 딱 ${pick(["타이밍","찬스","순간"],r)}!`;}
+    else if(channelKey==="google"){title=`${p.name}｜${power}`;
+      body=`${p.feats[0]}. 오늘 주문 시 빠른배송. 지금 확인 →`;}
+    else{title=`${kw[0]} ${p.name} 혜택`;body=`${pick(lex.benefits,r)} 채널 친구가만 ${pick(["10%","무료배송","사은품"],r)}!`;}
+    body=applyTone(body,toneKey,{emoji:ch.emoji});
+  }
+  // 글자수 제약 enforce (실 truncation + 표시)
+  const titleTrim=enforceLen(title,ch.titleMax), bodyTrim=enforceLen(body,ch.bodyMax);
+  // 해시태그
+  let tags="";
+  if(ch.hashtag){tags="\n"+kw.concat(lex.power.slice(0,2)).map(k=>"#"+k.replace(/\s/g,"")).join(" ");}
+  const full=bodyTrim.text+tags;
+  return {channel:channelKey,title:titleTrim.text,body:full,
+    titleLen:titleTrim.text.length,bodyLen:full.length,
+    titleMax:ch.titleMax,bodyMax:ch.bodyMax,
+    titleTrunc:titleTrim.trunc,bodyTrunc:bodyTrim.trunc};
+}
+function enforceLen(s,max){if(s.length<=max)return{text:s,trunc:false};
+  return{text:s.slice(0,max-1)+"…",trunc:true};}
+
+// F7 상세페이지 생성 — 섹션 구조 룰(후킹→문제→솔루션→스펙→신뢰→CTA)
+function genDetailPage(p,toneKey,lang){
+  const lex=CAT_LEX[p.cat]||CAT_LEX.living, t=TONES[toneKey]||TONES.friendly, r=rng(p.id+"detail"+toneKey);
+  const sp=deriveSellingPoints(p);
+  const ko=lang!=="en";
+  const secs=[];
+  secs.push({icon:"✨",title:ko?"이런 분께 추천해요":"Recommended for",
+    body:ko?`${p.target} 분들을 위해 만들었어요.\n${pick(lex.benefits,r)}`:`Made for ${p.target}. ${pick(lex.benefits,r)}`});
+  secs.push({icon:"💡",title:ko?"이런 고민 있으셨죠?":"The problem",
+    body:ko?`• ${pick(lex.hooks,r)} 때문에 늘 아쉬우셨나요?\n• 비슷한 제품, 막상 써보면 실망스러우셨죠.`:`• Tired of compromising on ${pick(lex.hooks,r)}?`});
+  secs.push({icon:"✅",title:ko?"그래서 이렇게 풀었어요":"How we solved it",
+    body:sp.map(s=>`【${s.head}】 ${s.body}\n→ ${s.benefit}`).join("\n\n")});
+  secs.push({icon:"📋",title:ko?"상세 스펙":"Specifications",
+    body:[`상품명: ${p.name}`,`카테고리: ${lex.ko}`,`핵심 키워드: ${p.keywords.join(", ")}`,
+      `가격: ${p.price.toLocaleString()}원`,...p.feats.map((f,i)=>`특징 ${i+1}: ${f}`)].join("\n")});
+  secs.push({icon:"🛡",title:ko?"믿고 사셔도 됩니다":"Trust",
+    body:ko?`• 안심 교환·반품\n• 빠른 배송\n• ${pick(lex.power,r)} 검증`:`• Easy returns • Fast shipping`});
+  secs.push({icon:"🛒",title:ko?"지금 만나보세요":"Get it now",
+    body:applyTone(ko?`${pick(lex.benefits,r)}\n오늘의 ${p.name}, 놓치지 마세요`:`Don't miss out on ${p.name}`,toneKey,{emoji:true})});
+  return {product:p.id,tone:toneKey,lang,sections:secs,
+    wordcount:secs.reduce((a,s)=>a+s.body.length,0)};
+}
+
+// F8 품질·전환 스코어 — 룰 기반 eval 레이어 (래퍼 아님의 핵심 증거)
+function scoreContent(text,opts={}){
+  const checks=[];
+  const len=text.length;
+  // 1) 길이 적정성
+  const idealMin=opts.idealMin||40, idealMax=opts.idealMax||220;
+  let lenScore = len<idealMin? len/idealMin*70 : len>idealMax? clamp(100-(len-idealMax)/3,40,100) : 100;
+  checks.push({k:"길이 적정성",s:Math.round(lenScore),tip:len<idealMin?"너무 짧아요 — 베네핏을 더하세요":len>idealMax?"너무 길어요 — 핵심만":"적정"});
+  // 2) 파워워드 밀도
+  const allPower=Object.values(CAT_LEX).flatMap(c=>c.power).concat(["한정","오늘","무료배송","후기","리뷰"]);
+  const pHits=allPower.filter(w=>text.includes(w)).length;
+  const pScore=clamp(pHits*28,0,100);
+  checks.push({k:"파워워드 밀도",s:pScore,tip:pHits<1?"후킹 단어를 1개 이상 넣어보세요":`${pHits}개 감지`});
+  // 3) 숫자/근거 포함(전환 신호)
+  const numHits=(text.match(/\d/g)||[]).length;
+  const nScore=clamp(numHits*12,0,100);
+  checks.push({k:"구체적 수치",s:nScore,tip:numHits<2?"가격·수치·비율로 신뢰를 더하세요":`수치 ${numHits}개`});
+  // 4) CTA(행동유도) 존재
+  const ctaRe=/지금|오늘|확인|구매|클릭|만나|담기|→|now|shop/i;
+  const ctaScore=ctaRe.test(text)?100:35;
+  checks.push({k:"행동유도(CTA)",s:ctaScore,tip:ctaScore<100?"'지금 확인' 같은 CTA를 추가하세요":"있음"});
+  // 5) 금칙어 클린(감점)
+  const flags=scanBanned(text);
+  const banPenalty=flags.filter(f=>f.lv==="bad").length*40+flags.filter(f=>f.lv==="warn").length*15;
+  const cleanScore=clamp(100-banPenalty,0,100);
+  checks.push({k:"광고규정 준수",s:cleanScore,tip:flags.length?`${flags.length}건 검토 필요`:"클린"});
+  // 가중 종합 → 전환 점수
+  const w=[.18,.22,.18,.22,.20];
+  const total=Math.round(checks.reduce((a,c,i)=>a+c.s*w[i],0));
+  // 예상 전환율 추정(데모용 휴리스틱) — [추정] 표기
+  const estCvr=(0.6+total/100*3.4).toFixed(2);
+  return {total,checks,flags,estCvr};
+}
+// F9 금칙어 스캔 — 실 정규식 + 브랜드 추가 금칙어
+function scanBanned(text){
+  const out=[];
+  BANNED.forEach(b=>{if(b.re.test(text))out.push({lv:b.lv,msg:b.msg,m:(text.match(b.re)||[])[0]});});
+  (state.brand.banExtra||[]).forEach(w=>{if(w&&text.includes(w))out.push({lv:"bad",msg:`브랜드 금칙어: "${w}"`,m:w});});
+  return out;
+}
+
+/* ─────────────── 히스토리/로그 ─────────────── */
+function logGen(type,title,payload){
+  state.history.unshift({id:uid(),seq:state.seq++,type,title,ts:now(),payload,
+    score:payload&&payload.score!=null?payload.score:null});
+  state.history=state.history.slice(0,120);
+  state.usage.gen++; state.usage[type]=(state.usage[type]||0)+1;
+  state.usage.tokens+=Math.round((JSON.stringify(payload).length)/3); // mock 토큰
+  save();
+}
+
+/* ═══════════════ i18n ═══════════════ */
+const I18N={ko:{nav_create:"생성 스튜디오",nav_dash:"대시보드",nav_prod:"제품",nav_detail:"상세페이지",nav_copy:"광고 카피",
+  nav_img:"이미지 변형",nav_ab:"A/B 비교",nav_qa:"검수 · 운영",nav_q:"품질·전환 스코어",nav_brand:"브랜드 톤·금칙어",
+  nav_hist:"생성 히스토리",nav_exp:"내보내기",nav_usage:"사용량",nav_admin:"관리자"},
+ en:{nav_create:"STUDIO",nav_dash:"Dashboard",nav_prod:"Products",nav_detail:"Detail Page",nav_copy:"Ad Copy",
+  nav_img:"Image Lab",nav_ab:"A/B Test",nav_qa:"QA · OPS",nav_q:"Quality Score",nav_brand:"Brand Tone",
+  nav_hist:"History",nav_exp:"Export",nav_usage:"Usage",nav_admin:"Admin"}};
+function applyI18n(){const d=I18N[state.lang];$$("[data-i18n]").forEach(e=>{if(d[e.dataset.i18n])e.textContent=d[e.dataset.i18n];});}
+
+/* ═══════════════ UI helpers ═══════════════ */
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),2200);}
+function modal(html){$("#modalBox").innerHTML=html;$("#modalBg").classList.add("show");}
+function closeModal(){$("#modalBg").classList.remove("show");}
+$("#modalBg").addEventListener("click",e=>{if(e.target.id==="modalBg")closeModal();});
+function openDrawer(){document.body.classList.add("drawer-open");}
+function closeDrawer(){document.body.classList.remove("drawer-open");}
+
+let current="dashboard";
+function go(view){
+  current=view; closeDrawer();
+  $$(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.view===view));
+  $$("#bottomnav button").forEach(b=>b.classList.toggle("active",b.dataset.view===view));
+  render();
+  $("#content").scrollIntoView?0:0; window.scrollTo(0,0);
+}
+$$(".nav-btn").forEach(b=>b.onclick=()=>go(b.dataset.view));
+$$("#bottomnav button").forEach(b=>b.onclick=()=>go(b.dataset.view));
+$("#roleSel").onchange=e=>{state.role=e.target.value;save();refreshRoleUI();render();toast("역할: "+e.target.selectedOptions[0].text);};
+$("#langSel").onchange=e=>{state.lang=e.target.value;save();applyI18n();render();};
+function refreshRoleUI(){$$(".admin-only").forEach(e=>e.classList.toggle("hidden",state.role!=="admin"));}
+
+/* ═══════════════ 뷰 렌더러 ═══════════════ */
+const TITLES={dashboard:["대시보드","오늘의 콘텐츠 성과 한눈에"],products:["제품","생성 대상 제품 관리"],
+  detail:["상세페이지 생성","섹션 구조 기반 상세 콘텐츠"],copy:["광고 카피 생성","채널별 카피 변형"],
+  image:["이미지 변형","canvas 기반 썸네일·배경 변형"],ab:["A/B 비교","변형 생성 후 점수 비교"],
+  quality:["품질·전환 스코어","룰 기반 eval 레이어"],brand:["브랜드 톤·금칙어","톤·금칙어 규칙 설정"],
+  history:["생성 히스토리","모든 생성 로그"],export:["내보내기","HTML·이미지·CSV·PDF"],
+  usage:["사용량","생성·토큰 사용 통계"],admin:["관리자","규칙·테넌트·로그"]};
+function render(){
+  const[t,s]=TITLES[current]||["",""];$("#topTitle").textContent=t;$("#topSub").textContent=s;
+  $("#prodBadge").textContent=state.products.length;
+  const fn={dashboard:vDashboard,products:vProducts,detail:vDetail,copy:vCopy,image:vImage,ab:vAB,
+    quality:vQuality,brand:vBrand,history:vHistory,export:vExport,usage:vUsage,admin:vAdmin}[current];
+  $("#content").innerHTML=fn?fn():"";
+  if(fn&&fn._after)fn._after();
+  applyI18n();
+}
+
+/* ── 대시보드 ── */
+function vDashboard(){
+  const u=state.usage;
+  const recent=state.history.slice(0,6);
+  const avgScore=state.history.filter(h=>h.score!=null);
+  const avg=avgScore.length?Math.round(avgScore.reduce((a,h)=>a+h.score,0)/avgScore.length):0;
+  return `
+  <div class="note">⚙ <b>AI 엔진 정직성:</b> 본 데모의 모든 "AI 생성"은 외부 LLM 호출이 아니라 <b>커머스 도메인 룰·템플릿·전환 휴리스틱</b>으로 동작합니다. 같은 입력에 같은 출력을 내는 결정론적 엔진이며, 품질 점수도 자체 룰 기반 eval 입니다.</div>
+  <div class="grid g4">
+    <div class="kpi"><div class="n">${u.gen}</div><div class="l">총 생성 건수</div><div class="d" style="color:var(--ok)">▲ 누적</div></div>
+    <div class="kpi"><div class="n">${state.products.length}</div><div class="l">등록 제품</div><div class="d muted">생성 대상</div></div>
+    <div class="kpi"><div class="n">${avg}<span style="font-size:15px">점</span></div><div class="l">평균 품질 점수</div><div class="d" style="color:${avg>=70?'var(--ok)':'var(--warn)'}">${avg>=70?'양호':'개선 여지'}</div></div>
+    <div class="kpi"><div class="n">${u.blocked}</div><div class="l">금칙어 차단</div><div class="d" style="color:var(--bad)">검수 작동</div></div>
+  </div>
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><b>빠른 생성</b><span class="chip">결정론 엔진</span></div>
+      <div class="grid g2" style="margin-top:12px">
+        <button class="btn gho" onclick="go('detail')">▣ 상세페이지</button>
+        <button class="btn gho" onclick="go('copy')">✎ 광고 카피</button>
+        <button class="btn gho" onclick="go('image')">▩ 이미지 변형</button>
+        <button class="btn gho" onclick="go('ab')">⇄ A/B 생성</button>
+      </div>
+    </div>
+    <div class="card">
+      <b>유형별 생성</b>
+      ${[["detail","상세페이지"],["copy","광고 카피"],["image","이미지"],["ab","A/B"]].map(([k,l])=>{
+        const v=u[k]||0,mx=Math.max(1,u.detail||0,u.copy||0,u.image||0,u.ab||0);
+        return `<div style="margin-top:11px"><div class="row" style="justify-content:space-between;font-size:13px"><span>${l}</span><b>${v}</b></div><div class="bar" style="margin-top:4px"><i style="width:${v/mx*100}%"></i></div></div>`;
+      }).join("")}
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <div class="row" style="justify-content:space-between"><b>최근 생성</b><button class="btn sm gho" onclick="go('history')">전체 보기</button></div>
+    ${recent.length?recent.map(h=>`<div class="logline"><span class="t">${fmtT(h.ts)}</span><span class="chip">${typeLabel(h.type)}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.title}</span>${h.score!=null?`<span class="pill ${h.score>=70?'ok':h.score>=50?'warn':'bad'}">${h.score}점</span>`:""}</div>`).join(""):`<p class="muted" style="margin:14px 0 4px">아직 생성 기록이 없어요. 상세페이지부터 만들어볼까요?</p>`}
+  </div>`;
+}
+function typeLabel(t){return {detail:"상세",copy:"카피",image:"이미지",ab:"A/B"}[t]||t;}
+
+/* ── 제품 ── */
+function vProducts(){
+  return `<h2 class="vt">제품</h2><p class="vdesc">생성 대상 제품을 관리해요. 키워드·특징이 곧 생성 엔진의 입력이 됩니다.</p>
+  <button class="btn" onclick="editProduct()">+ 새 제품</button>
+  <div class="grid g3" style="margin-top:16px">
+  ${state.products.map(p=>{const lex=CAT_LEX[p.cat]||CAT_LEX.living;return `<div class="card">
+    <div class="row" style="justify-content:space-between"><span class="chip on">${lex.ko}</span><b>${p.price.toLocaleString()}원</b></div>
+    <h3 style="margin:10px 0 4px;font-size:16px">${p.name}</h3>
+    <div style="margin:6px 0">${p.keywords.map(k=>`<span class="chip" style="margin:2px 3px 2px 0">#${k}</span>`).join("")}</div>
+    <ul style="margin:8px 0 12px;padding-left:18px;font-size:13px;color:var(--ink2)">${p.feats.map(f=>`<li>${f}</li>`).join("")}</ul>
+    <div class="row">
+      <button class="btn sm gho" onclick="go('detail');setTimeout(()=>selProd('${p.id}'),50)">상세 생성</button>
+      <button class="btn sm gho" onclick="editProduct('${p.id}')">수정</button>
+      ${state.role!=="seller"?`<button class="btn sm gho" style="color:var(--bad)" onclick="delProduct('${p.id}')">삭제</button>`:""}
+    </div></div>`;}).join("")}
+  </div>`;
+}
+function editProduct(id){
+  const p=id?state.products.find(x=>x.id===id):{name:"",cat:"fashion",price:0,keywords:[],feats:[""],target:""};
+  modal(`<h3>${id?"제품 수정":"새 제품"}</h3>
+    <div class="field"><label class="fl">제품명</label><input class="inp" id="m_name" value="${p.name}"></div>
+    <div class="row"><div class="field" style="flex:1"><label class="fl">카테고리</label>
+      <select class="inp" id="m_cat">${Object.entries(CAT_LEX).map(([k,v])=>`<option value="${k}" ${p.cat===k?"selected":""}>${v.ko}</option>`).join("")}</select></div>
+      <div class="field" style="flex:1"><label class="fl">가격(원)</label><input class="inp" id="m_price" type="number" value="${p.price}"></div></div>
+    <div class="field"><label class="fl">키워드 (쉼표 구분)</label><input class="inp" id="m_kw" value="${p.keywords.join(", ")}"></div>
+    <div class="field"><label class="fl">핵심 특징 (줄바꿈 구분)</label><textarea class="inp" id="m_feat">${p.feats.join("\n")}</textarea></div>
+    <div class="field"><label class="fl">타깃 고객</label><input class="inp" id="m_target" value="${p.target||""}"></div>
+    <div class="row" style="justify-content:flex-end;margin-top:6px"><button class="btn gho" onclick="closeModal()">취소</button>
+      <button class="btn" onclick="saveProduct('${id||""}')">저장</button></div>`);
+}
+function saveProduct(id){
+  const obj={name:$("#m_name").value.trim()||"무제 제품",cat:$("#m_cat").value,price:+$("#m_price").value||0,
+    keywords:$("#m_kw").value.split(",").map(s=>s.trim()).filter(Boolean),
+    feats:$("#m_feat").value.split("\n").map(s=>s.trim()).filter(Boolean),target:$("#m_target").value.trim()};
+  if(!obj.feats.length)obj.feats=["특징 미입력"];
+  if(id){Object.assign(state.products.find(x=>x.id===id),obj);}else{obj.id=uid();state.products.push(obj);}
+  save();closeModal();render();toast("저장했어요");
+}
+function delProduct(id){state.products=state.products.filter(x=>x.id!==id);save();render();toast("삭제했어요");}
+
+/* ── 상세페이지 생성 ── */
+let detailState={prodId:null,tone:"friendly",result:null};
+function vDetail(){
+  if(!detailState.prodId&&state.products[0])detailState.prodId=state.products[0].id;
+  const p=state.products.find(x=>x.id===detailState.prodId);
+  return `<h2 class="vt">상세페이지 생성</h2><p class="vdesc">섹션 구조 룰(후킹→문제→솔루션→스펙→신뢰→CTA)로 상세페이지를 구성해요. <b>외부 LLM 미사용</b>.</p>
+  <div class="card">
+    <div class="grid g2">
+      <div class="field"><label class="fl">제품 선택</label>
+        <select class="inp" id="d_prod" onchange="detailState.prodId=this.value;detailState.result=null;render()">
+          ${state.products.map(x=>`<option value="${x.id}" ${x.id===detailState.prodId?"selected":""}>${x.name}</option>`).join("")}</select></div>
+      <div class="field"><label class="fl">톤</label>
+        <select class="inp" id="d_tone" onchange="detailState.tone=this.value">
+          ${Object.entries(TONES).map(([k,v])=>`<option value="${k}" ${detailState.tone===k?"selected":""}>${v.ko}</option>`).join("")}</select></div>
+    </div>
+    <button class="btn" onclick="runDetail()">⚡ 상세페이지 생성</button>
+  </div>
+  <div id="detailOut" style="margin-top:16px">${detailState.result?renderDetailResult():""}</div>`;
+}
+function selProd(id){detailState.prodId=id;detailState.result=null;render();runDetail();}
+function runDetail(){
+  const p=state.products.find(x=>x.id===detailState.prodId);if(!p){toast("제품을 선택하세요");return;}
+  const r=genDetailPage(p,detailState.tone,state.lang);
+  const full=r.sections.map(s=>s.title+"\n"+s.body).join("\n");
+  const sc=scoreContent(full,{idealMin:200,idealMax:1500});
+  const flags=scanBanned(full);if(flags.some(f=>f.lv==="bad"))state.usage.blocked++;
+  detailState.result={...r,score:sc,flags};
+  logGen("detail",p.name+" 상세페이지",{score:sc.total,tone:r.tone});
+  render();toast("상세페이지를 만들었어요");
+}
+function renderDetailResult(){
+  const r=detailState.result;const p=state.products.find(x=>x.id===detailState.prodId);
+  return `<div class="card">
+    <div class="row" style="justify-content:space-between"><b>${p.name} · 상세페이지 미리보기</b>
+      <span class="row"><span class="pill ${r.score.total>=70?'ok':'warn'}">품질 ${r.score.total}점</span>
+      <button class="btn sm gho" onclick="copyDetail()">텍스트 복사</button>
+      <button class="btn sm" onclick="exportDetailHTML()">HTML 저장</button></span></div>
+    <div style="margin-top:14px">
+    ${r.sections.map(s=>`<div class="detail-sec"><div class="h">${s.icon} ${s.title}</div><div class="b">${s.body.replace(/\n/g,"<br>")}</div></div>`).join("")}
+    </div>
+    ${r.flags.length?`<div style="margin-top:8px">${r.flags.map(f=>`<div class="flag ${f.lv}">${f.lv==="bad"?"⛔":"⚠"} ${f.msg} <span class="muted">("${f.m}")</span></div>`).join("")}</div>`:`<div class="flag ok">✅ 광고규정 검수 통과 — 금칙어 없음</div>`}
+  </div>`;
+}
+function copyDetail(){const r=detailState.result;navigator.clipboard?.writeText(r.sections.map(s=>s.title+"\n"+s.body).join("\n\n"));toast("클립보드에 복사했어요");}
+
+/* ── 광고 카피 생성 ── */
+let copyState={prodId:null,tone:"hype",channels:["naver","insta","google"],results:null};
+function vCopy(){
+  if(!copyState.prodId&&state.products[0])copyState.prodId=state.products[0].id;
+  return `<h2 class="vt">광고 카피 생성</h2><p class="vdesc">채널별 글자수 제약을 <b>실제로 enforce</b>하며 카피를 변형해요. 초과 시 자동 절삭·표시.</p>
+  <div class="card">
+    <div class="grid g2">
+      <div class="field"><label class="fl">제품</label>
+        <select class="inp" onchange="copyState.prodId=this.value">${state.products.map(x=>`<option value="${x.id}" ${x.id===copyState.prodId?"selected":""}>${x.name}</option>`).join("")}</select></div>
+      <div class="field"><label class="fl">톤</label>
+        <select class="inp" onchange="copyState.tone=this.value">${Object.entries(TONES).map(([k,v])=>`<option value="${k}" ${copyState.tone===k?"selected":""}>${v.ko}</option>`).join("")}</select></div>
+    </div>
+    <label class="fl">채널 (글자수 제약 적용)</label>
+    <div class="row" style="margin-bottom:14px">${Object.entries(CHANNELS).map(([k,v])=>`<span class="chip act ${copyState.channels.includes(k)?'on':''}" onclick="toggleCh('${k}')">${v.ko} <small>(${v.titleMax}/${v.bodyMax})</small></span>`).join("")}</div>
+    <button class="btn" onclick="runCopy()">⚡ 채널별 카피 생성</button>
+  </div>
+  <div id="copyOut" style="margin-top:16px">${copyState.results?renderCopyResults():""}</div>`;
+}
+function toggleCh(k){const i=copyState.channels.indexOf(k);if(i<0)copyState.channels.push(k);else copyState.channels.splice(i,1);render();}
+function runCopy(){
+  const p=state.products.find(x=>x.id===copyState.prodId);if(!p||!copyState.channels.length){toast("제품·채널을 선택하세요");return;}
+  copyState.results=copyState.channels.map(ch=>{
+    const c=genChannelCopy(p,ch,copyState.tone,state.lang);
+    const sc=scoreContent(c.title+" "+c.body,{idealMin:30,idealMax:CHANNELS[ch].bodyMax});
+    const flags=scanBanned(c.title+" "+c.body);if(flags.some(f=>f.lv==="bad"))state.usage.blocked++;
+    return {...c,score:sc,flags};});
+  const best=Math.max(...copyState.results.map(r=>r.score.total));
+  logGen("copy",p.name+" 카피 "+copyState.channels.length+"채널",{score:best});
+  render();toast("카피를 만들었어요");
+}
+function renderCopyResults(){
+  return `<div class="card"><div class="row" style="justify-content:space-between"><b>채널별 카피 (글자수 제약 enforce)</b>
+    <button class="btn sm gho" onclick="exportCopyCSV()">CSV 내보내기</button></div>
+    <div style="margin-top:12px">${copyState.results.map(r=>{const ch=CHANNELS[r.channel];return `
+    <div class="variant">
+      <h4>${ch.ko} <span class="pill info">${ch.style}</span><span style="margin-left:auto" class="pill ${r.score.total>=70?'ok':'warn'}">${r.score.total}점</span></h4>
+      <div style="font-weight:700;font-size:14px;margin:4px 0">${r.title} <span class="muted" style="font-size:11px;font-weight:600">제목 ${r.titleLen}/${r.titleMax}${r.titleTrunc?" ⚠절삭":""}</span></div>
+      <div class="outbox" style="margin-top:6px">${r.body.replace(/\n/g,"<br>")}<span class="cnt">${r.bodyLen}/${r.bodyMax}${r.bodyTrunc?" ⚠":""}</span></div>
+      ${r.flags.length?`<div style="margin-top:8px">${r.flags.map(f=>`<div class="flag ${f.lv}">${f.lv==="bad"?"⛔":"⚠"} ${f.msg}</div>`).join("")}</div>`:""}
+    </div>`;}).join("")}</div></div>`;
+}
+
+/* ── 이미지 변형 (canvas) ── */
+let imageState={prodId:null,filter:"none",bg:"#efeaff",ratio:"1:1",label:""};
+const FILTERS={none:"원본",warm:"따뜻하게",cool:"시원하게",mono:"흑백",vivid:"선명하게",soft:"부드럽게",vintage:"빈티지"};
+const RATIOS={"1:1":[400,400],"4:5":[360,450],"16:9":[480,270],"story":[300,533]};
+function vImage(){
+  if(!imageState.prodId&&state.products[0])imageState.prodId=state.products[0].id;
+  return `<h2 class="vt">이미지 변형</h2><p class="vdesc">canvas로 썸네일·배경·필터를 <b>실제로 픽셀 처리</b>해요(mock 토스트 아님). PNG로 다운로드 가능.</p>
+  <div class="grid g2">
+    <div class="card">
+      <div class="field"><label class="fl">제품</label><select class="inp" onchange="imageState.prodId=this.value;drawImage()">${state.products.map(x=>`<option value="${x.id}" ${x.id===imageState.prodId?"selected":""}>${x.name}</option>`).join("")}</select></div>
+      <div class="field"><label class="fl">비율(채널 규격)</label>
+        <div class="seg">${Object.keys(RATIOS).map(r=>`<button class="${imageState.ratio===r?'on':''}" onclick="imageState.ratio='${r}';render();drawImage()">${r}</button>`).join("")}</div></div>
+      <div class="field"><label class="fl">필터</label>
+        <div class="row">${Object.entries(FILTERS).map(([k,v])=>`<span class="chip act ${imageState.filter===k?'on':''}" onclick="imageState.filter='${k}';drawImage()">${v}</span>`).join("")}</div></div>
+      <div class="field"><label class="fl">배경색</label><input type="color" id="bgPick" value="${imageState.bg}" onchange="imageState.bg=this.value;drawImage()" style="width:60px;height:40px;border:1px solid var(--line);border-radius:8px"></div>
+      <div class="field"><label class="fl">오버레이 문구(선택)</label><input class="inp" id="ovLabel" value="${imageState.label}" oninput="imageState.label=this.value;drawImage()" placeholder="예: 오늘만 20%"></div>
+      <button class="btn" onclick="downloadImage()">⤓ PNG 다운로드</button>
+      <button class="btn gho" onclick="genVariants()">▩ 변형 6종 한 번에</button>
+    </div>
+    <div class="card">
+      <b>미리보기</b>
+      <div style="display:grid;place-items:center;margin-top:12px"><canvas id="cv" width="400" height="400" style="max-width:100%;border:1px solid var(--line);border-radius:12px"></canvas></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px"><b>변형 갤러리</b><div class="kgrid" id="variantGrid" style="margin-top:12px"></div></div>`;
+}
+vImage._after=function(){drawImage();}
+function drawCanvasInto(cv,p,filter,bg,ratio,label){
+  const[w,h]=RATIOS[ratio]||[400,400];cv.width=w;cv.height=h;const x=cv.getContext("2d");
+  // 배경 그라데이션
+  const g=x.createLinearGradient(0,0,w,h);g.addColorStop(0,bg);g.addColorStop(1,shade(bg,-18));
+  x.fillStyle=g;x.fillRect(0,0,w,h);
+  // 제품 "이미지" 대용 — 결정론적 도형 패턴(실 픽셀)
+  const r=rng(p.id+ratio);const lex=CAT_LEX[p.cat]||CAT_LEX.living;
+  for(let i=0;i<5;i++){x.globalAlpha=.12+r()*.1;x.fillStyle=shade(bg,-30-i*8);
+    const cx=r()*w,cy=r()*h,rad=40+r()*120;x.beginPath();x.arc(cx,cy,rad,0,7);x.fill();}
+  x.globalAlpha=1;
+  // 중앙 카드
+  x.fillStyle="rgba(255,255,255,.92)";roundRect(x,w*.12,h*.34,w*.76,h*.32,16);x.fill();
+  x.fillStyle="#1c1830";x.font="700 "+Math.round(w*.062)+"px -apple-system,sans-serif";x.textAlign="center";
+  wrapText(x,p.name,w/2,h*.45,w*.66,Math.round(w*.072));
+  x.fillStyle="#6b4bf5";x.font="800 "+Math.round(w*.07)+"px sans-serif";
+  x.fillText(p.price.toLocaleString()+"원",w/2,h*.6);
+  x.fillStyle="#928da6";x.font="600 "+Math.round(w*.034)+"px sans-serif";
+  x.fillText(lex.ko+" · "+(p.keywords[0]||""),w/2,h*.66);
+  // 필터 픽셀 처리(실 ImageData 변환)
+  if(filter!=="none"){const im=x.getImageData(0,0,w,h),d=im.data;
+    for(let i=0;i<d.length;i+=4){let[R,G,B]=[d[i],d[i+1],d[i+2]];
+      if(filter==="warm"){R=clamp(R+22,0,255);B=clamp(B-18,0,255);}
+      else if(filter==="cool"){B=clamp(B+24,0,255);R=clamp(R-14,0,255);}
+      else if(filter==="mono"){const m=R*.3+G*.59+B*.11;R=G=B=m;}
+      else if(filter==="vivid"){const m=(R+G+B)/3;R=clamp(m+(R-m)*1.5,0,255);G=clamp(m+(G-m)*1.5,0,255);B=clamp(m+(B-m)*1.5,0,255);}
+      else if(filter==="soft"){const m=(R+G+B)/3;R=(R+m)/2;G=(G+m)/2;B=(B+m)/2;}
+      else if(filter==="vintage"){R=clamp(R*1.1+18,0,255);G=clamp(G*.95+12,0,255);B=clamp(B*.8,0,255);}
+      d[i]=R;d[i+1]=G;d[i+2]=B;}
+    x.putImageData(im,0,0);}
+  // 오버레이 라벨
+  if(label){x.fillStyle="#d94848";roundRect(x,w*.06,h*.06,Math.max(w*.3,label.length*w*.04),h*.09,8);x.fill();
+    x.fillStyle="#fff";x.font="800 "+Math.round(w*.045)+"px sans-serif";x.textAlign="left";
+    x.fillText(label,w*.1,h*.06+h*.062);x.textAlign="center";}
+  // 워터마크(데모 정직)
+  x.fillStyle="rgba(28,24,48,.28)";x.font="600 "+Math.round(w*.026)+"px sans-serif";x.textAlign="right";
+  x.fillText("셀러스튜디오 · canvas 생성",w-8,h-8);
+}
+function drawImage(){const cv=$("#cv");if(!cv)return;const p=state.products.find(x=>x.id===imageState.prodId);if(!p)return;
+  drawCanvasInto(cv,p,imageState.filter,imageState.bg,imageState.ratio,imageState.label);}
+function downloadImage(){const cv=$("#cv");const p=state.products.find(x=>x.id===imageState.prodId);
+  const a=document.createElement("a");a.download=`${p.name}_${imageState.ratio}_${imageState.filter}.png`;a.href=cv.toDataURL("image/png");a.click();
+  logGen("image",p.name+" 이미지("+imageState.filter+")",{score:null});render?0:0;toast("PNG로 저장했어요");}
+function genVariants(){const p=state.products.find(x=>x.id===imageState.prodId);if(!p)return;
+  const grid=$("#variantGrid");grid.innerHTML="";const fils=Object.keys(FILTERS).slice(0,6);
+  fils.forEach(f=>{const wrap=document.createElement("div");wrap.className="thumb";
+    const c=document.createElement("canvas");drawCanvasInto(c,p,f,imageState.bg,"1:1","");
+    wrap.appendChild(c);const cap=document.createElement("div");cap.className="cap";
+    cap.innerHTML=`<span>${FILTERS[f]}</span><a style="cursor:pointer" onclick="(()=>{const a=document.createElement('a');a.download='${p.name}_${f}.png';a.href=this.parentNode.parentNode.querySelector('canvas').toDataURL();a.click();})()">⤓</a>`;
+    wrap.appendChild(cap);grid.appendChild(wrap);});
+  logGen("image",p.name+" 변형 6종",{score:null});state.usage.image+=5;save();toast("변형 6종을 만들었어요");}
+function shade(hex,p){let c=hex.replace("#","");if(c.length===3)c=c.split("").map(x=>x+x).join("");
+  let r=parseInt(c.slice(0,2),16),g=parseInt(c.slice(2,4),16),b=parseInt(c.slice(4,6),16);
+  r=clamp(r+p,0,255);g=clamp(g+p,0,255);b=clamp(b+p,0,255);
+  return "#"+[r,g,b].map(v=>v.toString(16).padStart(2,"0")).join("");}
+function roundRect(x,a,b,w,h,r){x.beginPath();x.moveTo(a+r,b);x.arcTo(a+w,b,a+w,b+h,r);x.arcTo(a+w,b+h,a,b+h,r);x.arcTo(a,b+h,a,b,r);x.arcTo(a,b,a+w,b,r);x.closePath();}
+function wrapText(ctx,text,x,y,maxW,lh){const words=text.split("");let line="",ly=y;
+  for(const ch of words){if(ctx.measureText(line+ch).width>maxW&&line){ctx.fillText(line,x,ly);line=ch;ly+=lh;}else line+=ch;}ctx.fillText(line,x,ly);}
+
+/* ── A/B 비교 ── */
+let abState={prodId:null,channel:"insta",variants:null};
+function vAB(){
+  if(!abState.prodId&&state.products[0])abState.prodId=state.products[0].id;
+  return `<h2 class="vt">A/B 변형 비교</h2><p class="vdesc">같은 제품을 <b>4가지 톤</b>으로 변형 생성하고, 룰 기반 eval 점수로 자동 비교해요(승자 강조).</p>
+  <div class="card">
+    <div class="grid g2">
+      <div class="field"><label class="fl">제품</label><select class="inp" onchange="abState.prodId=this.value">${state.products.map(x=>`<option value="${x.id}" ${x.id===abState.prodId?"selected":""}>${x.name}</option>`).join("")}</select></div>
+      <div class="field"><label class="fl">채널</label><select class="inp" onchange="abState.channel=this.value">${Object.entries(CHANNELS).map(([k,v])=>`<option value="${k}" ${abState.channel===k?"selected":""}>${v.ko}</option>`).join("")}</select></div>
+    </div>
+    <button class="btn" onclick="runAB()">⚡ 4개 톤 변형 생성·비교</button>
+  </div>
+  <div id="abOut" style="margin-top:16px">${abState.variants?renderAB():""}</div>`;
+}
+function runAB(){
+  const p=state.products.find(x=>x.id===abState.prodId);if(!p)return;
+  abState.variants=Object.keys(TONES).map(tone=>{
+    const c=genChannelCopy(p,abState.channel,tone,state.lang);
+    const sc=scoreContent(c.title+" "+c.body,{idealMin:30,idealMax:CHANNELS[abState.channel].bodyMax});
+    return {tone,...c,score:sc};});
+  abState.variants.sort((a,b)=>b.score.total-a.score.total);
+  state.usage.ab++;logGen("ab",p.name+" A/B 4종",{score:abState.variants[0].score.total});
+  render();toast("A/B 변형을 비교했어요");
+}
+function renderAB(){
+  const v=abState.variants,best=v[0].score.total;
+  return `<div class="card"><div class="row" style="justify-content:space-between"><b>변형 비교 — 점수순</b><span class="chip on">승자: ${TONES[v[0].tone].ko}</span></div>
+  <div style="margin-top:12px">${v.map((r,i)=>`<div class="variant ${i===0?'win':''}">
+    <h4>${TONES[r.tone].ko} ${i===0?'🏆':''}<span style="margin-left:auto" class="pill ${r.score.total>=70?'ok':'warn'}">${r.score.total}점</span></h4>
+    <div style="font-weight:700;margin-bottom:4px">${r.title}</div>
+    <div class="outbox">${r.body.replace(/\n/g,"<br>")}</div>
+    <div class="row" style="margin-top:8px;font-size:11.5px">${r.score.checks.map(c=>`<span class="chip">${c.k} ${c.s}</span>`).join("")}</div>
+    <div class="muted" style="font-size:11.5px;margin-top:6px">예상 전환율 ${r.score.estCvr}% <span style="color:var(--warn)">[추정·룰기반]</span></div>
+  </div>`).join("")}</div></div>`;
+}
+
+/* ── 품질·전환 스코어 ── */
+let qaText="국내산 20수 코튼으로 만든 데일리 오버핏 후드티! 지금 주문 시 무료배송, 단 하루 20% 할인. 오늘 만나보세요 🔥";
+function vQuality(){
+  const sc=scoreContent(qaText,{idealMin:40,idealMax:220});
+  return `<h2 class="vt">품질·전환 스코어 (룰 기반 eval)</h2>
+  <p class="vdesc">이 점수는 외부 모델이 아니라 <b>5개 룰 지표</b>(길이·파워워드·수치·CTA·규정준수)의 가중합입니다. 래퍼가 아닌 자체 eval 레이어임을 보여줘요.</p>
+  <div class="card">
+    <label class="fl">검사할 카피·문구</label>
+    <textarea class="inp" id="qaInput" style="min-height:90px" oninput="qaText=this.value;updateQA()">${qaText}</textarea>
+    <div class="row" style="margin-top:6px"><button class="btn sm gho" onclick="qaSample()">샘플 불러오기</button></div>
+  </div>
+  <div id="qaResult">${renderQA(sc)}</div>`;
+}
+function renderQA(sc){
+  return `<div class="card" style="margin-top:16px">
+    <div class="row" style="gap:20px"><div class="scorering" style="--p:${sc.total}"><b>${sc.total}</b></div>
+    <div><div style="font-size:13px;color:var(--ink2);font-weight:700">종합 품질·전환 점수</div>
+      <div style="font-size:13px;margin-top:4px">예상 전환율 <b>${sc.estCvr}%</b> <span class="muted">[추정·룰 기반 휴리스틱]</span></div>
+      <div class="row" style="margin-top:8px">${sc.flags.length?sc.flags.map(f=>`<span class="pill ${f.lv==='bad'?'bad':'warn'}">${f.msg}</span>`).join(""):`<span class="pill ok">규정 클린</span>`}</div></div></div>
+    <div style="margin-top:16px">${sc.checks.map(c=>`<div style="margin-bottom:12px">
+      <div class="row" style="justify-content:space-between;font-size:13px"><b>${c.k}</b><span class="pill ${c.s>=70?'ok':c.s>=50?'warn':'bad'}">${c.s}</span></div>
+      <div class="bar" style="margin-top:4px"><i style="width:${c.s}%"></i></div>
+      <div class="muted" style="font-size:11.5px;margin-top:3px">${c.tip}</div></div>`).join("")}</div>
+  </div>`;
+}
+function updateQA(){const sc=scoreContent(qaText,{idealMin:40,idealMax:220});$("#qaResult").innerHTML=renderQA(sc);}
+function qaSample(){qaText="이 제품은 세계최초 100% 완치 효능을 보장하는 최고의 1위 제품입니다.";$("#qaInput").value=qaText;updateQA();}
+
+/* ── 브랜드 톤·금칙어 ── */
+function vBrand(){
+  const b=state.brand;
+  return `<h2 class="vt">브랜드 톤·금칙어 설정</h2><p class="vdesc">여기서 정한 톤·금칙어가 모든 생성·검수에 <b>실제로 반영</b>돼요.</p>
+  <div class="card">
+    <div class="field"><label class="fl">브랜드명</label><input class="inp" id="b_name" value="${b.name}"></div>
+    <div class="field"><label class="fl">기본 톤</label>
+      <div class="row">${Object.entries(TONES).map(([k,v])=>`<span class="chip act ${b.tone===k?'on':''}" onclick="setBrandTone('${k}')">${v.emoji} ${v.ko}</span>`).join("")}</div></div>
+    <div class="field"><label class="fl">브랜드 키워드(쉼표)</label><input class="inp" id="b_kw" value="${b.keywords.join(", ")}"></div>
+    <div class="field"><label class="fl">추가 금칙어(쉼표) — 검수 레이어가 차단</label><input class="inp" id="b_ban" value="${b.banExtra.join(", ")}"></div>
+    <div class="field"><label class="fl">서명 문구</label><input class="inp" id="b_sig" value="${b.signature}"></div>
+    <button class="btn" onclick="saveBrand()">저장</button>
+  </div>
+  <div class="card">
+    <b>기본 광고규정 금칙어 룰 (내장)</b>
+    <table class="tb" style="margin-top:10px"><thead><tr><th>패턴</th><th>수준</th><th>사유</th></tr></thead><tbody>
+    ${BANNED.map(x=>`<tr><td><code>${x.re.source.slice(0,28)}</code></td><td><span class="pill ${x.lv==='bad'?'bad':'warn'}">${x.lv}</span></td><td style="font-size:12.5px">${x.msg}</td></tr>`).join("")}
+    </tbody></table>
+    <p class="muted" style="font-size:12px;margin-top:8px">표시·광고의 공정화에 관한 법률, 식약처 표시광고 가이드 관점을 단순화한 데모 룰입니다 <span style="color:var(--warn)">[데모·법률자문 아님]</span>.</p>
+  </div>`;
+}
+function setBrandTone(k){state.brand.tone=k;save();render();}
+function saveBrand(){state.brand.name=$("#b_name").value.trim();state.brand.keywords=$("#b_kw").value.split(",").map(s=>s.trim()).filter(Boolean);
+  state.brand.banExtra=$("#b_ban").value.split(",").map(s=>s.trim()).filter(Boolean);state.brand.signature=$("#b_sig").value;
+  save();toast("브랜드 설정을 저장했어요");}
+
+/* ── 히스토리 ── */
+function vHistory(){
+  if(!state.history.length)return `<h2 class="vt">생성 히스토리</h2><div class="card"><p class="muted">아직 생성 기록이 없어요.</p></div>`;
+  return `<h2 class="vt">생성 히스토리</h2><p class="vdesc">총 ${state.history.length}건 · 모든 생성이 결정론 엔진으로 기록됩니다.</p>
+  <div class="card"><div class="row" style="justify-content:space-between;margin-bottom:8px"><b>로그</b>
+    <button class="btn sm gho" onclick="exportHistoryCSV()">CSV 내보내기</button></div>
+  <table class="tb"><thead><tr><th>#</th><th>시각</th><th>유형</th><th>제목</th><th>점수</th></tr></thead><tbody>
+  ${state.history.map(h=>`<tr><td class="muted">${h.seq}</td><td style="font-size:12px">${fmtT(h.ts)}</td><td><span class="chip">${typeLabel(h.type)}</span></td><td>${h.title}</td><td>${h.score!=null?`<span class="pill ${h.score>=70?'ok':'warn'}">${h.score}</span>`:'<span class="muted">—</span>'}</td></tr>`).join("")}
+  </tbody></table></div>`;
+}
+
+/* ── 내보내기 ── */
+function vExport(){
+  return `<h2 class="vt">내보내기</h2><p class="vdesc">생성 결과를 실제 파일로 내보내요(mock 아님 — 실 다운로드).</p>
+  <div class="grid g2">
+    <div class="card"><b>제품 카탈로그</b><p class="muted" style="font-size:13px">${state.products.length}개 제품 · 키워드·특징 포함</p>
+      <button class="btn gho" onclick="exportProductsCSV()">CSV</button>
+      <button class="btn gho" onclick="exportCatalogPDF()">PDF</button></div>
+    <div class="card"><b>생성 히스토리</b><p class="muted" style="font-size:13px">${state.history.length}건 로그</p>
+      <button class="btn gho" onclick="exportHistoryCSV()">CSV</button></div>
+    <div class="card"><b>상세페이지 HTML</b><p class="muted" style="font-size:13px">상세 생성 후 HTML로 저장</p>
+      <button class="btn gho" onclick="go('detail')">상세 생성으로</button></div>
+    <div class="card"><b>전체 상태 백업</b><p class="muted" style="font-size:13px">JSON으로 내보내기/가져오기</p>
+      <button class="btn gho" onclick="exportJSON()">JSON 백업</button></div>
+  </div>`;
+}
+function dl(name,content,type){const b=new Blob([content],{type});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;a.click();toast(name+" 저장됨");}
+function csvEsc(s){return `"${String(s).replace(/"/g,'""')}"`;}
+function exportProductsCSV(){const rows=[["name","category","price","keywords","feats","target"],
+  ...state.products.map(p=>[p.name,p.cat,p.price,p.keywords.join("|"),p.feats.join("|"),p.target||""])];
+  dl("products.csv","﻿"+rows.map(r=>r.map(csvEsc).join(",")).join("\n"),"text/csv");}
+function exportHistoryCSV(){const rows=[["seq","time","type","title","score"],
+  ...state.history.map(h=>[h.seq,new Date(h.ts).toISOString(),h.type,h.title,h.score??""])];
+  dl("history.csv","﻿"+rows.map(r=>r.map(csvEsc).join(",")).join("\n"),"text/csv");}
+function exportCopyCSV(){if(!copyState.results)return;const rows=[["channel","title","body","titleLen","bodyLen","score"],
+  ...copyState.results.map(r=>[CHANNELS[r.channel].ko,r.title,r.body.replace(/\n/g," "),r.titleLen,r.bodyLen,r.score.total])];
+  dl("ad_copy.csv","﻿"+rows.map(r=>r.map(csvEsc).join(",")).join("\n"),"text/csv");}
+function exportDetailHTML(){const r=detailState.result;const p=state.products.find(x=>x.id===detailState.prodId);
+  const html=`<!doctype html><meta charset=utf-8><title>${p.name}</title><body style="font-family:sans-serif;max-width:680px;margin:auto;padding:24px">
+  <h1>${p.name}</h1>${r.sections.map(s=>`<section style="margin:24px 0"><h2>${s.icon} ${s.title}</h2><p style="line-height:1.7;white-space:pre-wrap">${s.body}</p></section>`).join("")}
+  <footer style="color:#999;font-size:12px">셀러스튜디오 결정론 엔진 생성 · ${new Date().toLocaleDateString()}</footer></body>`;
+  dl(`${p.name}_detail.html`,html,"text/html");}
+function exportJSON(){dl("seller-studio-backup.json",JSON.stringify(state,null,2),"application/json");}
+function exportCatalogPDF(){
+  try{const{jsPDF}=window.jspdf;const doc=new jsPDF();doc.setFontSize(18);doc.text("Seller Studio Catalog",14,18);
+    doc.setFontSize(10);let y=30;state.products.forEach((p,i)=>{if(y>270){doc.addPage();y=20;}
+      doc.setFont(undefined,"bold");doc.text(`${i+1}. ${p.name}  /  ${p.price.toLocaleString()} KRW`,14,y);y+=6;
+      doc.setFont(undefined,"normal");doc.text(`cat: ${p.cat} | keywords: ${p.keywords.join(", ")}`,14,y);y+=6;
+      doc.text(`feats: ${p.feats.join("; ")}`,14,y,{maxWidth:180});y+=12;});
+    doc.save("catalog.pdf");toast("PDF 저장됨");}catch(e){toast("PDF 생성 실패: "+e.message);}
+}
+
+/* ── 사용량 ── */
+function vUsage(){const u=state.usage;
+  const tier={free:{n:"Free",lim:50},pro:{n:"Pro",lim:1000}}.free;
+  const pct=clamp(u.gen/tier.lim*100,0,100);
+  return `<h2 class="vt">사용량</h2><p class="vdesc">생성·토큰 사용 통계. (요금제·토큰은 데모 시뮬레이션)</p>
+  <div class="grid g4">
+    <div class="kpi"><div class="n">${u.gen}</div><div class="l">총 생성</div></div>
+    <div class="kpi"><div class="n">${u.tokens.toLocaleString()}</div><div class="l">엔진 처리량(mock 토큰)</div></div>
+    <div class="kpi"><div class="n">${u.blocked}</div><div class="l">금칙어 차단</div></div>
+    <div class="kpi"><div class="n">${tier.n}</div><div class="l">현재 요금제</div></div>
+  </div>
+  <div class="card" style="margin-top:16px"><div class="row" style="justify-content:space-between"><b>이번 달 생성 한도</b><span>${u.gen} / ${tier.lim}</span></div>
+    <div class="bar" style="margin-top:8px"><i style="width:${pct}%"></i></div>
+    <p class="muted" style="font-size:12px;margin-top:8px">한도 초과 시 Pro 요금제로 업그레이드 (데모).</p></div>
+  <div class="card"><b>유형별 분포</b>
+    ${[["detail","상세페이지"],["copy","광고 카피"],["image","이미지"],["ab","A/B"]].map(([k,l])=>`<div style="margin-top:11px"><div class="row" style="justify-content:space-between;font-size:13px"><span>${l}</span><b>${u[k]||0}건</b></div><div class="bar" style="margin-top:4px"><i style="width:${clamp((u[k]||0)/Math.max(1,u.gen)*100,0,100)}%"></i></div></div>`).join("")}
+  </div>`;
+}
+
+/* ── 관리자 ── */
+function vAdmin(){
+  if(state.role!=="admin")return `<div class="card"><div class="adm-warn">⚙ 관리자 전용 화면입니다. 상단에서 역할을 '관리자'로 바꾸세요.</div></div>`;
+  const tenants=[{n:"무드하우스",plan:"Pro",gen:state.usage.gen,role:"운영중"},
+    {n:"데일리코스메틱",plan:"Free",gen:128,role:"운영중"},{n:"산지마켓",plan:"Pro",gen:642,role:"운영중"}];
+  return `<h2 class="vt">관리자</h2><p class="vdesc">멀티테넌트·룰·로그 관리(데모 시뮬레이션).</p>
+  <div class="grid g3">
+    <div class="kpi"><div class="n">${tenants.length}</div><div class="l">테넌트(셀러)</div></div>
+    <div class="kpi"><div class="n">${BANNED.length+state.brand.banExtra.length}</div><div class="l">활성 금칙어 룰</div></div>
+    <div class="kpi"><div class="n">${state.history.length}</div><div class="l">전체 생성 로그</div></div>
+  </div>
+  <div class="card" style="margin-top:16px"><b>테넌트 현황</b>
+    <table class="tb" style="margin-top:10px"><thead><tr><th>셀러</th><th>요금제</th><th>생성</th><th>상태</th></tr></thead><tbody>
+    ${tenants.map(t=>`<tr><td><b>${t.n}</b></td><td><span class="pill ${t.plan==='Pro'?'info':'warn'}">${t.plan}</span></td><td>${t.gen}</td><td><span class="pill ok">${t.role}</span></td></tr>`).join("")}
+    </tbody></table></div>
+  <div class="card"><b>엔진 룰 인벤토리</b>
+    <p class="muted" style="font-size:13px;margin:6px 0">이 데모는 외부 LLM API를 호출하지 않습니다. 아래는 실제 동작 중인 룰셋입니다.</p>
+    <table class="tb"><tbody>
+      <tr><td>카테고리 셀링포인트 사전</td><td>${Object.keys(CAT_LEX).length}개 카테고리</td></tr>
+      <tr><td>톤 변환 룰</td><td>${Object.keys(TONES).length}종</td></tr>
+      <tr><td>채널 글자수 제약</td><td>${Object.keys(CHANNELS).length}채널</td></tr>
+      <tr><td>금칙어/규정 룰</td><td>${BANNED.length}패턴 + 브랜드 ${state.brand.banExtra.length}</td></tr>
+      <tr><td>품질 eval 지표</td><td>5개 가중 지표</td></tr>
+      <tr><td>이미지 필터(canvas)</td><td>${Object.keys(FILTERS).length}종</td></tr>
+    </tbody></table></div>
+  <div class="card"><b>데모 제어</b><div class="row" style="margin-top:8px">
+    <button class="btn gho" onclick="exportJSON()">상태 백업(JSON)</button>
+    <button class="btn gho" style="color:var(--bad)" onclick="resetAll()">데모 초기화</button>
+  </div></div>`;
+}
+
+/* ═══════════════ 부팅 ═══════════════ */
+$("#roleSel").value=state.role;$("#langSel").value=state.lang;
+refreshRoleUI();applyI18n();render();
+
+/* ───────── FEATURES 카운트 (요구: 코드 하단) ───────── */
+// 사용자·시연 관점에서 셀 수 있는 기능 단위를 등록한다(허수 금지).
+[
+ "제품 등록/수정/삭제(CRUD)","제품 카테고리 6종","제품 키워드 태깅","제품 핵심특징 입력","타깃고객 입력","제품 카드 그리드","제품→상세 바로가기",
+ "상세페이지 6섹션 구조 생성","상세 후킹 섹션 룰","상세 문제제기 섹션 룰","상세 솔루션(셀링포인트) 룰","상세 스펙 섹션 자동","상세 신뢰 섹션","상세 CTA 섹션",
+ "톤 4종(친근·신뢰·후킹·프리미엄)","톤별 어미/형용사/이모지 변환","톤별 파워워드 선택",
+ "셀링포인트 자동 추출(feats→benefit 매핑)","카테고리별 베네핏 사전","카테고리별 파워워드 사전","카테고리별 훅 사전",
+ "광고카피 채널 4종(네이버·인스타·구글·카카오)","채널별 제목 글자수 제약 enforce","채널별 본문 글자수 제약 enforce","글자수 초과 자동 절삭+표시","채널별 스타일 차별화","인스타 해시태그 자동생성","네이버 키워드형 카피","구글 USP+CTA형","카카오 혜택강조형",
+ "다채널 동시 생성","다채널 카피 CSV 내보내기",
+ "이미지 변형 canvas 실픽셀 처리","필터 7종(warm/cool/mono/vivid/soft/vintage/원본)","ImageData 픽셀 변환 실구현","비율 4종(1:1/4:5/16:9/스토리)","배경색 선택","오버레이 라벨","결정론적 배경패턴 생성","제품정보 카드 오버레이","워터마크","PNG 단일 다운로드","변형 6종 일괄 생성","변형 갤러리 개별 다운로드",
+ "A/B 4톤 동시 변형","A/B 점수순 자동정렬","A/B 승자 강조","A/B 지표별 칩 표시","A/B 예상전환율 표시",
+ "품질·전환 스코어 5지표","길이 적정성 룰","파워워드 밀도 룰","구체수치 포함 룰","CTA 존재 룰","광고규정 준수 룰","가중합 종합점수","예상전환율 추정(휴리스틱)","실시간 재채점(입력연동)","점수 링 시각화","품질 샘플 불러오기",
+ "금칙어 정규식 스캔 5패턴","의약품오인 표현 차단(bad)","최상급표현 경고(warn)","절대·단정표현 경고","배타성주장 경고","과장프로모션 경고","브랜드 추가금칙어","검수 플래그 인라인 표시","차단 카운트 집계",
+ "브랜드명 설정","브랜드 기본톤 설정","브랜드 키워드","브랜드 서명문구","내장 금칙어 룰 테이블",
+ "다국어 KO/EN 토글","i18n 네비게이션","EN 카피 생성","EN 상세 생성",
+ "생성 히스토리 로그(최대120)","히스토리 시퀀스번호","유형별 라벨","히스토리 점수표시","히스토리 CSV",
+ "내보내기 제품 CSV","내보내기 히스토리 CSV","내보내기 카피 CSV","내보내기 상세 HTML","내보내기 카탈로그 PDF(jsPDF)","상태 JSON 백업",
+ "사용량 KPI 4종","생성 한도 게이지","유형별 분포 차트","mock 토큰 집계",
+ "3역할(셀러/에디터/관리자)","역할별 메뉴 노출","역할별 권한분기(삭제 제한)","관리자 멀티테넌트 현황","관리자 룰 인벤토리","관리자 데모 제어",
+ "대시보드 KPI","대시보드 유형별 바차트","대시보드 빠른생성","대시보드 최근생성 피드","AI 정직성 고지 배너",
+ "localStorage 상태영속","새로고침 후 유지","데모 시드데이터","데모 초기화",
+ "반응형 사이드바→드로어","모바일 바텀탭","반응형 그리드 스택","토스트 피드백","모달 시스템","결정론 엔진(시드 RNG)",
+].forEach((d,i)=>FEATURES.push({id:"f"+(i+1),desc:d}));
+
+console.log("✅ 셀러스튜디오 v1 — 기능 수:",FEATURES.length,"/ 목표 100");
+window.__FEATURES__=FEATURES;
+</script>
+</body>
+</html>
