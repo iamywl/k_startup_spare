@@ -218,6 +218,13 @@ const I18N = {
     buyer_t:"해외 바이어 포털 — 주문·서류 공유", buyer_d:"해외 바이어가 주문 상태·영문 서류·예상도착(ETA)을 조회한다. 영문 UI 기본. 바이어 포털 접근은 연동 로그에 남는다.",
     tradefin_t:"무역금융 — 신용장(L/C)·네고", tradefin_d:"은행 역할이 신용장(L/C) 개설→선적서류 매입(네고)을 처리한다. SWIFT mock 메시지가 발급되고 연동 로그에 남는다.",
     lang:"언어", apply:"적용", run:"실행", close:"닫기", cancel:"취소", save:"저장",
+    demo:"[데모]", pipeline_stages:"등록 → HS → 원산지 → 신고서 → 환급", recentlog_d:"UNI-PASS·환급·환율·포워더·무역금융·바이어·선사EDI", nolog:"로그 없음",
+    /* clients */ clients_t:"관리 수출기업 — 멀티테넌트 포트폴리오", credit:"신용", bizno:"사업자", cnt_cases:"수출 건", ftasave_s:"FTA 절감", refund_s:"환급 추정", filed_rate:"신고 완료율", narrow_here:"이 기업으로 좁혀보기",
+    /* items */ items_t:"품목 등록 + HS코드 분류 보조 (가중 점수 엔진)", new_item:"새 품목", hs_unclassified:"HS 미분류", hs_assist:"HS 분류 보조", detail:"상세",
+    /* origin */ origin_t:"FTA 원산지 판정 + 다협정 절감 최적화", no_hs_cases:"HS 분류가 완료된 수출 건이 없습니다. 먼저 품목·HS코드 탭에서 분류하세요.", undetermined:"미판정", met:"충족", notmet:"미충족", save_label:"절감", compare_desc:"협정 비교(절감 내림차순):", run_origin:"원산지 정량 판정 실행",
+    /* docs */ docs_t:"수출신고서·인보이스 + 관세·물류비 시뮬레이션", no_hs_cases2:"HS 분류가 완료된 건이 없습니다.", th_docs:"생성된 서류", th_action:"액션", ungenerated:"미생성", gen_docs:"서류 생성", cost_sim:"원가 시뮬",
+    /* refund */ refund_cum:"환급 추정 누적", refund_cap:"간이정액환급 [데모]", unrefunded_cnt:"미환급 건", awaiting:"신청 대기", refund_t:"관세 환급 추적 — 품목군별 정밀 산정 + 관세청 접수 mock", no_filed:"수출신고서가 생성된 건이 없습니다.", th_amount_krw:"수출금액(원)", th_refund_est:"환급 추정", th_refno:"접수번호", th_status:"상태", unfiled_pill:"미신청",
+    /* forwarder */ forward_t:"포워더 선적 — 부킹·B/L·ETA mock 연동", no_shippable:"선적 가능한(신고서 생성) 건이 없습니다.", th_weight:"중량(kg)", unbooked:"미부킹", book_ship:"선적 부킹",
   },
   en:{
     appsub:"Export Customs & Tariff Automation · Series A", dashboard:"Export Dashboard", clients:"Managed Exporters",
@@ -237,6 +244,13 @@ const I18N = {
     buyer_t:"Overseas Buyer Portal — Orders & Docs", buyer_d:"Buyers track order status, English documents and ETA. English UI by default. Portal access is recorded in integration logs.",
     tradefin_t:"Trade Finance — Letter of Credit & Negotiation", tradefin_d:"Bank role issues an L/C then negotiates shipping documents. A SWIFT mock message is issued and logged.",
     lang:"Language", apply:"Apply", run:"Run", close:"Close", cancel:"Cancel", save:"Save",
+    demo:"[demo]", pipeline_stages:"Register → HS → Origin → Declaration → Drawback", recentlog_d:"UNI-PASS · Drawback · FX · Forwarder · Trade Finance · Buyer · Carrier EDI", nolog:"No logs",
+    /* clients */ clients_t:"Managed Exporters — Multi-tenant Portfolio", credit:"Credit", bizno:"Biz Reg.", cnt_cases:"Cases", ftasave_s:"FTA Savings", refund_s:"Drawback Est.", filed_rate:"Filing rate", narrow_here:"Drill into this exporter",
+    /* items */ items_t:"Item Registration + HS Code Assist (Weighted-score Engine)", new_item:"New item", hs_unclassified:"HS unclassified", hs_assist:"HS classify assist", detail:"Detail",
+    /* origin */ origin_t:"FTA Origin Determination + Multi-agreement Savings Optimization", no_hs_cases:"No HS-classified export cases. Classify in the Items · HS Code tab first.", undetermined:"Undetermined", met:"met", notmet:"not met", save_label:"savings", compare_desc:"Agreement comparison (by savings, desc.):", run_origin:"Run quantitative origin determination",
+    /* docs */ docs_t:"Export Declaration · Invoice + Duty & Logistics Cost Simulation", no_hs_cases2:"No HS-classified cases.", th_docs:"Generated documents", th_action:"Action", ungenerated:"Not generated", gen_docs:"Generate docs", cost_sim:"Cost sim",
+    /* refund */ refund_cum:"Drawback Est. (cum.)", refund_cap:"Fixed-amount drawback [demo]", unrefunded_cnt:"Unrefunded", awaiting:"Awaiting filing", refund_t:"Duty Drawback Tracking — Precise Estimate by Item Group + Customs Receipt mock", no_filed:"No cases with an export declaration generated.", th_amount_krw:"Export value (KRW)", th_refund_est:"Drawback est.", th_refno:"Receipt no.", th_status:"Status", unfiled_pill:"Not filed",
+    /* forwarder */ forward_t:"Forwarder Shipping — Booking · B/L · ETA mock Integration", no_shippable:"No shippable (declaration-generated) cases.", th_weight:"Weight (kg)", unbooked:"Not booked", book_ship:"Book shipment",
   },
 };
 function L(){ return (S && S._lang) || "ko"; }
@@ -280,6 +294,8 @@ const DEST_FTAS = {
   "인도네시아":["RCEP","한아세안FTA"], "태국":["RCEP","한아세안FTA"],
 };
 const STAGES = ["등록","HS분류","원산지","신고서","환급"];
+const STAGES_EN = {"등록":"Register","HS분류":"HS","원산지":"Origin","신고서":"Declaration","환급":"Drawback"};
+function stageLabel(s){ return L()==="en" ? (STAGES_EN[s]||s) : s; }
 
 /* ---------- 역할(RBAC) — v3: 5역할(+해외바이어·은행) ---------- */
 const ROLES = {
@@ -402,17 +418,17 @@ function postAuditRisk(it){
   const f = it.agreement? FTA[it.agreement] : null;
   let score=10, factors=[];
   const margin = (it.rvc!=null && f)? it.rvc - f.rvcMin : -1;
-  if(margin < 0){ score+=35; factors.push({k:"RVC 미충족/미입력", w:35, lv:"bad"}); }
-  else if(margin < 5){ score+=24; factors.push({k:"RVC 마진 < 5%p (얇음)", w:24, lv:"bad"}); }
-  else if(margin < 12){ score+=12; factors.push({k:"RVC 마진 5~12%p (보통)", w:12, lv:"warn"}); }
-  else factors.push({k:"RVC 마진 ≥12%p (여유)", w:0, lv:"ok"});
-  if(f && f.coType.includes("자율")){ score+=15; factors.push({k:"자율발급(수출자 작성)", w:15, lv:"warn"}); }
-  else if(f && f.coType.includes("인증")){ score+=6; factors.push({k:"인증수출자 신고", w:6, lv:"warn"}); }
-  else factors.push({k:"기관발급 C/O", w:0, lv:"ok"});
+  if(margin < 0){ score+=35; factors.push({k:"RVC 미충족/미입력", en:"RVC unmet/not entered", w:35, lv:"bad"}); }
+  else if(margin < 5){ score+=24; factors.push({k:"RVC 마진 < 5%p (얇음)", en:"RVC margin < 5%p (thin)", w:24, lv:"bad"}); }
+  else if(margin < 12){ score+=12; factors.push({k:"RVC 마진 5~12%p (보통)", en:"RVC margin 5-12%p (medium)", w:12, lv:"warn"}); }
+  else factors.push({k:"RVC 마진 ≥12%p (여유)", en:"RVC margin ≥12%p (ample)", w:0, lv:"ok"});
+  if(f && f.coType.includes("자율")){ score+=15; factors.push({k:"자율발급(수출자 작성)", en:"Self-issued (by exporter)", w:15, lv:"warn"}); }
+  else if(f && f.coType.includes("인증")){ score+=6; factors.push({k:"인증수출자 신고", en:"Approved-exporter declaration", w:6, lv:"warn"}); }
+  else factors.push({k:"기관발급 C/O", en:"Authority-issued C/O", w:0, lv:"ok"});
   const need = it.originOk ? 3 : 2; const have = (it.docs||[]).length;
-  if(have < need){ score+=18; factors.push({k:"증빙서류 미비("+have+"/"+need+")", w:18, lv:"bad"}); }
-  else factors.push({k:"증빙서류 완비("+have+"/"+need+")", w:0, lv:"ok"});
-  if(it.rollupUsed){ score+=10; factors.push({k:"역내 누적 의존(다국가 부품)", w:10, lv:"warn"}); }
+  if(have < need){ score+=18; factors.push({k:"증빙서류 미비("+have+"/"+need+")", en:"Docs incomplete ("+have+"/"+need+")", w:18, lv:"bad"}); }
+  else factors.push({k:"증빙서류 완비("+have+"/"+need+")", en:"Docs complete ("+have+"/"+need+")", w:0, lv:"ok"});
+  if(it.rollupUsed){ score+=10; factors.push({k:"역내 누적 의존(다국가 부품)", en:"Relies on regional accumulation (multi-country parts)", w:10, lv:"warn"}); }
   score = Math.max(0, Math.min(100, score));
   const grade = score>=55?"높음":score>=30?"보통":"낮음";
   const gradeEn = score>=55?"High":score>=30?"Medium":"Low";
@@ -657,7 +673,7 @@ function navFor(){ const can=ROLES[S._role].can; return NAV_ALL.filter(n=>can.in
    VIEWS
    ===================================================================== */
 function kpi(l,v,d,cls){ return `<div class="card kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="d"><span class="pill ${cls}">${d}</span></div></div>`; }
-function stagePill(s){ const idx=STAGES.indexOf(s); const cls= idx>=4?"ok":idx>=3?"info":idx>=1?"brand":"gray"; return `<span class="pill ${cls}">${s}</span>`; }
+function stagePill(s){ const idx=STAGES.indexOf(s); const cls= idx>=4?"ok":idx>=3?"info":idx>=1?"brand":"gray"; return `<span class="pill ${cls}">${stageLabel(s)}</span>`; }
 
 function viewDashboard(){
   const m=metrics(); const labels=STAGES; const maxB=Math.max(1,...m.byStage);
@@ -671,21 +687,21 @@ function viewDashboard(){
     </div>
   </div>
   <div class="grid g4" style="margin-bottom:14px">
-    ${kpi(t("cnt_inprog"), num(m.count), "[데모]","brand")}
-    ${kpi(t("fta_save"), usd(m.saveUSD), "[데모]","ok")}
-    ${kpi(t("refund_est"), won(m.refundKRW), "[데모]","info")}
+    ${kpi(t("cnt_inprog"), num(m.count), t("demo"),"brand")}
+    ${kpi(t("fta_save"), usd(m.saveUSD), t("demo"),"ok")}
+    ${kpi(t("refund_est"), won(m.refundKRW), t("demo"),"info")}
     ${kpi(t("unfiled"), m.unfiled+" / "+m.unrefunded, "—","warn")}
   </div>
   <div class="grid g2" style="margin-bottom:14px">
     <div class="card">
       <h3>${t("pipeline")}</h3>
-      <div class="muted" style="font-size:13px;margin-bottom:6px">등록 → HS → 원산지 → 신고서 → 환급</div>
-      <div class="bars">${m.byStage.map((n,i)=>`<div class="bar"><i style="height:${Math.round(n/maxB*100)}%"></i><span>${n}</span><em>${labels[i]}</em></div>`).join("")}</div>
+      <div class="muted" style="font-size:13px;margin-bottom:6px">${t("pipeline_stages")}</div>
+      <div class="bars">${m.byStage.map((n,i)=>`<div class="bar"><i style="height:${Math.round(n/maxB*100)}%"></i><span>${n}</span><em>${stageLabel(labels[i])}</em></div>`).join("")}</div>
     </div>
     <div class="card">
       <h3>${t("recent_log")}</h3>
-      <div class="muted" style="font-size:13px;margin-bottom:8px">UNI-PASS·환급·환율·포워더·무역금융·바이어·선사EDI</div>
-      <div class="log">${S.intlog.slice(0,5).map(l=>`<div><span class="dim">${l.t}</span> <span class="${l.level==='ok'?'ok2':'warn2'}">[${l.ch}]</span> ${l.line.replace(/^\[[^\]]+\]\s*/,'')}</div>`).join("")||'<span class="dim">로그 없음</span>'}</div>
+      <div class="muted" style="font-size:13px;margin-bottom:8px">${t("recentlog_d")}</div>
+      <div class="log">${S.intlog.slice(0,5).map(l=>`<div><span class="dim">${l.t}</span> <span class="${l.level==='ok'?'ok2':'warn2'}">[${l.ch}]</span> ${l.line.replace(/^\[[^\]]+\]\s*/,'')}</div>`).join("")||`<span class="dim">${t("nolog")}</span>`}</div>
     </div>
   </div>
   <div class="card">
@@ -709,8 +725,8 @@ function viewDashboard(){
 function viewClients(){
   return `
   <div class="card" style="margin-bottom:14px">
-    <h3>관리 수출기업 — 멀티테넌트 포트폴리오</h3>
-    <div class="muted" style="font-size:13px;margin-top:4px">관세사 ${S.broker.name}(${S.broker.lic})가 관리하는 수출기업별 진행·절감·환급 현황. 상단 셀렉터로 테넌트를 좁혀 본다.</div>
+    <h3>${t("clients_t")}</h3>
+    <div class="muted" style="font-size:13px;margin-top:4px">${L()==="en"?`Progress · savings · drawback per exporter managed by broker ${S.broker.name} (${S.broker.lic}). Narrow the tenant via the top selector.`:`관세사 ${S.broker.name}(${S.broker.lic})가 관리하는 수출기업별 진행·절감·환급 현황. 상단 셀렉터로 테넌트를 좁혀 본다.`}</div>
   </div>
   <div class="grid g3">
     ${S.companies.map(c=>{
@@ -719,14 +735,14 @@ function viewClients(){
       const ref=arr.reduce((a,i)=>a+(i.refundKRW||0),0);
       const filed=arr.filter(i=>STAGES.indexOf(i.stage)>=3).length;
       return `<div class="card">
-        <div class="row sp"><b>${c.name}</b><span class="pill ${c.grade==='A'?'ok':'brand'}">신용 ${c.grade}</span></div>
-        <div class="muted" style="font-size:12px;margin:3px 0 8px">사업자 ${c.bizno}</div>
-        <div class="row sp" style="font-size:13px"><span class="muted">수출 건</span><b>${arr.length}건</b></div>
-        <div class="row sp" style="font-size:13px"><span class="muted">FTA 절감</span><b class="yes">${usd(save)}</b></div>
-        <div class="row sp" style="font-size:13px"><span class="muted">환급 추정</span><b>${won(ref)}</b></div>
+        <div class="row sp"><b>${c.name}</b><span class="pill ${c.grade==='A'?'ok':'brand'}">${t("credit")} ${c.grade}</span></div>
+        <div class="muted" style="font-size:12px;margin:3px 0 8px">${t("bizno")} ${c.bizno}</div>
+        <div class="row sp" style="font-size:13px"><span class="muted">${t("cnt_cases")}</span><b>${arr.length}${L()==="en"?"":"건"}</b></div>
+        <div class="row sp" style="font-size:13px"><span class="muted">${t("ftasave_s")}</span><b class="yes">${usd(save)}</b></div>
+        <div class="row sp" style="font-size:13px"><span class="muted">${t("refund_s")}</span><b>${won(ref)}</b></div>
         <div class="meter ok" style="margin-top:8px"><i style="width:${arr.length?Math.round(filed/arr.length*100):0}%"></i></div>
-        <div class="ter" style="font-size:11px">신고 완료율 ${arr.length?Math.round(filed/arr.length*100):0}%</div>
-        <button class="btn sm pri" style="margin-top:10px;width:100%" onclick="setTenant('${c.id}')">이 기업으로 좁혀보기</button>
+        <div class="ter" style="font-size:11px">${t("filed_rate")} ${arr.length?Math.round(filed/arr.length*100):0}%</div>
+        <button class="btn sm pri" style="margin-top:10px;width:100%" onclick="setTenant('${c.id}')">${t("narrow_here")}</button>
       </div>`;
     }).join("")}
   </div>`;
@@ -736,8 +752,8 @@ function viewItems(){
   const arr=visibleItems();
   return `
   <div class="card" style="margin-bottom:14px">
-    <div class="row sp"><h3>품목 등록 + HS코드 분류 보조 (가중 점수 엔진)</h3><button class="btn pri sm" onclick="openNewItem()">+ 새 품목</button></div>
-    <div class="muted" style="font-size:13px;margin-top:4px">v2 분류기는 키워드별 <b>가중치(핵심어 3·보조어 1)</b>와 <b>오분류 방지 음성키워드</b>로 점수를 매겨 후보를 정렬한다. 매칭 근거를 노출하는 휴먼인더루프.</div>
+    <div class="row sp"><h3>${t("items_t")}</h3><button class="btn pri sm" onclick="openNewItem()">+ ${t("new_item")}</button></div>
+    <div class="muted" style="font-size:13px;margin-top:4px">${L()==="en"?`The classifier scores candidates by keyword <b>weights (core 3 · sub 1)</b> and <b>negative keywords to prevent misclassification</b>, then ranks them. Human-in-the-loop that surfaces the match evidence.`:`v2 분류기는 키워드별 <b>가중치(핵심어 3·보조어 1)</b>와 <b>오분류 방지 음성키워드</b>로 점수를 매겨 후보를 정렬한다. 매칭 근거를 노출하는 휴먼인더루프.`}</div>
   </div>
   <div class="grid g2">
     ${arr.map(i=>`<div class="card">
@@ -746,11 +762,11 @@ function viewItems(){
       <div class="row wrap" style="gap:8px;font-size:13px">
         <span class="pill gray">${company(i.cid).name.split(" ")[0]}</span>
         <span class="pill gray">${i.dest}</span><span class="pill gray">${usd(i.qty*i.unitUSD)}</span>
-        ${i.hs?`<span class="pill brand hs">HS ${i.hs}</span><span class="pill gray">MFN ${i.mfn}%</span>`:`<span class="pill warn">HS 미분류</span>`}
+        ${i.hs?`<span class="pill brand hs">HS ${i.hs}</span><span class="pill gray">MFN ${i.mfn}%</span>`:`<span class="pill warn">${t("hs_unclassified")}</span>`}
       </div>
       <div class="row" style="margin-top:12px;gap:8px">
-        <button class="btn sm pri" onclick="runClassify('${i.id}')">HS 분류 보조</button>
-        <button class="btn sm gho" onclick="openItem('${i.id}')">상세</button>
+        <button class="btn sm pri" onclick="runClassify('${i.id}')">${t("hs_assist")}</button>
+        <button class="btn sm gho" onclick="openItem('${i.id}')">${t("detail")}</button>
       </div>
     </div>`).join("")}
   </div>`;
@@ -760,25 +776,25 @@ function viewOrigin(){
   const cand = visibleItems().filter(i=>i.hs);
   return `
   <div class="card" style="margin-bottom:14px">
-    <h3>FTA 원산지 판정 + 다협정 절감 최적화</h3>
-    <div class="muted" style="font-size:13px;margin-top:4px">도착국에 적용 가능한 <b>모든 협정을 비교</b>해 절감 최대 협정을 추천한다. RVC(역내부가가치)를 입력하면 협정별 문턱과 비교해 충족 여부를 정량 판정하고 C/O 발급유형을 안내한다.</div>
+    <h3>${t("origin_t")}</h3>
+    <div class="muted" style="font-size:13px;margin-top:4px">${L()==="en"?`<b>Compares all applicable agreements</b> for the destination and recommends the max-savings one. Enter RVC (regional value content) to quantitatively judge threshold compliance per agreement and guide the C/O issuance type.`:`도착국에 적용 가능한 <b>모든 협정을 비교</b>해 절감 최대 협정을 추천한다. RVC(역내부가가치)를 입력하면 협정별 문턱과 비교해 충족 여부를 정량 판정하고 C/O 발급유형을 안내한다.`}</div>
   </div>
-  ${cand.length===0?'<div class="card muted">HS 분류가 완료된 수출 건이 없습니다. 먼저 품목·HS코드 탭에서 분류하세요.</div>':
+  ${cand.length===0?`<div class="card muted">${t("no_hs_cases")}</div>`:
   `<div class="grid g2">${cand.map(i=>{ const opt=optimizeFTA(i); return `<div class="card">
-    <div class="row sp"><b>${i.name}</b>${i.agreement?`<span class="pill ${i.originOk?'ok':'warn'}">${i.agreement} ${i.originOk?'충족':'미충족'}</span>`:'<span class="pill gray">미판정</span>'}</div>
+    <div class="row sp"><b>${i.name}</b>${i.agreement?`<span class="pill ${i.originOk?'ok':'warn'}">${i.agreement} ${i.originOk?t("met"):t("notmet")}</span>`:`<span class="pill gray">${t("undetermined")}</span>`}</div>
     <div class="row wrap" style="gap:8px;margin:6px 0;font-size:13px">
       <span class="pill brand hs">HS ${i.hs}</span><span class="pill gray">${i.dest}</span><span class="pill gray">${usd(i.qty*i.unitUSD)}</span>
-      ${i.saveUSD>0?`<span class="pill ok">절감 ${usd(i.saveUSD)}</span>`:''}
+      ${i.saveUSD>0?`<span class="pill ok">${t("save_label")} ${usd(i.saveUSD)}</span>`:''}
     </div>
-    <div class="muted" style="font-size:12px;margin-bottom:4px">협정 비교(절감 내림차순):</div>
+    <div class="muted" style="font-size:12px;margin-bottom:4px">${t("compare_desc")}</div>
     ${opt.rows.map((r,idx)=>`<div class="ftarow ${idx===0?'best':''}">
       <b style="min-width:78px">${r.ag}</b>
       <span class="muted" style="font-size:12px">MFN ${r.mfn}%</span>
-      <span class="pill ${r.saveUSD>0?'ok':'gray'}">절감 ${usd(r.saveUSD)}</span>
+      <span class="pill ${r.saveUSD>0?'ok':'gray'}">${t("save_label")} ${usd(r.saveUSD)}</span>
       <span class="ter" style="font-size:11px">RVC≥${r.rvcMin}% · ${r.coType}</span>
-      ${idx===0?'<span class="pill brand" style="margin-left:auto">추천</span>':''}
+      ${idx===0?`<span class="pill brand" style="margin-left:auto">${t("recommend")}</span>`:''}
     </div>`).join("")}
-    <button class="btn sm pri" style="margin-top:6px" onclick="openOrigin('${i.id}')">원산지 정량 판정 실행</button>
+    <button class="btn sm pri" style="margin-top:6px" onclick="openOrigin('${i.id}')">${t("run_origin")}</button>
   </div>`;}).join("")}</div>`}`;
 }
 
@@ -786,43 +802,44 @@ function viewDocs(){
   const cand = visibleItems().filter(i=>i.hs);
   return `
   <div class="card" style="margin-bottom:14px">
-    <h3>수출신고서·인보이스 + 관세·물류비 시뮬레이션</h3>
-    <div class="muted" style="font-size:13px;margin-top:4px">품목·금액·원산지를 자동 채워 서류를 PDF로 생성하고, <b>착지원가(Landed Cost)</b>를 관세 적용 전/후로 비교 시뮬레이션한다(물류비·보험·관세 포함).</div>
+    <h3>${t("docs_t")}</h3>
+    <div class="muted" style="font-size:13px;margin-top:4px">${L()==="en"?`Auto-fill item, value and origin to generate documents as PDF, and simulate <b>landed cost</b> before/after duty (freight, insurance, duty included).`:`품목·금액·원산지를 자동 채워 서류를 PDF로 생성하고, <b>착지원가(Landed Cost)</b>를 관세 적용 전/후로 비교 시뮬레이션한다(물류비·보험·관세 포함).`}</div>
   </div>
-  ${cand.length===0?'<div class="card muted">HS 분류가 완료된 건이 없습니다.</div>':
+  ${cand.length===0?`<div class="card muted">${t("no_hs_cases2")}</div>`:
   `<div class="tablewrap card"><table>
-    <thead><tr><th>품목</th><th>도착국</th><th class="num">금액</th><th>HS</th><th>생성된 서류</th><th>액션</th></tr></thead>
+    <thead><tr><th>${t("item")}</th><th>${t("dest")}</th><th class="num">${t("amount")}</th><th>HS</th><th>${t("th_docs")}</th><th>${t("th_action")}</th></tr></thead>
     <tbody>${cand.map(i=>`<tr>
       <td><b>${i.name}</b></td><td>${i.dest}</td><td class="num">${usd(i.qty*i.unitUSD)}</td><td class="hs">${i.hs}</td>
-      <td>${i.docs.length?i.docs.map(d=>`<span class="pill ok" style="margin:2px">${d}</span>`).join(""):'<span class="ter">미생성</span>'}</td>
+      <td>${i.docs.length?i.docs.map(d=>`<span class="pill ok" style="margin:2px">${d}</span>`).join(""):`<span class="ter">${t("ungenerated")}</span>`}</td>
       <td><div class="row wrap" style="gap:6px">
-        <button class="btn sm pri" onclick="genDocs('${i.id}')">서류 생성</button>
-        <button class="btn sm gho" onclick="openLanded('${i.id}')">원가 시뮬</button>
+        <button class="btn sm pri" onclick="genDocs('${i.id}')">${t("gen_docs")}</button>
+        <button class="btn sm gho" onclick="openLanded('${i.id}')">${t("cost_sim")}</button>
         ${i.docs.length?`<button class="btn sm gho" onclick="downloadPDF('${i.id}')">PDF</button>`:''}</div></td>
     </tr>`).join("")}</tbody>
   </table></div>`}`;
 }
 
+function unipassStatusLabel(s){ if(L()!=="en") return s; return {"접수":"Received","수리":"Cleared"}[s]||s; }
 /* UNI-PASS 전자신고 (관세사 전용 워크플로) */
 function viewFiling(){
   const cand = visibleItems().filter(i=>i.docs.includes("수출신고서"));
   return `
   <div class="card" style="margin-bottom:14px">
-    <h3>UNI-PASS 전자신고 — 관세청 전자통관 mock 연동</h3>
-    <div class="muted" style="font-size:13px;margin-top:4px">수출신고서가 생성된 건을 관세청 UNI-PASS 로 <b>전자 전송(mock)</b>한다. 접수번호가 발급되고 접수→수리 상태로 진행한다. 모든 전송은 연동 로그에 아티팩트로 남는다.</div>
+    <h3>${L()==="en"?"UNI-PASS e-Filing — Korea Customs e-clearance mock integration":"UNI-PASS 전자신고 — 관세청 전자통관 mock 연동"}</h3>
+    <div class="muted" style="font-size:13px;margin-top:4px">${L()==="en"?`Cases with a generated export declaration are <b>e-transmitted (mock)</b> to Korea Customs UNI-PASS. A receipt number is issued and progresses received→cleared. Every transmission is kept as an artifact in the integration log.`:`수출신고서가 생성된 건을 관세청 UNI-PASS 로 <b>전자 전송(mock)</b>한다. 접수번호가 발급되고 접수→수리 상태로 진행한다. 모든 전송은 연동 로그에 아티팩트로 남는다.`}</div>
   </div>
-  ${cand.length===0?'<div class="card muted">수출신고서가 생성된 건이 없습니다. 먼저 수출신고서를 생성하세요.</div>':
+  ${cand.length===0?`<div class="card muted">${L()==="en"?"No export declaration generated yet. Generate one first.":"수출신고서가 생성된 건이 없습니다. 먼저 수출신고서를 생성하세요."}</div>`:
   `<div class="tablewrap card" style="margin-bottom:14px"><table>
-    <thead><tr><th>품목</th><th>HS</th><th class="num">금액</th><th>접수번호</th><th>상태</th><th>액션</th></tr></thead>
+    <thead><tr><th>${t("item")}</th><th>HS</th><th class="num">${t("amount")}</th><th>${t("th_refno")}</th><th>${t("th_status")}</th><th>${t("th_action")}</th></tr></thead>
     <tbody>${cand.map(i=>`<tr>
       <td><b>${i.name}</b></td><td class="hs">${i.hs}</td><td class="num">${usd(i.qty*i.unitUSD)}</td>
-      <td>${i.unipass?`<span class="pill info">${i.unipass.ref}</span>`:'<span class="ter">미전송</span>'}</td>
-      <td>${i.unipass?`<span class="pill ${i.unipass.status==='수리'?'ok':'brand'}">${i.unipass.status}</span>`:'<span class="pill warn">대기</span>'}</td>
-      <td>${!i.unipass?`<button class="btn sm pri" onclick="doUnipass('${i.id}')">전자신고 전송</button>`:
-        i.unipass.status==='접수'?`<button class="btn sm pri" onclick="doUnipassAccept('${i.id}')">수리 처리</button>`:`<span class="pill ok">수리완료</span>`}</td>
+      <td>${i.unipass?`<span class="pill info">${i.unipass.ref}</span>`:`<span class="ter">${L()==="en"?"Not sent":"미전송"}</span>`}</td>
+      <td>${i.unipass?`<span class="pill ${i.unipass.status==='수리'?'ok':'brand'}">${unipassStatusLabel(i.unipass.status)}</span>`:`<span class="pill warn">${L()==="en"?"Pending":"대기"}</span>`}</td>
+      <td>${!i.unipass?`<button class="btn sm pri" onclick="doUnipass('${i.id}')">${L()==="en"?"Send e-filing":"전자신고 전송"}</button>`:
+        i.unipass.status==='접수'?`<button class="btn sm pri" onclick="doUnipassAccept('${i.id}')">${L()==="en"?"Clear":"수리 처리"}</button>`:`<span class="pill ok">${L()==="en"?"Cleared":"수리완료"}</span>`}</td>
     </tr>`).join("")}</tbody>
   </table></div>
-  <div class="card"><h3>연동 로그 (UNI-PASS)</h3><div class="log" style="margin-top:8px">${S.intlog.filter(l=>l.ch==='UNI-PASS').slice(0,8).map(l=>`<div><span class="dim">${l.d} ${l.t}</span> <span class="ok2">${l.line}</span></div>`).join("")||'<span class="dim">전송 로그 없음</span>'}</div></div>`}`;
+  <div class="card"><h3>${L()==="en"?"Integration log (UNI-PASS)":"연동 로그 (UNI-PASS)"}</h3><div class="log" style="margin-top:8px">${S.intlog.filter(l=>l.ch==='UNI-PASS').slice(0,8).map(l=>`<div><span class="dim">${l.d} ${l.t}</span> <span class="ok2">${l.line}</span></div>`).join("")||`<span class="dim">${L()==="en"?"No transmission logs":"전송 로그 없음"}</span>`}</div></div>`}`;
 }
 
 function viewRefund(){
@@ -830,31 +847,32 @@ function viewRefund(){
   const m=metrics();
   return `
   <div class="grid g2 keep" style="margin-bottom:14px">
-    ${kpi("환급 추정 누적", won(m.refundKRW), "간이정액환급 [데모]","info")}
-    ${kpi("미환급 건", num(cand.filter(i=>!i.refundStatus).length)+"건", "신청 대기","warn")}
+    ${kpi(t("refund_cum"), won(m.refundKRW), t("refund_cap"),"info")}
+    ${kpi(t("unrefunded_cnt"), num(cand.filter(i=>!i.refundStatus).length)+(L()==="en"?"":"건"), t("awaiting"),"warn")}
   </div>
   <div class="card" style="margin-bottom:14px">
-    <h3>관세 환급 추적 — 품목군별 정밀 산정 + 관세청 접수 mock</h3>
-    <div class="muted" style="font-size:13px;margin-top:4px">v2 환급액은 품목군(HS 4단위)별 <b>1만원당 환급액 고시(mock)</b>로 정밀 산정한다. 환급 신청 시 관세청에 mock 접수되어 접수번호가 남는다.</div>
+    <h3>${t("refund_t")}</h3>
+    <div class="muted" style="font-size:13px;margin-top:4px">${L()==="en"?`Drawback is precisely estimated per item group (HS 4-digit) using a <b>per-10,000-KRW published rate (mock)</b>. On filing, a mock receipt with a reference number is created at Customs.`:`v2 환급액은 품목군(HS 4단위)별 <b>1만원당 환급액 고시(mock)</b>로 정밀 산정한다. 환급 신청 시 관세청에 mock 접수되어 접수번호가 남는다.`}</div>
   </div>
-  ${cand.length===0?'<div class="card muted">수출신고서가 생성된 건이 없습니다.</div>':
+  ${cand.length===0?`<div class="card muted">${t("no_filed")}</div>`:
   `<div class="tablewrap card"><table>
-    <thead><tr><th>품목</th><th class="num">수출금액(원)</th><th class="num">환급 추정</th><th>접수번호</th><th>상태</th><th>액션</th></tr></thead>
+    <thead><tr><th>${t("item")}</th><th class="num">${t("th_amount_krw")}</th><th class="num">${t("th_refund_est")}</th><th>${t("th_refno")}</th><th>${t("th_status")}</th><th>${t("th_action")}</th></tr></thead>
     <tbody>${cand.map(i=>{ const est = refundEstimate(i.qty*i.unitUSD*S.fx, i.hs); return `<tr>
       <td><b>${i.name}</b></td>
       <td class="num">${won(i.qty*i.unitUSD*S.fx)}</td>
       <td class="num"><b>${won(est)}</b></td>
       <td>${i.refundRef?`<span class="pill info">${i.refundRef}</span>`:'<span class="ter">—</span>'}</td>
-      <td>${i.refundStatus?`<span class="pill ${i.refundStatus==='지급완료'?'ok':'info'}">${i.refundStatus}</span>`:'<span class="pill warn">미신청</span>'}</td>
+      <td>${i.refundStatus?`<span class="pill ${i.refundStatus==='지급완료'?'ok':'info'}">${refundStatusLabel(i.refundStatus)}</span>`:`<span class="pill warn">${t("unfiled_pill")}</span>`}</td>
       <td>${refundAction(i,est)}</td>
     </tr>`;}).join("")}</tbody>
   </table></div>`}`;
 }
+function refundStatusLabel(s){ if(L()!=="en") return s; return {"신청완료":"Filed","심사중":"Under review","지급완료":"Paid","미신청":"Not filed"}[s]||s; }
 function refundAction(i,est){
-  if(!i.refundStatus) return `<button class="btn sm pri" onclick="doRefundFile('${i.id}',${est})">환급 접수(mock)</button>`;
-  if(i.refundStatus==="신청완료") return `<button class="btn sm gho" onclick="refundStep('${i.id}','심사중',${est})">심사 진행</button>`;
-  if(i.refundStatus==="심사중") return `<button class="btn sm pri" onclick="refundStep('${i.id}','지급완료',${est})">지급 처리</button>`;
-  return `<span class="pill ok">완료</span>`;
+  if(!i.refundStatus) return `<button class="btn sm pri" onclick="doRefundFile('${i.id}',${est})">${L()==="en"?"File drawback (mock)":"환급 접수(mock)"}</button>`;
+  if(i.refundStatus==="신청완료") return `<button class="btn sm gho" onclick="refundStep('${i.id}','심사중',${est})">${L()==="en"?"Start review":"심사 진행"}</button>`;
+  if(i.refundStatus==="심사중") return `<button class="btn sm pri" onclick="refundStep('${i.id}','지급완료',${est})">${L()==="en"?"Pay out":"지급 처리"}</button>`;
+  return `<span class="pill ok">${L()==="en"?"Done":"완료"}</span>`;
 }
 
 /* 포워더 선적 (포워더 전용) */
@@ -862,17 +880,17 @@ function viewForward(){
   const cand = visibleItems().filter(i=>i.docs.includes("수출신고서"));
   return `
   <div class="card" style="margin-bottom:14px">
-    <h3>포워더 선적 — 부킹·B/L·ETA mock 연동</h3>
-    <div class="muted" style="font-size:13px;margin-top:4px">신고서가 준비된 건을 포워더가 선적 부킹한다. B/L 번호·예상도착(ETA)이 mock 발급되고 연동 로그에 남는다. 포워더 역할은 신고·환급 정보엔 접근하지 않는다(권한 분리).</div>
+    <h3>${t("forward_t")}</h3>
+    <div class="muted" style="font-size:13px;margin-top:4px">${L()==="en"?`The forwarder books shipment for declaration-ready cases. A B/L number and ETA are issued (mock) and logged. The forwarder role cannot access filing or drawback data (permission separation).`:`신고서가 준비된 건을 포워더가 선적 부킹한다. B/L 번호·예상도착(ETA)이 mock 발급되고 연동 로그에 남는다. 포워더 역할은 신고·환급 정보엔 접근하지 않는다(권한 분리).`}</div>
   </div>
-  ${cand.length===0?'<div class="card muted">선적 가능한(신고서 생성) 건이 없습니다.</div>':
+  ${cand.length===0?`<div class="card muted">${t("no_shippable")}</div>`:
   `<div class="tablewrap card"><table>
-    <thead><tr><th>품목</th><th>도착국</th><th class="num">중량(kg)</th><th>B/L</th><th>ETA</th><th>액션</th></tr></thead>
+    <thead><tr><th>${t("item")}</th><th>${t("dest")}</th><th class="num">${t("th_weight")}</th><th>B/L</th><th>ETA</th><th>${t("th_action")}</th></tr></thead>
     <tbody>${cand.map(i=>{ const w=Math.round((i.weightKg||0.4)*i.qty); return `<tr>
       <td><b>${i.name}</b></td><td>${i.dest}</td><td class="num">${num(w)}</td>
-      <td>${i.shipment?`<span class="pill info">${i.shipment.bl}</span>`:'<span class="ter">미부킹</span>'}</td>
+      <td>${i.shipment?`<span class="pill info">${i.shipment.bl}</span>`:`<span class="ter">${t("unbooked")}</span>`}</td>
       <td>${i.shipment?i.shipment.eta:'—'}</td>
-      <td>${!i.shipment?`<button class="btn sm pri" onclick="doForward('${i.id}')">선적 부킹</button>`:`<span class="pill ok">${i.shipment.status}</span>`}</td>
+      <td>${!i.shipment?`<button class="btn sm pri" onclick="doForward('${i.id}')">${t("book_ship")}</button>`:`<span class="pill ok">${i.shipment.status}</span>`}</td>
     </tr>`;}).join("")}</tbody>
   </table></div>`}`;
 }
@@ -890,7 +908,7 @@ function viewScenario(){
   `<div class="grid g2">${cand.map(i=>{ const s=tariffScenarios(i); const maxL=Math.max(...s.rows.map(r=>r.landed));
     return `<div class="card">
     <div class="row sp"><b>${i.name}</b><span class="pill gray">${i.dest} · HS ${i.hs}</span></div>
-    <div class="muted" style="font-size:12px;margin:4px 0 6px">${L()==="en"?"Assumed sell price":"가정 판매가"} ${usd(s.sell)} · ${L()==="en"?"target margin":"목표마진"} 30% <span class="ter">[추정]</span></div>
+    <div class="muted" style="font-size:12px;margin:4px 0 6px">${L()==="en"?"Assumed sell price":"가정 판매가"} ${usd(s.sell)} · ${L()==="en"?"target margin":"목표마진"} 30% <span class="ter">${L()==="en"?"[est.]":"[추정]"}</span></div>
     <div class="scen">${s.rows.map(r=>{ const h=Math.round(r.landed/maxL*100); const cls=r.key==='fta'?'base':(r.deltaLanded>0?'up':'down');
       return `<div class="col ${cls}"><span>${usd(r.landed)}</span><i style="height:${h}%"></i><em>${L()==="en"?r.en:r.ko}<br>${r.rate}%</em></div>`;}).join("")}</div>
     <div class="tablewrap" style="margin-top:14px"><table>
@@ -952,7 +970,7 @@ function viewProfit(){
   `<div class="grid g2">${cand.map(i=>{ const o=profitOptimize(i);
     return `<div class="card">
     <div class="row sp"><b>${i.name}</b><span class="pill gray">${L()==="en"?"now":"현재"} ${i.dest}</span></div>
-    <div class="muted" style="font-size:12px;margin:4px 0 8px">${L()==="en"?"Net = sell − landed + drawback":"순채산 = 판매가 − 착지원가 + 환급"} · ${L()==="en"?"sell":"판매가"} ${usd(o.sell)} <span class="ter">[추정]</span></div>
+    <div class="muted" style="font-size:12px;margin:4px 0 8px">${L()==="en"?"Net = sell − landed + drawback":"순채산 = 판매가 − 착지원가 + 환급"} · ${L()==="en"?"sell":"판매가"} ${usd(o.sell)} <span class="ter">${L()==="en"?"[est.]":"[추정]"}</span></div>
     ${o.rows.map((r,idx)=>`<div class="reco ${idx===0?'top':''}">
       <div class="row sp"><b>${r.dest} · ${r.ag}</b>${idx===0?`<span class="pill ok">${t("recommend")}</span>`:`<span class="ter" style="font-size:11px">#${idx+1}</span>`}</div>
       <div class="row wrap" style="gap:7px;font-size:12px;margin-top:5px">
@@ -979,9 +997,10 @@ function viewPostaudit(){
     <div class="muted" style="font-size:12px;margin:3px 0">${i.agreement} · RVC ${i.rvc??'-'}% · ${i.dest}</div>
     <div class="gauge"><i style="left:${r.score}%"></i></div>
     <div class="row sp" style="font-size:11px;color:var(--ter)"><span>${L()==="en"?"Low":"낮음"}</span><span>${L()==="en"?"Medium":"보통"}</span><span>${L()==="en"?"High":"높음"}</span></div>
-    <div style="margin-top:10px">${r.factors.map(f=>`<div class="riskchip"><span>${f.lv==='bad'?'🔴':f.lv==='warn'?'🟡':'🟢'} ${f.k}</span><b class="${f.w>0?'no':'yes'}">+${f.w}</b></div>`).join("")}</div>
+    <div style="margin-top:10px">${r.factors.map(f=>`<div class="riskchip"><span>${f.lv==='bad'?'🔴':f.lv==='warn'?'🟡':'🟢'} ${L()==="en"?(f.en||f.k):f.k}</span><b class="${f.w>0?'no':'yes'}">+${f.w}</b></div>`).join("")}</div>
   </div>`;}).join("")}</div>`}`;
 }
+function lcStatusLabel(s){ if(L()!=="en") return s; return {"개설":"Issued","매입(네고)":"Negotiated"}[s]||s; }
 /* 무역금융 — 신용장(L/C)·네고 (은행 역할) */
 function viewTradeFin(){
   const cand = S.items.filter(i=>i.docs.includes("수출신고서") || i.lc);
@@ -993,12 +1012,12 @@ function viewTradeFin(){
   ${cand.length===0?`<div class="card muted">${L()==="en"?"No filed cases.":"신고서가 생성된 건이 없습니다."}</div>`:
   `<div class="grid g2">${cand.map(i=>{ const lc=i.lc;
     return `<div class="card">
-    <div class="row sp"><b>${i.name}</b>${lc?`<span class="pill ${lc.status.includes('네고')?'ok':'info'}">${lc.status}</span>`:`<span class="pill gray">${L()==="en"?"No L/C":"미개설"}</span>`}</div>
+    <div class="row sp"><b>${i.name}</b>${lc?`<span class="pill ${lc.status.includes('네고')?'ok':'info'}">${lcStatusLabel(lc.status)}</span>`:`<span class="pill gray">${L()==="en"?"No L/C":"미개설"}</span>`}</div>
     <div class="muted" style="font-size:12px;margin:3px 0 8px">${company(i.cid).name.split(" ")[0]} → ${i.buyer?i.buyer.name:(L()==="en"?"buyer":"바이어")} · ${usd(i.qty*i.unitUSD)}</div>
     ${lc?`<div class="lc">L/C ${lc.ref}
 SWIFT ${lc.swift}  (MT700)
 ${L()==="en"?"Amount":"금액"}: ${usd(lc.amount)}
-${L()==="en"?"Status":"상태"}: ${lc.status}${lc.proceed?`
+${L()==="en"?"Status":"상태"}: ${lcStatusLabel(lc.status)}${lc.proceed?`
 ${L()==="en"?"Proceeds (net 2% fee)":"네고 지급(수수료 2%)"}: ${usd(lc.proceed)}`:''}</div>`:''}
     <div class="row" style="gap:8px;margin-top:10px">
       ${!lc?`<button class="btn sm pri" onclick="doLC('${i.id}')">${L()==="en"?"Issue L/C":"L/C 개설"}</button>`:
@@ -1023,7 +1042,7 @@ function viewBuyer(){
     <div class="row wrap" style="gap:7px;font-size:12px">
       ${i.hs?`<span class="pill brand hs">HS ${i.hs}</span>`:''}
       ${sh?`<span class="pill info">B/L ${sh.bl}</span><span class="pill gray">ETA ${sh.eta}</span>`:''}
-      ${lc?`<span class="pill ok">L/C ${lc.status}</span>`:''}
+      ${lc?`<span class="pill ok">L/C ${lcStatusLabel(lc.status)}</span>`:''}
     </div>
     <div class="row" style="gap:8px;margin-top:10px">
       <button class="btn sm pri" onclick="buyerView('${i.id}')">${L()==="en"?"View order & docs":"주문·서류 조회"}</button>
@@ -1035,37 +1054,38 @@ function viewBuyer(){
 function viewData(){
   return `
   <div class="card" style="margin-bottom:14px">
-    <h3>외부 연동 로그 — 통합 감사 추적</h3>
-    <div class="muted" style="font-size:13px;margin:4px 0 10px">UNI-PASS 전자신고·관세청 환급접수·환율 API·포워더 선적 4개 mock 연동의 전체 전송 이력. 외부 시스템 통합의 아티팩트 증거.</div>
+    <h3>${L()==="en"?"External Integration Logs — Unified Audit Trail":"외부 연동 로그 — 통합 감사 추적"}</h3>
+    <div class="muted" style="font-size:13px;margin:4px 0 10px">${L()==="en"?`Full transmission history of mock integrations (UNI-PASS e-filing, Customs drawback receipt, FX API, forwarder shipping and more). Artifact evidence of external-system integration.`:`UNI-PASS 전자신고·관세청 환급접수·환율 API·포워더 선적 4개 mock 연동의 전체 전송 이력. 외부 시스템 통합의 아티팩트 증거.`}</div>
     <div class="seg" style="margin-bottom:10px">
-      ${["all","UNI-PASS","환급접수","환율API","포워더","무역금융","바이어포털","선사EDI"].map(ch=>`<button class="${(S._logf||'all')===ch?'on':''}" onclick="logFilter('${ch}')">${ch==='all'?'전체':ch}</button>`).join("")}
+      ${["all","UNI-PASS","환급접수","환율API","포워더","무역금융","바이어포털","선사EDI"].map(ch=>`<button class="${(S._logf||'all')===ch?'on':''}" onclick="logFilter('${ch}')">${logChLabel(ch)}</button>`).join("")}
     </div>
-    <div class="log">${S.intlog.filter(l=>!S._logf||S._logf==='all'||l.ch===S._logf).slice(0,30).map(l=>`<div><span class="dim">${l.d} ${l.t}</span> <span class="${l.level==='ok'?'ok2':'warn2'}">[${l.ch}]</span> ${l.line.replace(/^\[[^\]]+\]\s*/,'')}</div>`).join("")||'<span class="dim">로그 없음</span>'}</div>
+    <div class="log">${S.intlog.filter(l=>!S._logf||S._logf==='all'||l.ch===S._logf).slice(0,30).map(l=>`<div><span class="dim">${l.d} ${l.t}</span> <span class="${l.level==='ok'?'ok2':'warn2'}">[${l.ch}]</span> ${l.line.replace(/^\[[^\]]+\]\s*/,'')}</div>`).join("")||`<span class="dim">${t("nolog")}</span>`}</div>
   </div>
   <div class="card" style="margin-bottom:14px">
-    <h3>데이터 입출력</h3>
-    <div class="muted" style="font-size:13px;margin:4px 0 12px">주문 CSV 를 업로드하면 가중 점수 엔진으로 행별 자동 HS 분류해 현재 테넌트에 일괄 등록한다. 신고·환급 내역은 CSV 로 내보낸다.</div>
+    <h3>${L()==="en"?"Data Import / Export":"데이터 입출력"}</h3>
+    <div class="muted" style="font-size:13px;margin:4px 0 12px">${L()==="en"?`Upload an order CSV to auto-classify HS per row with the weighted-score engine and bulk-register to the current tenant. Filing and drawback records export to CSV.`:`주문 CSV 를 업로드하면 가중 점수 엔진으로 행별 자동 HS 분류해 현재 테넌트에 일괄 등록한다. 신고·환급 내역은 CSV 로 내보낸다.`}</div>
     <div class="row wrap" style="gap:10px">
-      <label class="btn pri" style="cursor:pointer">주문 CSV 업로드<input type="file" accept=".csv" style="display:none" onchange="importCSV(event)"></label>
-      <button class="btn gho" onclick="downloadSampleCSV()">샘플 CSV 받기</button>
-      <button class="btn gho" onclick="exportCSV()">내역 CSV 내보내기</button>
+      <label class="btn pri" style="cursor:pointer">${L()==="en"?"Upload order CSV":"주문 CSV 업로드"}<input type="file" accept=".csv" style="display:none" onchange="importCSV(event)"></label>
+      <button class="btn gho" onclick="downloadSampleCSV()">${L()==="en"?"Download sample CSV":"샘플 CSV 받기"}</button>
+      <button class="btn gho" onclick="exportCSV()">${L()==="en"?"Export records CSV":"내역 CSV 내보내기"}</button>
     </div>
-    <div class="muted" style="font-size:12px;margin-top:10px">CSV 형식: <code>품명,소재용도설명,수량,단가(USD),도착국</code></div>
+    <div class="muted" style="font-size:12px;margin-top:10px">${L()==="en"?"CSV format":"CSV 형식"}: <code>${L()==="en"?"name,desc,qty,unit(USD),dest":"품명,소재용도설명,수량,단가(USD),도착국"}</code></div>
   </div>
   <div class="card" style="margin-bottom:14px">
-    <h3>관세사·환율 정보</h3>
+    <h3>${L()==="en"?"Broker · FX Information":"관세사·환율 정보"}</h3>
     <div class="grid g3" style="margin-top:10px">
-      <div class="field"><label>관세사무소</label><input value="${S.broker.name}" onchange="S.broker.name=this.value;save()"></div>
-      <div class="field"><label>등록번호</label><input value="${S.broker.lic}" onchange="S.broker.lic=this.value;save()"></div>
-      <div class="field"><label>USD→KRW 환율(실시간 mock)</label><div class="row"><input type="number" value="${S.fx}" onchange="S.fx=+this.value||1382;save();render()"><button class="btn sm gho" onclick="doFX()">⟳</button></div></div>
+      <div class="field"><label>${L()==="en"?"Customs office":"관세사무소"}</label><input value="${S.broker.name}" onchange="S.broker.name=this.value;save()"></div>
+      <div class="field"><label>${L()==="en"?"Registration no.":"등록번호"}</label><input value="${S.broker.lic}" onchange="S.broker.lic=this.value;save()"></div>
+      <div class="field"><label>${L()==="en"?"USD→KRW FX (live mock)":"USD→KRW 환율(실시간 mock)"}</label><div class="row"><input type="number" value="${S.fx}" onchange="S.fx=+this.value||1382;save();render()"><button class="btn sm gho" onclick="doFX()">⟳</button></div></div>
     </div>
   </div>
   <div class="card">
-    <h3>데이터 관리</h3>
-    <div class="muted" style="font-size:13px;margin:4px 0 12px">상태는 브라우저 localStorage('${LS_KEY}')에 저장된다. 새로고침해도 유지된다.</div>
-    <button class="btn dang sm" onclick="resetAll()">데모 데이터 초기화</button>
+    <h3>${L()==="en"?"Data Management":"데이터 관리"}</h3>
+    <div class="muted" style="font-size:13px;margin:4px 0 12px">${L()==="en"?`State is stored in browser localStorage('${LS_KEY}'). It persists across refreshes.`:`상태는 브라우저 localStorage('${LS_KEY}')에 저장된다. 새로고침해도 유지된다.`}</div>
+    <button class="btn dang sm" onclick="resetAll()">${L()==="en"?"Reset demo data":"데모 데이터 초기화"}</button>
   </div>`;
 }
+function logChLabel(ch){ if(L()!=="en") return ch==='all'?'전체':ch; return {all:"All","UNI-PASS":"UNI-PASS","환급접수":"Drawback","환율API":"FX API","포워더":"Forwarder","무역금융":"Trade Fin.","바이어포털":"Buyer Portal","선사EDI":"Carrier EDI"}[ch]||ch; }
 
 /* =====================================================================
    ACTIONS

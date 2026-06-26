@@ -109,10 +109,12 @@ async function drive(page, dir, isMobile) {
   await bottom(); await sleep(250);
   await shot(page, dir, M ? "10-integration-new" : "09-integration-new");
 
-  // 08 EN — 대시보드 (i18n 토글)
+  // 08 EN — 대시보드 (i18n 토글). 직전 단계 토스트가 사라질 때까지 대기 후 촬영(오버레이 방지)
   await setLang(page, true);
   await navTo(page, "dashboard", M);
-  await top(); await sleep(350);
+  await top();
+  await page.waitForFunction(() => !document.getElementById("toast").classList.contains("show"), { timeout: 4000 }).catch(() => {});
+  await sleep(400);
   await shot(page, dir, M ? "11-en-dashboard" : "10-en-dashboard");
 
   // 09 EN — 순환경제(MCI)

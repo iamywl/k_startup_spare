@@ -156,6 +156,10 @@
     .tablewrap table{min-width:560px}
     .tablewrap table.matrix{min-width:520px}
     .tablewrap td,.tablewrap th{white-space:nowrap}
+    /* 착지원가 3열 비용표: 모달 폭에 맞춰 가로 스크롤 없이 전 금액 노출 */
+    .tablewrap table.costtbl{min-width:0;width:100%;font-size:13px}
+    .tablewrap table.costtbl td,.tablewrap table.costtbl th{padding:9px 6px;white-space:normal}
+    .tablewrap table.costtbl td.num,.tablewrap table.costtbl th.num{white-space:nowrap}
     .ftarow{font-size:13px}
   }
   @media (max-width:380px){ .g2.keep{grid-template-columns:1fr} }
@@ -797,7 +801,7 @@ function openLanded(id){
   modal(`<div class="hd"><b>관세·물류비 착지원가 시뮬레이션 · ${it.name}</b><button class="iconbtn" onclick="closeModal()">✕</button></div>
   <div class="bd">
     <div class="muted" style="font-size:13px;margin-bottom:10px">도착국 ${it.dest} · 총중량 ${num(lc.wKg)}kg · 물류요율 ${(FREIGHT[it.dest]||2.2)} USD/kg(mock)</div>
-    <div class="tablewrap"><table>
+    <div class="tablewrap"><table class="costtbl">
       <thead><tr><th>비용 항목</th><th class="num">관세 미적용(MFN)</th><th class="num">FTA 특혜 적용</th></tr></thead>
       <tbody>
         <tr><td>상품가액(FOB)</td><td class="num">${usd(lc.valUSD)}</td><td class="num">${usd(lc.valUSD)}</td></tr>

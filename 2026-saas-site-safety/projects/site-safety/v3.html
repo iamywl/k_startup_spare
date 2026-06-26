@@ -321,8 +321,256 @@ function applyI18n(){
   const bs=$("#brandSub"); if(bs) bs.textContent=t("brand.sub");
   const rl=document.querySelector('[data-i18n-label="role"]'); if(rl) rl.textContent=t("role.label");
   const tl=document.querySelector('[data-i18n-label="tenant"]'); if(tl) tl.textContent=t("tenant.label");
+  // 바텀탭 라벨(아이콘 뒤 텍스트노드)·역할셀렉터 옵션 — EN 스윕
+  if(LANG==="en"){ translateDOM($("#bottomnav")); translateDOM($("#roleSel")); }
+  // 칩(현장:·역할)도 갱신 후 EN 적용은 refreshBadges/applyRoleNav 에서 enText 처리
 }
-function setLang(l){ LANG=l; localStorage.setItem("safeon-lang",l); applyI18n(); go(curView); toast(l==="en"?"Language: English":"언어: 한국어"); }
+function setLang(l){ LANG=l; localStorage.setItem("safeon-lang",l); applyI18n(); applyRoleNav(); refreshBadges(); go(curView); toast(l==="en"?"Language: English":"언어: 한국어"); }
+
+/* ── EN UI-chrome phrase map (substring replace; seed data·고유명사는 미매칭→한글 유지) ── */
+const EN_BODY = {
+  // 페이지 헤더 / 섹션 타이틀
+  "본사 통합 대시보드":"HQ Integrated Dashboard","현장 안전현황":"Site Safety Status",
+  "중대재해 위험지수":"Critical-Accident Risk Index","중대재해 발생확률":"Critical-Accident Probability",
+  "안전교육 이수 관리":"Safety Training Records","법정 안전서류":"Legal Safety Documents",
+  "알림톡·외부 연동 로그":"AlimTalk · Integration Log","현장·연동 설정":"Site · Integration Settings",
+  "기상 위험경보":"Weather Risk Alert","아차사고 신고":"Near-miss Report","위험성평가 작성":"New Risk Assessment",
+  "위험성평가":"Risk Assessment","작업허가서(PTW) 발행":"Issue Permit-to-Work (PTW)","아차사고":"Near-miss",
+  "TBM 작업전점검":"TBM Pre-task Check","작업전점검":"Pre-task Check","작업전":"pre-task",
+  "위험 핫스팟 군집":"Risk Hotspot Cluster","핫스팟":"Hotspot",
+  "교육효과 통계분석":"Training-Effect Statistics","협력업체 안전 포털":"Subcontractor Safety Portal","지자체·산재 연동센터":"Gov · Insurance Hub","작업허가(PTW)":"Permit to Work (PTW)",
+  "교육효과":"Training effect","통계분석":"statistical analysis","연동센터":"Integration Hub",
+  // 본사 대시보드 본문
+  "전 현장 안전 현황":"All-Site Safety Status","현장별 위험지수 비교":"Site-by-Site Risk Index",
+  "본사 평균 위험지수":"HQ Average Risk Index","최고위험 현장":"Highest-Risk Site",
+  "법정교육 미이수(전사)":"Legal Training Overdue (co.-wide)","미결 안전조치(전사)":"Open Safety Actions (co.-wide)",
+  "전 현장 가중 위험지수 평균":"Weighted avg risk index, all sites","아차사고 조치 대기":"Near-miss actions pending",
+  "위험지수 상세":"Risk index detail","현장":"Site","근로자":"Workers","위험지수":"Risk Index",
+  "고위험요인":"High-risk factors","미이수":"Overdue","미결조치":"Open actions",
+  "전 현장":"All sites","곳의 안전 상태를":"sites' safety status",
+  // 위험지수
+  "현재 위험지수":"Current Risk Index","위험지수 요인 기여도 분해":"Risk-Index Factor Contribution",
+  "추세 + 2시점 예측":"-day trend + 2-step forecast","안전요인":"Safety factor","현황":"Status",
+  "가중치":"Weight","정규화값":"Normalized","기여점수":"Contribution","기여도":"Share",
+  "합성 위험지수 CSI":"Composite Risk Index (CSI)","위험지수 CSV 내보내기":"Export Risk Index CSV",
+  "고위험 현장 알림톡 발송":"Send High-risk Alert (AlimTalk)","악화":"Rising","개선":"Improving","보합":"Flat",
+  "기울기":"slope","실측 아차사고":"actual near-miss","선형회귀 예측":"linear-regression forecast",
+  // 발생확률
+  "월간 중대재해 발생확률":"Monthly critical-accident probability","전 현장 발생확률 비교":"Probability by Site",
+  "로지스틱 회귀 요인 기여 분해":"Logistic-Regression Factor Breakdown","발생확률 CSV 내보내기":"Export Probability CSV",
+  "위험요인":"Risk factor","정규화 x":"Normalized x","회귀계수 β":"Coef. β","로그오즈 기여 βx":"Log-odds βx",
+  "오즈비 e^β":"Odds ratio e^β","기여":"Contrib.","절편 β₀":"Intercept β₀","합 z · 발생확률 P":"Sum z · Probability P",
+  "기저 로그오즈(저위험 기준)":"Base log-odds (low-risk ref.)","최고위험":"Highest risk",
+  "고위험 → 지자체 신고 + 경영책임자 보고":"High-risk → Report to Gov. + Executive",
+  // 핫스팟
+  "군집 산점도 (위험성 × 사고빈도)":"Cluster scatter (severity × frequency)","현장×공종 위험 히트맵":"Site × Trade Risk Heatmap",
+  "고위험 군집 작업존":"High-risk Cluster Zones","고위험 군집":"High-risk cluster","중위험 군집":"Mid-risk cluster","저위험 군집":"Low-risk cluster",
+  "고위험 군집 작업존이 없습니다.":"No high-risk cluster zones.","핫스팟 CSV 내보내기":"Export Hotspot CSV",
+  "고위험 공종 협력사 통지":"Notify Subcontractor (high-risk trade)","공종":"Trade","위험성":"Severity","사고빈도":"Frequency","군집":"Cluster",
+  "위험성 →":"Severity →","↑사고빈도":"↑Frequency","칸 숫자=위험성(빈도×강도), 색=K-means 군집. 빨강 칸이 점검 우선 핫스팟.":"Cell = severity (freq×intensity), color = K-means cluster. Red cells are priority hotspots.",
+  // PTW
+  "작업허가서 발행":"Issue work permit","현 현장 PTW 준수율":"PTW compliance (this site)","발행 작업허가서":"Issued work permits",
+  "준수율-사고 상관(Pearson)":"Compliance-accident corr. (Pearson)","PTW 준수율 ↔ 사고빈도 상관 (전 현장)":"PTW Compliance ↔ Accident Frequency (all sites)",
+  "PTW 준수율":"PTW compliance","정규화 사고빈도":"Norm. accident freq.",
+  "발행된 작업허가서가 없습니다.":"No work permits issued.","작업 종류(고위험)":"Work type (high-risk)",
+  "작업 위치":"Work location","작업 인원":"Crew size","위험요인 통제 대책":"Hazard control measures",
+  "작업 종류":"Work type","위험 통제":"Hazard control","승인 발행":"Approve & issue","작업허가서 검토":"Permit review",
+  "위치":"Location","인원":"Crew","위험등급":"Risk grade","통제대책":"Controls",
+  "고위험작업 5종은 통제대책 없이는 승인할 수 없습니다.":"The 5 high-risk works cannot be approved without controls.",
+  "승인·발행":"Approve & Issue","고소작업 허가":"Work-at-height permit","화기작업 허가":"Hot-work permit","밀폐공간 출입 허가":"Confined-space permit","굴착작업 허가":"Excavation permit","중량물 양중 허가":"Heavy-lift permit",
+  // 교육효과
+  "교육이수 위험감소율":"Training risk-reduction","Welch t-통계량":"Welch t-statistic","통계적 유의성":"Statistical significance",
+  "집단별 평균 아차사고 노출률":"Mean Near-miss Exposure by Group","완전이수 집단":"Fully-trained group","미이수 포함 집단":"Incl. overdue group",
+  "이수":"Done","미이수포함":"Incl. overdue","교육 이수관리로 이동":"Go to Training Records","유의":"Sig.","미약":"Weak",
+  // 협력사
+  "협력사 안전 스코어카드":"Subcontractor Safety Scorecard","협력사 제출 의무 현황":"Subcontractor Submission Status",
+  "협력사":"Subcontractor","PTW 준수":"PTW compl.","교육이수":"Training","사고":"Accidents","평가":"Score",
+  "전 협력사 안전공지 발송":"Broadcast Safety Notice","스코어카드 CSV":"Scorecard CSV","협력사 1차 결재 권한":"1st-tier approval",
+  "작업허가서(PTW) 제출":"PTW submission","TBM 일지 제출":"TBM log submission","근로자 교육이수 증빙":"Training proof","산재보험 가입 확인":"Insurance check",
+  "제출완료":"Submitted","미제출":"Not submitted",
+  // 지자체·산재
+  "지자체 안전점검 신고":"Gov. Safety-Inspection Report","근로복지공단 산재보고":"Insurance (KCOMWEL) Report","KOSHA 위험성평가 등록":"KOSHA Risk-Assessment Filing",
+  "점검 신고 접수":"File inspection","산재 사고보고 전송":"Send accident report","KOSHA 동기화":"Sync KOSHA",
+  "관계기관 연동 이력":"Agency Integration History","열람전용":"Read-only",
+  // 대시보드
+  "최근 7일 아차사고 추세":"Near-miss Trend (last 7 days)","의무 이행 체크":"Compliance Checklist","미결 안전 조치":"Open Safety Actions",
+  "위험성평가 실시":"Risk assessment done","당일 TBM 기록":"TBM logged today","법정 안전교육 100% 이수":"100% legal training","안전서류 결재 진행":"Docs in approval",
+  "신고 ›":"Report ›","의무 이행 현황을 입증 가능한 형태로 집계합니다.":"Aggregates compliance in auditable form.",
+  "현재 역할":"Current role",
+  // 기상
+  "최고기온":"Max temp","순간풍속":"Wind gust","강수량":"Rainfall","발령 경보":"Active alerts","전 현장 기상 비교":"Weather by Site",
+  "폭염경보":"Heat warning","폭염주의보":"Heat advisory","양중중지 검토":"Halt lifting","호우경보":"Heavy-rain warning","호우주의보":"Heavy-rain advisory","정상":"Normal","주의":"Caution","풍속":"Wind","강수":"Rain","경보":"Alert",
+  "전 작업자에게 경보 알림톡 발송":"Send Alert to All Workers (AlimTalk)","현재 발령된 기상 위험경보가 없습니다.":"No active weather alerts.",
+  // 위험성평가
+  "새 위험성평가 작성":"New Risk Assessment","아직 작성된 위험성평가가 없습니다.":"No risk assessments yet.",
+  "공정 선택":"Select process","위험요인 평가":"Assess hazards","감소대책":"Controls","검토·발행":"Review & issue",
+  "평가 대상 공정":"Target process","선택한 공정의 표준 위험요인이 자동 로드됩니다.":"Standard hazards for the selected process load automatically.",
+  "빈도":"Freq.","강도":"Intensity","위험성 감소대책":"risk-reduction control","검토":"Review",
+  "발행 + 결재상신":"Issue + Submit","이전":"Back","다음":"Next","취소":"Cancel",
+  // TBM
+  "오늘 TBM 시작":"Start Today's TBM","금일 TBM 기록이 없습니다.":"No TBM logged today.","점검":"Checks",
+  "금일 작업 공정":"Today's process","오늘의 핵심 위험요인 및 대책":"Key hazards & controls for today","점검 진행률":"Check progress",
+  "참석자 이름":"Attendee name","지우기":"Clear","서명 추가":"Add signature","서명완료":"Signed","아직 서명한 참석자가 없습니다.":"No attendees have signed yet.",
+  "TBM 일지 저장":"Save TBM Log",
+  // 아차사고
+  "아차사고 유형":"Near-miss type","위험도":"Severity","발생 위치":"Location","유형·위험도":"Type · severity","현장 사진":"Site photo","상세·신고":"Detail · report",
+  "현장 사진 촬영/첨부 (탭하여 선택)":"Take/attach site photo (tap to select)","장 첨부됨":"photo(s) attached",
+  "사진은 선택사항이지만 첨부 시 재발방지 검토에 활용됩니다.":"Photos are optional but help recurrence-prevention review.",
+  "신고자":"Reporter","상황 상세":"Details","접수된 아차사고가 없습니다.":"No near-misses reported.","조치완료":"Resolved","접수":"Received",
+  // 교육
+  "대상 근로자":"Target workers","법정교육 미이수":"Overdue legal training","전체 이수율":"Overall completion","근로자별 이수 현황":"Completion by Worker",
+  "직종":"Trade","CSV 내보내기":"Export CSV","CSV 가져오기":"Import CSV","교육일지 PDF":"Training Log PDF","미이수자 알림톡":"Notify Overdue (AlimTalk)",
+  // 서류
+  "위험성평가표":"Risk Assessment","작업허가서":"Work Permit","TBM 일지":"TBM Log","안전교육일지":"Training Log","아차사고 대장":"Near-miss Register",
+  "서류함":"Document box","안전교육일지 PDF":"Training Log PDF","아차사고 대장 PDF":"Near-miss Register PDF","PDF 생성":"Generate PDF",
+  "위험성평가·TBM을 작성하면 서류가 자동 등록됩니다.":"Documents register automatically once you create assessments/TBMs.",
+  // 결재
+  "결재 승인":"approve","결재 대기 — 역할 전환 시 승인 가능":"approval pending — switch role to approve",
+  "상신된 결재가 없습니다. 위험성평가를 발행하면 자동 상신됩니다.":"No approvals submitted. Issuing a risk assessment submits one automatically.",
+  "결재 권한 없음(열람)":"No approval rights (view)","단계":"step",
+  // 알림톡 로그
+  "카카오 알림톡":"Kakao AlimTalk","기상 API":"Weather API","CSV 입출력":"CSV I/O","전자결재":"e-Approval",
+  "현장 연동 이벤트 로그":"Site Integration Event Log","테스트 알림톡 발송":"Send Test AlimTalk","발송":"sent","조회":"queries","이벤트":"events",
+  "아직 연동 이벤트가 없습니다. 위험성평가 발행·기상경보·CSV 출력 시 자동 기록됩니다.":"No integration events yet. They log automatically on issuing assessments, weather alerts, or CSV exports.",
+  // 설정
+  "현장명":"Site name","시공사(원청)":"Contractor (prime)","소재지":"Address","외부 시스템 연동 (mock)":"External Integrations (mock)",
+  "기상청 API":"Weather (KMA) API","MSDS·물질 DB":"MSDS · Material DB","전자결재 게이트웨이":"e-Approval gateway",
+  "위험·미이수·경보 통지":"Risk · overdue · alert notices","폭염·강풍·호우 경보":"Heat · wind · rain alerts","화학물질 정보 조회":"Chemical info lookup",
+  "결재 상신·승인 연계":"Approval submit/approve link","관할 지자체 점검 접수":"Local-gov inspection intake","산재보험 사고보고 연계":"Insurance accident-report link",
+  "협력사 안전 통지·스코어":"Subcontractor notice · score","안전보건공단 시스템 연계":"KOSHA system link",
+  "전체 백업 (JSON)":"Full Backup (JSON)","데이터 초기화":"Reset Data","적용 법령:":"Applicable laws:",
+  // 공통 칩/단위/상태
+  "고위험":"High-risk","고위험 작업":"High-risk work","일반":"Standard","승인":"Approved","진행":"In progress","완결":"Completed","대기":"Pending",
+  "완료":"Done","필요":"Required","제출":"Submit","미입력":"Not entered","미지정":"Unassigned","없음":"None",
+  "현장:":"Site:","역할":"Role","더보기":"More","AI예측":"AI Forecast","본사":"HQ","작업허가":"Permit",
+  "자체 가중모델":"in-house weighted model","회귀계수 자체가정":"self-assumed coefficients","표준 공정 위험":"standard process risk","집단 노출 프록시":"group-exposure proxy","[추정]":"[est.]",
+  "위험 ":"High ","안정":"Stable","주의보":"advisory",
+  "[데모]":"[demo]","[demo]":"[demo]",
+  // 역할명(셀렉터·결재선)
+  "작업자 / 반장":"Worker / Foreman","협력업체 안전담당":"Subcontractor HSE","현장소장 / 안전관리책임자":"Site Manager / HSE Lead",
+  "본사 안전관리자 (HSE팀)":"HQ Safety Manager (HSE)","원청 / 발주처 (감독)":"Prime / Client (supervisor)","대표이사 (경영책임자)":"CEO (Executive)",
+  "협력사 안전담당":"Subcontractor HSE","안전관리자":"Safety Manager","현장소장":"Site Manager","경영책임자":"Executive",
+  // ── page-sub 설명문(정적 텍스트노드 단위) ──
+  " · 전 현장 ":" · All ","곳의 안전 상태를 본사(HSE팀·경영책임자) 관점으로 통합합니다. 중대재해처벌법 §4 경영책임자 의무 이행을 현장 단위로 입증합니다.":" sites' safety unified from the HQ (HSE team · executive) view. Proves executives' duty under the Serious Accidents Punishment Act §4 at the site level.",
+  "6개 안전요인(교육·고위험·아차사고·TBM·기상·서류)을 가중 결합해 0~100 위험지수(CSI)를 산정하고, 최근 추세를 선형회귀로 예측합니다. ":"Combines 6 safety factors (training · high-risk · near-miss · TBM · weather · docs) into a 0–100 risk index (CSI) and forecasts the recent trend by linear regression. ",
+  "로지스틱 회귀 ":"Logistic regression ","로 현장별 ":" computes each site's ","을 산출합니다. 6개 위험요인의 로그오즈 기여·오즈비(odds ratio)를 분해합니다. ":". Decomposes the log-odds contribution and odds ratio of 6 risk factors. ",
+  "현장×공종(작업존)을 위험성·사고빈도 2차원으로 표준화해 ":"Standardizes site×trade (work zones) on severity and accident-frequency, then ","로 군집화합니다. 고위험 군집에 점검 자원을 집중 배치합니다. ":" clusters them. Inspection resources concentrate on the high-risk cluster. ",
+  "고위험작업은 작업 전 ":"High-risk work requires ","상관":" correlation","을 분석합니다.":" analysis.","승인이 의무입니다. 현장별 PTW 준수율과 사고빈도의 ":" approval before work. Analyzes the per-site PTW compliance vs. accident-frequency ",
+  "전 현장 근로자를 ":"Splits all-site workers into ","과 ":" and ","으로 나눠 아차사고 노출률을 ":", compares near-miss exposure by ","으로 비교하고 교육의 위험감소 효과를 정량화합니다. ":" and quantifies training's risk-reduction effect. ","법정교육 완전이수 집단":"fully-trained group","미이수 포함 집단":"group incl. overdue",
+  "원·하청 안전관리 일원화. 협력사별 작업허가 준수율·교육이수율·사고를 본사가 통합 모니터링하고 포털로 통지합니다. ":"Unified prime/subcontractor safety. HQ monitors each subcontractor's permit compliance, training rate, and accidents, and notifies via the portal. ",
+  "지자체 안전점검 신고·근로복지공단 산재보고·KOSHA 위험성평가 등록을 한 곳에서 연계합니다. (mock — 접수번호·처리번호 발급 시연)":"Links local-gov safety-inspection reports, KCOMWEL accident reports, and KOSHA risk-assessment filings in one place. (mock — receipt/processing-number demo)",
+  " · 현재 역할: ":" · Current role: "," · 의무 이행 현황을 입증 가능한 형태로 집계합니다.":" · Aggregates compliance in auditable form.",
+  "기상청 API(mock) 연동. 폭염·강풍·호우 임계 초과 시 작업중지·휴게 가이드를 자동 발령하고 알림톡으로 통지합니다.":"KMA weather API (mock). When heat/wind/rain thresholds are exceeded, it auto-issues work-stop/rest guidance and notifies via AlimTalk.",
+  "공정별 위험요인을 빈도·강도로 평가하고 감소대책과 함께 기록합니다. (산업안전보건법 §36)":"Assesses per-process hazards by frequency and intensity and records them with controls. (OSH Act §36)",
+  "빈도(1~5)×강도(1~5)로 위험성을 산정합니다. 15↑ 상 · 8↑ 중 · 그 외 하.":"Risk = frequency(1–5) × intensity(1–5). ≥15 High · ≥8 Mid · else Low.",
+  "작업 시작 전 위험요인을 공유하고 참석자 전원이 서명합니다. 타임스탬프·서명이 함께 기록됩니다.":"Share hazards before work; every attendee signs. Timestamp and signature are recorded.",
+  "참석자가 패드에 서명하면 명단에 추가됩니다 (캔버스 → 이미지 저장).":"When an attendee signs on the pad, they are added to the list (canvas → image).",
+  "사고로 이어질 뻔한 상황을 즉시 신고합니다. 사진·위치·조치가 기록되어 재발방지에 활용됩니다.":"Report situations that nearly led to an accident. Photo, location, and action are logged for recurrence prevention.",
+  "근로자·교육별 이수 현황을 추적합니다. 법정교육 미이수자는 자동 알림 처리되며 미이수자에게 알림톡을 발송할 수 있습니다.":"Tracks completion by worker and course. Overdue legal-training workers are flagged automatically and can be notified by AlimTalk.",
+  "위험성평가·TBM·교육 기록에서 법정 안전서류를 자동 생성하고 PDF로 출력·보관합니다.":"Auto-generates legal safety documents from risk-assessment, TBM, and training records, and exports/stores them as PDF.",
+  "안전관리자 → 현장소장 → 경영책임자 순으로 결재합니다. ":"Approval flows Safety Manager → Site Manager → Executive. ",
+  "카카오 알림톡·기상 API·CSV 입출력·전자결재 등 외부 시스템 연동 이벤트가 시점·채널·상태와 함께 적재됩니다. (mock — 오프라인 시연용)":"External-integration events (Kakao AlimTalk, weather API, CSV I/O, e-approval) are logged with time, channel, and status. (mock — for offline demo)",
+  "현장 기본정보·외부 연동 스위치·데이터를 관리합니다.":"Manage site basics, external-integration switches, and data.",
+  "현재 역할(":"Current role (",")은 ":") is ","결재 권한 없음(열람).":"no approval rights (view).",
+  // sec-h / meta 추가 조각
+  "관할 지자체에 현장 안전점검을 요청합니다. 발생확률 ":"Requests a site safety inspection from the local government. Probability ",
+  "아차사고/사고를 산재보험 시스템에 보고합니다.":"Reports near-misses/accidents to the insurance system.",
+  "위험성평가 결과를 안전보건공단 시스템에 연계합니다.":"Links risk-assessment results to the KOSHA system.",
+  "아직 관계기관 연동 이력이 없습니다. 신고·보고·동기화 시 접수번호와 함께 기록됩니다.":"No agency-integration history yet. Reports/syncs are logged with a receipt number.",
+  "고위험작업 5종은 통제대책 없이는 승인할 수 없습니다.":"The 5 high-risk works cannot be approved without controls.",
+  "승인 시 결재 상신·협력사 통지·KOSHA 등록이 자동 수행됩니다.":" — approval auto-submits, notifies subcontractors, and files with KOSHA.",
+  "발행 시 ① 평가표 저장 ② 법정서류함 등록 ③ 전자결재(안전관리자→소장→경영책임자) 상신 ④ 고위험 발생 시 관리감독자 알림톡이 자동 발송됩니다.":"On issue: ① save the table ② register in the legal-doc box ③ submit e-approval (Safety Mgr→Site Mgr→Executive) ④ on high-risk, auto-notify supervisors via AlimTalk.",
+  "신고 시 ① 대장 등록 ② 추세·위험지수 반영 ③ 위험도 '상'이면 즉시 결재 상신 + 관리자 알림톡.":"On report: ① register ② reflect in trend/risk-index ③ if severity 'H', immediately submit approval + notify managers.",
+  "발생확률 ":"Probability ","현장 정기 안전점검 요청":" — periodic site safety-inspection request",
+  // ── 기상 경보 메시지 ──
+  "폭염":"Heatwave","강풍":"High wind","호우":"Heavy rain","최고기온 ":"Max temp ","순간풍속 ":"Wind gust ","강수 ":"Rainfall ",
+  ". 옥외작업 휴게(매시 10~15분)·시원한 물·그늘 의무.":". Outdoor-work rest (10–15 min/hr), water, and shade required.",
+  " — 타워크레인·양중작업·고소 비계 작업 중지 검토.":" — consider halting tower-crane, lifting, and high scaffold work.",
+  " — 굴착 사면 붕괴·감전 위험. 흙막이·배수 점검.":" — slope-collapse/electric-shock risk. Check shoring and drainage.",
+  // ── riskindex / predict 동적 권고문 ──
+  "즉시 작업중지·시정조치 권고. 경영책임자 보고 대상.":"Immediate work-stop and corrective action advised; report to executive.",
+  "중점 관리 필요. 미이수·고위험 요인 우선 해소.":"Needs focused management; resolve overdue and high-risk factors first.",
+  "관리 양호. 현 수준 유지.":"Well managed; maintain current level.",
+  "즉시 작업중지·경영책임자 보고·지자체 신고 검토 대상.":"Immediate work-stop, executive report, and gov. filing under review.",
+  "중점관리. 상위 기여요인 우선 해소 시 확률 하락.":"Focused management; resolving top factors lowers the probability.",
+  "로그오즈 z=":"Log-odds z=",
+  // ── ptw 상관 판정문 ──
+  "강한 음의 상관":"Strong negative correlation",": PTW 준수율이 높을수록 사고빈도가 낮음(허가제 효과 입증).":": higher PTW compliance means lower accident frequency (permit-system effect).",
+  "약한 음의 상관.":"Weak negative correlation.","상관 미약 — 표본 확대 필요.":"Correlation weak — larger sample needed.",
+  // ── eduanalysis 해석 ──
+  "해석:":"Interpretation:","법정교육을 완전이수한 집단의 평균 노출률(":"The fully-trained group's mean exposure (",")이 미이수 포함 집단(":") is, vs. the group incl. overdue (",") 대비 ":"), "," 낮음":" lower",
+  "두 집단 차이는 통계적으로 유의(|t|≥1.96)하여 교육 의무 이행이 사고 노출을 실질적으로 낮춘다는 근거.":"The difference is statistically significant (|t|≥1.96), evidencing that fulfilling the training duty materially lowers accident exposure.",
+  "표본이 작아 유의성은 약함 — 데이터 축적 시 강화.":"Small sample, so significance is weak — strengthens as data accumulates.",
+  "활용:":"Use:","미이수자 알림톡 발송(교육 뷰)·고노출 현장 우선 재교육 배치·발주처 보고서에 교육 ROI 근거로 첨부. 본 분석은 위험지수 CSI·발생확률 모델의 교육요인 가중을 사후 검증한다.":"Send AlimTalk to overdue workers (Training view), prioritize retraining at high-exposure sites, and attach as training-ROI evidence in client reports. This analysis post-validates the training-factor weight in the CSI and probability models.",
+  // ── settings 법령 ──
+  "적용 법령:":"Applicable laws:"," 중대재해처벌법(상시근로자 5인 이상)·산업안전보건법. 위험성평가·교육·기록 의무 부과.":" Serious Accidents Punishment Act (≥5 regular workers) and OSH Act. Impose risk-assessment, training, and record duties.",
+  // ── 요일 라벨은 EN_EXACT(정확일치)에서 처리 — 여기선 미선언(수원 등 오매칭 방지) ──
+  "번호·처리번호":"receipt/processing no.","근로복지공단":"KCOMWEL",
+  // 단위(앞 공백 보장 → 단어 내부 미매칭)
+  " 명":" workers"," 건":" cases"," 곳":" sites"," 존":" zones"," 점":" pts"," 발송":" sent"," 조회":" queries"," 이벤트":" events",
+  "곳의 ":" of ",
+  // ── 발생확률 escalate / 동적 ──
+  "현 현장":"This site","요인 밀도":"factor density",
+  "법정교육 미이수율":"Legal-training overdue rate","고위험(상) 요인 밀도":"High-risk (H) factor density","아차사고 빈도":"Near-miss frequency","작업허가(PTW) 미준수":"PTW non-compliance","TBM 미실시":"TBM not done","미준수":"non-compliance",
+  // ── 교육과정명(테이블 헤더·칩) ──
+  "건설업 기초안전보건교육":"Construction Basic OSH","정기 안전보건교육":"Periodic OSH","특별안전보건교육":"Special OSH","MSDS·화학물질 취급교육":"MSDS Handling","화학물질 취급교육":"Chemical Handling",
+  // ── 통계·기타 ──
+  "Welch t-검정":"Welch t-test","검정":"test","근로복지공단 산재":"KCOMWEL Insurance","협력업체 포털":"Subcontractor Portal","지자체 안전점검 신고":"Local-Gov Inspection","KOSHA 위험성평가":"KOSHA Risk Assessment",
+  "최근 7일 아차사고 추세":"Near-miss Trend (last 7 days)","일평균":"daily avg","당일":"today",
+  "미결":"Open","상)":"H)","미실시":"not done","미완료":"Incomplete","미Completed":"Incomplete",
+  "전자결재함":"e-Approval",
+  // ── 잔여 UI 어휘 ──
+  "오늘 TBM 기록":"TBM logged today","TBM 기록":"TBM logged","기록이 없습니다":"none recorded","가 없습니다.":" — none.","가 없습니다":" — none","없습니다.":"none.",
+  "고위험(상) 요인":"High-risk (H) factors","고위험요인":"High-risk factors","요인":"factor","서류·결재 이행":"Docs/approval","이행":"compliance",
+  "기상 위험":"Weather risk","기상":"Weather","최고 ":"Max ","7일 ":"7-day ","예측 D+1 ":"forecast D+1 ","·D+2 ":" ·D+2 ","예측":"forecast",
+  "실선=":"Solid=",", 빗금=":", hatched=","빗금":"hatched","명 중":" total","명 중)":" total)","TODO: Subcontractor명":"TODO: Subcontractor name","협력사명":"subcontractor name",
+  "8종":"8 types",
+  // ── 위험지수 요인 행(raw·k) ──
+  "미완결":"None completed","완결 있음":"Completed exists","아차사고 빈도·미결":"Near-miss freq · open","당일 TBM 미실시":"TBM not done today","법정교육 미이수":"Legal training overdue",
+  "실시":"done","미이수 ":"Overdue ","미결 ":"Open ","일평균 ":"daily avg ","풍속 ":"Wind ","주의":"Caution",
+  // ── 연동 로그 문구(동적 메시지·channel type) ──
+  "안전보건공단 위험성평가 등록":"KOSHA Risk-Assessment Filing","근로복지공단 산재 보고":"KCOMWEL Insurance Report","협력업체 포털 통지":"Subcontractor Portal Notice",
+  "위험성평가 결과 KOSHA 사업장 위험성평가 시스템 연계 → 동기화 OK":"risk-assessment results linked to the KOSHA workplace system → sync OK",
+  "관할 지자체 접수 → 접수번호 ":"received by local gov → receipt no. ","산재보험 사고보고 전송 → 처리번호 ":"insurance accident report sent → ref no. ",
+  "협력사 ":"subcontractors ","곳 포털 알림 → 상태 OK":" portal notified → status OK",
+  "수신 ":"recipients "," 발송요청 → 상태 2000(정상)":" send requested → status 2000 (OK)","알림톡":"AlimTalk",
+  "중대재해 사전조치":"Pre-emptive Critical-Accident Action","중대재해 고위험 사전 신고":"Critical-Accident High-risk Pre-report","중대재해 High-risk 사전 신고":"Critical-Accident High-risk Pre-report",
+  "현장 안전점검 신고":"Site Safety-Inspection Report","산재 사고보고":"Insurance Accident Report","연동 테스트":"Integration Test","테스트 알림톡":"Test AlimTalk",
+  "월간 ":"Monthly ","관할 지자체 안전점검 요청":"local-gov safety-inspection request","관할 지자체 안전Checks 요청":"local-gov safety-inspection request",
+  "안전 요청합니다.":"safety inspection requested.","Received번호 ":"receipt no. ","번호 ":"no. ","등록":" filed","연계":" linked","동기화":"sync","사업장":"workplace","관할 지자체":"local gov",
+  "안전Checks":"safety inspection","안전점검":"safety inspection",
+  "미결 안전조치 ":"Open safety-actions ","안전조치":"safety-action","관련 사고보고":"related accident report","관련 Accidents보고":"related accident report","사고보고":"accident report","Accidents보고":"accident report",
+};
+/* 단어 내부 오매칭이 위험한 짧은/모호한 라벨 → 텍스트노드 전체 정확일치만 치환 */
+const EN_EXACT = {
+  "월":"Mon","화":"Tue","수":"Wed","목":"Thu","금":"Fri","토":"Sat","오늘":"Today","내일":"Tomorrow",
+  "이수":"Done","미이수포함":"Incl. overdue","상":"H","중":"M","하":"L","건":"cases","명":"workers","곳":"sites","존":"zones",
+};
+const EN_KEYS = Object.keys(EN_BODY).sort((a,b)=>b.length-a.length);
+const EN_UNIT={"건":" cases","명":" workers","곳":" sites","점":" pts","존":" zones","건·":" cases·"};
+function enText(s){
+  let out=s;
+  for(const k of EN_KEYS){ if(out.indexOf(k)>=0) out=out.split(k).join(EN_BODY[k]); }
+  // 숫자+단위(같은 텍스트노드 내) → 영문 단위
+  out=out.replace(/(\d)\s*(건|명|곳|점|존)/g,(m,d,u)=>d+EN_UNIT[u]);
+  return out;
+}
+function translateDOM(root){
+  if(LANG!=="en") return;
+  const walk=(node)=>{
+    const tw=document.createTreeWalker(node, NodeFilter.SHOW_TEXT, null);
+    const tn=[]; let n; while((n=tw.nextNode())) tn.push(n);
+    tn.forEach(t=>{
+      const v=t.nodeValue; if(!/[가-힣]/.test(v)) return;
+      if(t.parentElement && t.parentElement.closest("[data-seed]")) return; // 시드 콘텐츠 보존
+      const trimmed=v.trim();
+      if(EN_EXACT[trimmed]!=null){ t.nodeValue=v.replace(trimmed, EN_EXACT[trimmed]); return; }
+      const nv=enText(v); if(nv!==v) t.nodeValue=nv;
+    });
+  };
+  walk(root);
+  root.querySelectorAll("[placeholder]").forEach(el=>{ const p=el.getAttribute("placeholder"); if(/[가-힣]/.test(p)){ const np=enText(p); if(np!==p) el.setAttribute("placeholder",np); } });
+}
 
 const STD_RISK = [
   {proc:"철근·거푸집", haz:"개구부·단부 추락", base:[4,4]},
@@ -651,9 +899,10 @@ function go(v){
   if(!can(v)){ toast("현재 역할("+role().nm+")은 이 메뉴 권한이 없습니다"); v=role().views[0]; }
   curView=v;
   document.querySelectorAll(".nav-btn,[data-view]").forEach(b=>b.classList.toggle("active", b.dataset.view===v));
-  $("#topTitle").textContent=TITLES[v]||"";
+  $("#topTitle").textContent = LANG==="en" ? enText(TITLES[v]||"") : (TITLES[v]||"");
   $("#content").innerHTML=`<div class="view active">${VIEWS[v]()}</div>`;
   if(AFTER[v]) AFTER[v]();
+  translateDOM($("#content"));
   closeDrawer(); window.scrollTo(0,0);
 }
 function openDrawer(){document.body.classList.add("drawer-open");}
@@ -672,15 +921,15 @@ function applyRoleNav(){
   document.querySelectorAll(".sidebar .nav-btn[data-view]").forEach(b=>{
     const v=b.dataset.view; b.classList.toggle("lock", !can(v));
   });
-  $("#roleDesc").textContent=role().desc;
-  $("#rolePill").textContent=role().nm.split(" / ")[0].split(" (")[0];
+  $("#roleDesc").textContent= LANG==="en"?enText(role().desc):role().desc;
+  $("#rolePill").textContent= LANG==="en"?enText(role().nm.split(" / ")[0].split(" (")[0]):role().nm.split(" / ")[0].split(" (")[0];
 }
 function refreshBadges(){
   const pend=S.sites.reduce((a,st)=>a+st.approvals.filter(x=>x.status==="진행").length,0);
   const unread=S.notifyLog.filter(l=>l.site===site().id).length;
   ["#apprBadge"].forEach(sel=>{const e=$(sel);const p=site().approvals.filter(a=>a.status==="진행").length;e.textContent=p;e.style.display=p?"":"none";});
   const bd=$("#bellDot"); bd.textContent=unread; bd.style.display=unread?"":"none";
-  $("#sitePill").textContent="현장: "+site().name;
+  $("#sitePill").textContent=(LANG==="en"?"Site: ":"현장: ")+site().name;
 }
 
 /* ═══════════════ 뷰: 본사 통합 대시보드 ═══════════════ */
@@ -1131,7 +1380,7 @@ function tbmWizard(){
   const steps=["점검항목","위험요인","참석 서명"]; let body="";
   if(TW.step===0){
     body=`<div class="field"><label>금일 작업 공정</label><input value="${esc(TW.proc)}" onchange="TW.proc=this.value"></div>
-    ${TBM_ITEMS.map((it,i)=>`<label class="check-item ${TW.checks[i]?'checked':''}" id="ci${i}"><input type="checkbox" ${TW.checks[i]?'checked':''} onchange="tbmCheck(${i},this.checked)"><div><div class="t">${it.t}</div><div class="d">${it.d}</div></div></label>`).join("")}`;
+    ${TBM_ITEMS.map((it,i)=>`<label class="check-item ${TW.checks[i]?'checked':''}" id="ci${i}" data-seed><input type="checkbox" ${TW.checks[i]?'checked':''} onchange="tbmCheck(${i},this.checked)"><div><div class="t">${it.t}</div><div class="d">${it.d}</div></div></label>`).join("")}`;
   } else if(TW.step===1){
     body=`<div class="field"><label>오늘의 핵심 위험요인 및 대책</label><textarea onchange="TW.hazard=this.value" placeholder="예: 3층 개구부 단부 추락 — 안전난간·덮개 확인, 안전대 체결 후 작업">${esc(TW.hazard)}</textarea></div>
       <div class="card"><div class="meta">점검 진행률</div><div class="pbar" style="margin-top:8px"><i style="width:${TW.checks.filter(c=>c).length/TBM_ITEMS.length*100}%"></i></div></div>`;

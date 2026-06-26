@@ -83,6 +83,7 @@
   .tbl-wrap{overflow-x:auto; -webkit-overflow-scrolling:touch}
   .tbl-wrap table{min-width:520px}
   .tbl-wrap.wide table{min-width:680px}
+  .tbl-wrap table#rbacTbl{min-width:760px}
   /* ---- buttons ---- */
   .btn{border:0; background:var(--brand); color:#fff; padding:10px 16px; border-radius:11px; font-weight:700; font-size:14px}
   .btn:disabled{opacity:.45; cursor:not-allowed}
@@ -207,29 +208,29 @@
       <!-- 1. dashboard -->
       <section class="view active" id="view-dashboard">
         <div class="grid g4">
-          <div class="card kpi"><div class="label">올바로 입력기한 임박</div><div class="num" id="kpiDue">0<small>건</small></div><div class="delta" id="kpiDueSub">10일 이내</div></div>
-          <div class="card kpi"><div class="label">이번 분기 처리량</div><div class="num" id="kpiTon">0<small>톤</small></div><div class="delta">처리 완료 기준</div></div>
-          <div class="card kpi"><div class="label">재활용률</div><div class="num" id="kpiRecyc">0<small>%</small></div><div class="delta" id="kpiRecycSub">전국 86.0% 대비</div></div>
-          <div class="card kpi"><div class="label">정산 이상 탐지</div><div class="num" id="kpiAnom">0<small>건</small></div><div class="delta" id="kpiAnomSub">검증 필요</div></div>
+          <div class="card kpi"><div class="label" data-i18n="db.kpiDue">올바로 입력기한 임박</div><div class="num" id="kpiDue">0<small data-i18n="u.cnt">건</small></div><div class="delta" id="kpiDueSub">10일 이내</div></div>
+          <div class="card kpi"><div class="label" data-i18n="db.kpiTon">이번 분기 처리량</div><div class="num" id="kpiTon">0<small data-i18n="u.ton">톤</small></div><div class="delta" data-i18n="db.kpiTonSub">처리 완료 기준</div></div>
+          <div class="card kpi"><div class="label" data-i18n="db.kpiRecyc">재활용률</div><div class="num" id="kpiRecyc">0<small>%</small></div><div class="delta" id="kpiRecycSub">전국 86.0% 대비</div></div>
+          <div class="card kpi"><div class="label" data-i18n="db.kpiAnom">정산 이상 탐지</div><div class="num" id="kpiAnom">0<small data-i18n="u.cnt">건</small></div><div class="delta" id="kpiAnomSub">검증 필요</div></div>
         </div>
         <div class="grid g2" style="margin-top:14px">
           <div class="card">
-            <h3>월별 처리량 + 다음달 예측 <span class="sub">(이동평균·추세)</span></h3>
+            <h3><span data-i18n="db.tonTitle">월별 처리량 + 다음달 예측</span> <span class="sub" data-i18n="db.tonSub">(이동평균·추세)</span></h3>
             <canvas class="chart" id="chartTon"></canvas>
-            <div class="legend"><span><i style="background:#0a7d4b"></i>실측 처리량</span><span><i style="background:#1463ff"></i>예측(예측구간)</span></div>
+            <div class="legend"><span><i style="background:#0a7d4b"></i><span data-i18n="db.legObs">실측 처리량</span></span><span><i style="background:#1463ff"></i><span data-i18n="db.legPred">예측(예측구간)</span></span></div>
           </div>
           <div class="card">
-            <h3>처리방법 구성 <span class="sub">(이번 분기)</span></h3>
+            <h3><span data-i18n="db.mixTitle">처리방법 구성</span> <span class="sub" data-i18n="db.mixSub">(이번 분기)</span></h3>
             <canvas class="chart" id="chartMix"></canvas>
             <div class="legend">
-              <span><i style="background:#0a7d4b"></i>재활용</span>
-              <span><i style="background:#6b7280"></i>소각</span>
-              <span><i style="background:#1f2933"></i>매립</span>
+              <span><i style="background:#0a7d4b"></i><span data-i18n="db.mRecyc">재활용</span></span>
+              <span><i style="background:#6b7280"></i><span data-i18n="db.mIncin">소각</span></span>
+              <span><i style="background:#1f2933"></i><span data-i18n="db.mLand">매립</span></span>
             </div>
           </div>
         </div>
         <div class="card" style="margin-top:14px">
-          <h3>처리해야 할 일 <span class="sub" id="dashRoleHint"></span></h3>
+          <h3><span data-i18n="db.todo">처리해야 할 일</span> <span class="sub" id="dashRoleHint"></span></h3>
           <div class="tbl-wrap"><table id="todoTbl"></table></div>
         </div>
       </section>
@@ -861,6 +862,13 @@ const I18N = {
     "v.recommend":"처리업체 추천","v.verify":"정산 검증","v.risk":"부정 리스크","v.esg":"ESG·탄소",
     "v.integration":"외부연동","v.exchange":"유가물 거래소","v.partner":"운반·처리 콘솔","v.audit":"감사로그","v.tenant":"테넌트·권한",
     "bn.dashboard":"대시보드","bn.discharge":"배출","bn.circular":"순환성","bn.lca":"LCA","bn.risk":"리스크",
+    "db.kpiDue":"올바로 입력기한 임박","db.kpiTon":"이번 분기 처리량","db.kpiTonSub":"처리 완료 기준","db.kpiRecyc":"재활용률","db.kpiAnom":"정산 이상 탐지",
+    "db.dueSoon":"10일 이내","db.dueShort":"최단","db.dueEasy":"여유","db.recycOver":"전국 평균 상회","db.recycVs":"전국 86.0% 대비","db.anomNeed":"검증 필요","db.anomHold":"정산 보류 검토","db.anomNone":"이상 없음","db.roleScreen":"화면",
+    "db.tonTitle":"월별 처리량 + 다음달 예측","db.tonSub":"(이동평균·추세)","db.legObs":"실측 처리량","db.legPred":"예측(예측구간)",
+    "db.mixTitle":"처리방법 구성","db.mixSub":"(이번 분기)","db.mRecyc":"재활용","db.mIncin":"소각","db.mLand":"매립",
+    "db.todo":"처리해야 할 일","db.thNo":"인계번호","db.thItem":"품목","db.thWt":"중량","db.thStage":"상태","db.thAction":"해야 할 일","db.empty":"처리할 일이 없습니다.",
+    "db.aWeigh":"계근 입력","db.aSign":"3자 서명","db.aSend":"올바로 전송","db.aSettle":"정산","db.aDone":"완료",
+    "st.settled":"정산완료","st.signed":"인계완료","st.weighed":"계근완료","st.registered":"배출등록","u.case":"건","u.cnt":"건","u.ton":"톤",
     "ce.mci":"물질순환지표(MCI)","ce.mciSub":"0(선형)~1(완전순환)","ce.reuse":"재자원화율","ce.reuseSub":"재활용+유가매각",
     "ce.virgin":"신재 대체량","ce.virginSub":"2차원료 대체 추정","ce.next":"다음분기 순환성","ce.nextSub":"추세 예측",
     "ce.formula":"물질순환지표 산식","ce.formulaNote":"MCI = 1 − LFI · F(X). 선형흐름지표(LFI)는 신재 투입·매립 폐기 비중, F(X)는 사용강도 보정. 처리방법별 회수가치로 산정합니다.",
@@ -886,6 +894,13 @@ const I18N = {
     "v.recommend":"Processor Rec.","v.verify":"Settle Verify","v.risk":"Fraud Risk","v.esg":"ESG·Carbon",
     "v.integration":"Integrations","v.exchange":"Scrap Exchange","v.partner":"Hauler Console","v.audit":"Audit Log","v.tenant":"Tenant·RBAC",
     "bn.dashboard":"Home","bn.discharge":"Discharge","bn.circular":"MCI","bn.lca":"LCA","bn.risk":"Risk",
+    "db.kpiDue":"ALLBARO filing due soon","db.kpiTon":"This quarter's volume","db.kpiTonSub":"completed basis","db.kpiRecyc":"Recycling rate","db.kpiAnom":"Settlement anomalies",
+    "db.dueSoon":"within 10 days","db.dueShort":"min","db.dueEasy":"ample","db.recycOver":"above national avg","db.recycVs":"vs national 86.0%","db.anomNeed":"review needed","db.anomHold":"settlement hold review","db.anomNone":"no anomalies","db.roleScreen":"view",
+    "db.tonTitle":"Monthly volume + next-month forecast","db.tonSub":"(moving avg·trend)","db.legObs":"Observed volume","db.legPred":"Forecast (interval)",
+    "db.mixTitle":"Treatment method mix","db.mixSub":"(this quarter)","db.mRecyc":"Recycle","db.mIncin":"Incinerate","db.mLand":"Landfill",
+    "db.todo":"To-do","db.thNo":"Manifest no.","db.thItem":"Item","db.thWt":"Weight","db.thStage":"Stage","db.thAction":"Action","db.empty":"Nothing to process.",
+    "db.aWeigh":"Enter weighing","db.aSign":"3-party sign","db.aSend":"Send to ALLBARO","db.aSettle":"Settle","db.aDone":"Done",
+    "st.settled":"Settled","st.signed":"Handed over","st.weighed":"Weighed","st.registered":"Registered","u.case":"cases","u.cnt":"cases","u.ton":"t",
     "ce.mci":"Material Circularity (MCI)","ce.mciSub":"0(linear)~1(circular)","ce.reuse":"Resource recovery","ce.reuseSub":"Recycle+resale",
     "ce.virgin":"Virgin offset","ce.virginSub":"2nd-raw substitution est.","ce.next":"Next-Q circularity","ce.nextSub":"trend forecast",
     "ce.formula":"MCI formula","ce.formulaNote":"MCI = 1 − LFI · F(X). LFI = virgin input & landfill share; F(X) = use-intensity factor. Derived from recovery value per method.",
@@ -957,39 +972,39 @@ function recycRate(){
 function anomalyCount(){ return siteManifests().filter(m=>m.procWeight!=null && !verifyManifest(m).ok).length; }
 
 function stageLabel(m){
-  if(m.settled) return "정산완료";
-  if(m.signed) return "인계완료";
-  if(m.stage==="weighed") return "계근완료";
-  return "배출등록";
+  if(m.settled) return T("st.settled");
+  if(m.signed) return T("st.signed");
+  if(m.stage==="weighed") return T("st.weighed");
+  return T("st.registered");
 }
 
 function renderDashboard(){
   const ms = siteManifests();
   const due = ms.filter(m=>{ const d=dueDays(m); return m.signed && !m.allbaroSent && d!=null && d<=10; });
-  document.getElementById("kpiDue").innerHTML = due.length+'<small>건</small>';
-  document.getElementById("kpiDueSub").innerHTML = due.length? `최단 D-${Math.max(0,Math.min(...due.map(dueDays)))}` : "여유";
-  document.getElementById("kpiTon").innerHTML = quarterTon().toFixed(1)+'<small>톤</small>';
+  document.getElementById("kpiDue").innerHTML = due.length+`<small>${T("u.case")}</small>`;
+  document.getElementById("kpiDueSub").innerHTML = due.length? `${T("db.dueShort")} D-${Math.max(0,Math.min(...due.map(dueDays)))}` : T("db.dueEasy");
+  document.getElementById("kpiTon").innerHTML = quarterTon().toFixed(1)+`<small>${LANG==="en"?"t":"톤"}</small>`;
   const rr = recycRate();
   document.getElementById("kpiRecyc").innerHTML = rr.toFixed(1)+'<small>%</small>';
-  document.getElementById("kpiRecycSub").textContent = (rr>=86?"전국 평균 상회":"전국 86.0% 대비");
+  document.getElementById("kpiRecycSub").textContent = (rr>=86?T("db.recycOver"):T("db.recycVs"));
   const an = anomalyCount();
-  document.getElementById("kpiAnom").innerHTML = an+'<small>건</small>';
-  document.getElementById("kpiAnomSub").textContent = an? "정산 보류 검토" : "이상 없음";
-  document.getElementById("dashRoleHint").textContent = "· "+ROLES[G.role].name+" 화면";
+  document.getElementById("kpiAnom").innerHTML = an+`<small>${T("u.case")}</small>`;
+  document.getElementById("kpiAnomSub").textContent = an? T("db.anomHold") : T("db.anomNone");
+  document.getElementById("dashRoleHint").textContent = "· "+(LANG==="en"?ROLES[G.role].nameEn:ROLES[G.role].name)+" "+T("db.roleScreen");
 
   const rows = ms.filter(m=>m.stage!=="settled"||(!m.allbaroSent&&m.signed)).slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
-  let html = "<tr><th>인계번호</th><th>품목</th><th class=r>중량</th><th>상태</th><th>해야 할 일</th></tr>";
+  let html = `<tr><th>${T("db.thNo")}</th><th>${T("db.thItem")}</th><th class=r>${T("db.thWt")}</th><th>${T("db.thStage")}</th><th>${T("db.thAction")}</th></tr>`;
   for(const m of rows.slice(0,8)){
     const w = m.procWeight ?? m.carryWeight ?? m.expected;
     let action,cls;
-    if(m.stage==="registered"){ action="계근 입력"; cls="mute"; }
-    else if(m.stage==="weighed"){ action="3자 서명"; cls="warn"; }
-    else if(m.signed&&!m.allbaroSent){ const d=dueDays(m); action=`올바로 전송 (D-${Math.max(0,d)})`; cls=d<=3?"danger":"warn"; }
-    else if(m.signed&&!m.settled){ action="정산"; cls="mute"; }
-    else { action="완료"; cls="ok"; }
-    html += `<tr><td>${m.id}</td><td>${m.itemName}</td><td class=r>${fmt(w)}kg</td><td><span class="pill ${cls}">${stageLabel(m)}</span></td><td>${action}</td></tr>`;
+    if(m.stage==="registered"){ action=T("db.aWeigh"); cls="mute"; }
+    else if(m.stage==="weighed"){ action=T("db.aSign"); cls="warn"; }
+    else if(m.signed&&!m.allbaroSent){ const d=dueDays(m); action=`${T("db.aSend")} (D-${Math.max(0,d)})`; cls=d<=3?"danger":"warn"; }
+    else if(m.signed&&!m.settled){ action=T("db.aSettle"); cls="mute"; }
+    else { action=T("db.aDone"); cls="ok"; }
+    html += `<tr><td>${m.id}</td><td>${itemName({id:m.item,name:m.itemName})}</td><td class=r>${fmt(w)}kg</td><td><span class="pill ${cls}">${stageLabel(m)}</span></td><td>${action}</td></tr>`;
   }
-  if(rows.length===0) html += '<tr><td colspan=5 class=muted>처리할 일이 없습니다.</td></tr>';
+  if(rows.length===0) html += `<tr><td colspan=5 class=muted>${T("db.empty")}</td></tr>`;
   document.getElementById("todoTbl").innerHTML = html;
   drawTonChart(); drawMixChart();
 }
@@ -1622,7 +1637,7 @@ function runRoute(){
   cands.forEach((c,i)=>{ h+=`<tr><td>${i===0?'<span class="pill ok">'+(LANG==="en"?"BEST":"최적")+'</span>':"#"+(i+1)}</td><td>${LANG==="en"?(c.h.nameEn||c.h.name):c.h.name}</td><td>${methodName(c.meth)}</td><td class=r>${won(c.cost)}</td><td class=r>${fmt(c.carbon)}</td><td class=r><b>${c.obj.toFixed(3)}</b></td><td>${c.pareto?'<span class="pill info">✓</span>':'<span class="pill mute">·</span>'}</td></tr>`; });
   document.getElementById("rtTbl").innerHTML=h;
 }
-function renderRoute(){ if(document.getElementById("rtTbl").innerHTML==="") runRoute(); }
+function renderRoute(){ runRoute(); }
 
 /* ---- 부정 정산 리스크 스코어 고도화 (다요인 가중) ---- */
 function benfordFit(){
@@ -1699,7 +1714,7 @@ function drawTonChart(){
   const {keys,vals}=monthlySeries();
   const f=forecast(vals);
   const data = vals.length?[...vals, f.next]:[0];
-  const labels = vals.length?[...keys.map(k=>k.slice(5)),"예측"]:[""];
+  const labels = vals.length?[...keys.map(k=>k.slice(5)),(LANG==="en"?"F'cast":"예측")]:[""];
   const isF = data.map((_,i)=>i===data.length-1 && vals.length>0);
   const max=Math.max(...data,1); const pad=28, gap=(W-pad*2)/data.length, bw=gap*0.55;
   ctx.strokeStyle="#e7e9ee"; ctx.beginPath(); ctx.moveTo(pad,H-22); ctx.lineTo(W-8,H-22); ctx.stroke();
@@ -1734,7 +1749,7 @@ function drawMixChart(){
   ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(cx,cy,rad*0.55,0,7); ctx.fill();
   ctx.fillStyle="#15181d"; ctx.font="bold 16px sans-serif"; ctx.textAlign="center";
   ctx.fillText(((agg["재활용"]||0)/total*100).toFixed(0)+"%",cx,cy+2);
-  ctx.fillStyle="#5b6470"; ctx.font="10px sans-serif"; ctx.fillText("재활용",cx,cy+18);
+  ctx.fillStyle="#5b6470"; ctx.font="10px sans-serif"; ctx.fillText(T("db.mRecyc"),cx,cy+18);
 }
 
 /* ============ v3 이벤트 핸들러 ============ */
