@@ -798,7 +798,9 @@ function GroupSettlement({ state }) {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+      <div className="bg-white rounded-xl border border-slate-200">
+        <div className="px-4 pt-2 text-[11px] text-slate-400 md:hidden">표를 좌우로 밀어 모든 지표를 볼 수 있어요 →</div>
+        <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-[820px]">
           <thead className="bg-slate-50 text-slate-600"><tr>
             <th className="text-left px-4 py-3">의료기관</th><th className="px-4 py-3">청구</th>
@@ -828,6 +830,7 @@ function GroupSettlement({ state }) {
             <td className="px-4 py-3 text-center" colSpan="3">통합 지급률 {grand.total ? Math.round(grand.paid / grand.total * 100) : 0}%</td>
           </tr></tfoot>
         </table>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 p-6">
